@@ -4,10 +4,15 @@ struct Tokenizer {
     pos: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
+    Immutable,
+    Mutable,
     Print,
+    Identifier(String),
+    String(String),
     Num(i32),
+    Equal,
     Plus,
     Minus,
     Mul,
@@ -40,7 +45,7 @@ fn is_digit(c: &char) -> bool {
 
 fn get_digit(tokenizer: &mut Tokenizer) -> i32 {
     let mut num = 0;
-    let mut pos = tokenizer.pos - 1;
+    let mut pos = tokenizer.pos;
     loop {
         let c = tokenizer.get_position_char(pos);
         if c == '\0' {
@@ -70,15 +75,48 @@ fn is_print(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "val".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false
+        }
+    }
+    true
+}
+
+fn get_identifier(tokenizer: &mut Tokenizer) -> String {
+    let mut identifier = String::new();
+    let mut pos = tokenizer.pos;
+    loop {
+        let c = tokenizer.get_position_char(pos);
+        if c == '\0' || c == '\n' || c == ' ' {
+            break;
+        }
+        identifier += &c.to_string();
+        pos += 1;
+    }
+    tokenizer.pos = pos;
+    identifier
+}
+
+fn is_mutable(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "val mut".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false
+        }
+    }
+    true
+}
+
 pub fn tokenize(line: &String) -> Vec<Token> {
     let mut tokenizer = Tokenizer::new(&line);
     loop {
         let c = tokenizer.get_position_char(tokenizer.pos);
-        tokenizer.pos += 1;
         if is_line_break(&c) || c == '\0' {
             break;
         }
         if is_space(&c) {
+            tokenizer.pos += 1;
             continue;
         }
         if is_digit(&c) {
@@ -89,9 +127,23 @@ pub fn tokenize(line: &String) -> Vec<Token> {
 
         if is_print(&mut tokenizer) {
             tokenizer.tokens.push(Token::Print);
+            tokenizer.pos += 5;
             continue;
         }
 
+        if is_mutable(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Mutable);
+            tokenizer.pos += 7;
+            continue;
+        }
+
+        if is_immutable(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Immutable);
+            tokenizer.pos += 3;
+            continue;
+        }
+
+        println!("{}", c);
         match c {
             '+' => tokenizer.tokens.push(Token::Plus),
             '-' => tokenizer.tokens.push(Token::Minus),
@@ -99,8 +151,13 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '/' => tokenizer.tokens.push(Token::Div),
             '(' => tokenizer.tokens.push(Token::LParen),
             ')' => tokenizer.tokens.push(Token::RParen),
-            _ => panic!("invald chars"),
+            '=' => tokenizer.tokens.push(Token::Equal),
+            _ => {
+                let value = get_identifier(&mut tokenizer);
+                tokenizer.tokens.push(Token::Identifier(value))
+            }
         }
+        tokenizer.pos += 1;
     }
     tokenizer.tokens.push(Token::Eof);
     tokenizer.tokens
@@ -113,5 +170,6 @@ mod tests {
     #[test]
     fn test_four_basic_arithmetic_operations() {
         assert_eq!(tokenize(&"-1 + 2 * 3/4".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Mul, Token::Num(3), Token::Div, Token::Num(4), Token::Eof]);
+        assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
     }
 }

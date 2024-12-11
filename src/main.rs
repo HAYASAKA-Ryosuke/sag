@@ -32,7 +32,7 @@ fn eval(ast: ASTNode) -> Value {
         ASTNode::Literal(value) => value.clone(),
         ASTNode::PrefixOp { op, expr } => {
             let value = eval(*expr);
-            match (op, value) {
+            match (op.clone(), value) {
                 (Token::Minus, Value::Number(v)) => Value::Number(-v),
                 _ => panic!("Unexpected prefix op: {:?}", op)
             }
