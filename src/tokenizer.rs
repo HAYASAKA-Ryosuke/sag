@@ -112,8 +112,13 @@ pub fn tokenize(line: &String) -> Vec<Token> {
     let mut tokenizer = Tokenizer::new(&line);
     loop {
         let c = tokenizer.get_position_char(tokenizer.pos);
-        if is_line_break(&c) || c == '\0' {
-            break;
+        if is_line_break(&c) {
+            tokenizer.tokens.push(Token::Eof);
+            tokenizer.pos += 1;
+            continue;
+        }
+        if c == '\0' {
+            break
         }
         if is_space(&c) {
             tokenizer.pos += 1;
@@ -143,7 +148,6 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
-        println!("{}", c);
         match c {
             '+' => tokenizer.tokens.push(Token::Plus),
             '-' => tokenizer.tokens.push(Token::Minus),
@@ -171,5 +175,6 @@ mod tests {
     fn test_four_basic_arithmetic_operations() {
         assert_eq!(tokenize(&"-1 + 2 * 3/4".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Mul, Token::Num(3), Token::Div, Token::Num(4), Token::Eof]);
         assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(tokenize(&"-1 + 2 \n val x = 1".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
     }
 }
