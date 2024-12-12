@@ -1,11 +1,12 @@
 use crate::parser::{ASTNode, Value};
-use crate::environment::Env;
+use crate::environment::{ValueType, Env};
 use crate::tokenizer::Token;
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::environment::VariableType;
+    use crate::environment::EnvVariableType;
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
@@ -31,20 +32,20 @@ mod tests {
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(5.0))),
-            variable_type: VariableType::Mutable
+            variable_type: EnvVariableType::Mutable
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
         assert_eq!(Value::Number(5.0), env.get("x".to_string()).unwrap().value);
-        assert_eq!(VariableType::Mutable, env.get("x".to_string()).unwrap().variable_type);
+        assert_eq!(EnvVariableType::Mutable, env.get("x".to_string()).unwrap().variable_type);
         let mut env = Env::new();
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(5.0))),
-            variable_type: VariableType::Immutable
+            variable_type: EnvVariableType::Immutable
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
         assert_eq!(Value::Number(5.0), env.get("x".to_string()).unwrap().value);
-        assert_eq!(VariableType::Immutable, env.get("x".to_string()).unwrap().variable_type);
+        assert_eq!(EnvVariableType::Immutable, env.get("x".to_string()).unwrap().variable_type);
     }
     #[test]
     fn test_assign_expression_value() {
@@ -56,7 +57,7 @@ mod tests {
                 op: Token::Plus,
                 right: Box::new(ASTNode::Literal(Value::Number(20.0))),
             }),
-            variable_type: VariableType::Mutable,
+            variable_type: EnvVariableType::Mutable,
         };
         assert_eq!(Value::Number(30.0), eval(ast, &mut env));
         assert_eq!(env.get("y".to_string()).unwrap().value, Value::Number(30.0));
@@ -68,7 +69,7 @@ mod tests {
         let ast1 = ASTNode::Assign {
             name: "z".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(50.0))),
-            variable_type: VariableType::Mutable,
+            variable_type: EnvVariableType::Mutable,
         };
         eval(ast1, &mut env);
 
@@ -76,7 +77,7 @@ mod tests {
         let ast2 = ASTNode::Assign {
             name: "z".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(100.0))),
-            variable_type: VariableType::Mutable,
+            variable_type: EnvVariableType::Mutable,
         };
 
         // 環境に新しい値が登録されていること
@@ -92,7 +93,7 @@ mod tests {
         let ast1 = ASTNode::Assign {
             name: "w".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(200.0))),
-            variable_type: VariableType::Immutable,
+            variable_type: EnvVariableType::Immutable,
         };
         eval(ast1, &mut env);
 
@@ -100,7 +101,7 @@ mod tests {
         let ast2 = ASTNode::Assign {
             name: "w".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(300.0))),
-            variable_type: VariableType::Immutable,
+            variable_type: EnvVariableType::Immutable,
         };
         eval(ast2, &mut env);
     }
@@ -119,11 +120,23 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         },
         ASTNode::Assign { name, value, variable_type } => {
             let value = eval(*value, env);
-            let result = env.set(name.to_string(), value.clone(), variable_type);
+            let value_type = match value {
+                Value::Number(_) => ValueType::Number,
+                Value::Str(_) => ValueType::Str,
+                Value::Bool(_) => ValueType::Bool,
+            };
+            let result = env.set(name.to_string(), value.clone(), variable_type, value_type);
             if result.is_err() {
                 panic!("{}", result.unwrap_err());
             }
             value
+        },
+        ASTNode::Variable(name) => {
+            let value = env.get(name.to_string());
+            if value.is_none() {
+                panic!("Variable not found: {:?}", name);
+            }
+            value.unwrap().value.clone()
         },
         ASTNode::BinaryOp { left, op, right } => {
             let left_val = eval(*left, env);

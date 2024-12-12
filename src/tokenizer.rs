@@ -66,6 +66,21 @@ fn is_string(c: &char) -> bool {
     *c == '"'
 }
 
+fn get_identifier(tokenizer: &mut Tokenizer) -> String {
+    let mut identifier = String::new();
+    let mut pos = tokenizer.pos;
+    loop {
+        let c = tokenizer.get_position_char(pos);
+        if c == '\0' || c == '\n' || c == ' ' {
+            break;
+        }
+        identifier += &c.to_string();
+        pos += 1;
+    }
+    tokenizer.pos = pos;
+    identifier
+}
+
 fn get_string(tokenizer: &mut Tokenizer) -> String {
     let mut str = String::new();
     let mut pos = tokenizer.pos + 1;
@@ -105,21 +120,6 @@ fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
         }
     }
     true
-}
-
-fn get_identifier(tokenizer: &mut Tokenizer) -> String {
-    let mut identifier = String::new();
-    let mut pos = tokenizer.pos;
-    loop {
-        let c = tokenizer.get_position_char(pos);
-        if c == '\0' || c == '\n' || c == ' ' {
-            break;
-        }
-        identifier += &c.to_string();
-        pos += 1;
-    }
-    tokenizer.pos = pos;
-    identifier
 }
 
 fn is_mutable(tokenizer: &mut Tokenizer) -> bool {

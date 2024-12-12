@@ -1,5 +1,5 @@
 use crate::tokenizer::Token;
-use crate::environment::VariableType;
+use crate::environment::EnvVariableType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -11,14 +11,16 @@ pub enum Value {
 
 #[derive(Debug, PartialEq)]
 pub enum ASTNode {
+    // 数値や文字列などのリテラル
     Literal(Value),
+    // 変数
+    Variable(String),
     // -5, !trueなどの一つのオペランドを持つ演算子
     PrefixOp {op: Token, expr: Box<ASTNode>},
     // 1 + 2のような二項演算子
     BinaryOp {left: Box<ASTNode>, op: Token, right: Box<ASTNode>},
     // 変数の代入
-    Assign {name: String, value: Box<ASTNode>, variable_type: VariableType},
-
+    Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType},
 }
 
 pub struct Parser {
@@ -75,7 +77,7 @@ impl Parser {
                         ASTNode::Assign {
                             name,
                             value: Box::new(value),
-                            variable_type: if token == Token::Mutable {VariableType::Mutable} else {VariableType::Immutable}
+                            variable_type: if token == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable}
                         }
                     },
                     _ => panic!("unexpected token")
@@ -94,6 +96,10 @@ impl Parser {
                     None => panic!("unexpected token: {:?}", token)
                 }
                 expr
+            },
+            Token::Identifier(name) => {
+                self.pos += 1;
+                ASTNode::Variable(name)
             },
             _ => panic!("undefined token: {:?}", token)
         }
@@ -164,7 +170,7 @@ mod tests {
         assert_eq!(parser.parse(), ASTNode::Assign {
             name: "x".into(),
             value: Box::new(ASTNode::Literal(Value::Number(1.0))),
-            variable_type: VariableType::Mutable
+            variable_type: EnvVariableType::Mutable
         });
 
     }
