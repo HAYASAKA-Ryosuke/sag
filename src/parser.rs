@@ -63,6 +63,34 @@ impl Parser {
         }
     }
 
+    fn infer_type(&self, ast: &ASTNode) -> Result<ValueType, String> {
+        match ast {
+            ASTNode::Literal(ref v) => match v {
+                Value::Number(_) => Ok(ValueType::Number),
+                Value::Str(_) => Ok(ValueType::Str),
+                Value::Bool(_) => Ok(ValueType::Bool),
+                _ => Ok(ValueType::Any)
+            },
+            ASTNode::PrefixOp { op: _, expr } => {
+                let value_type = self.infer_type(&expr)?;
+                Ok(value_type)
+            }
+            ASTNode::BinaryOp { left, op, right } => {
+                let left_type = self.infer_type(&left)?;
+                let right_type = self.infer_type(&right)?;
+
+                match (&left_type, &right_type) {
+                    (ValueType::Number, ValueType::Number) => Ok(ValueType::Number),
+                    (ValueType::Number, ValueType::Str) => Ok(ValueType::Str),
+                    (ValueType::Str, ValueType::Number) => Ok(ValueType::Str),
+                    (ValueType::Bool, ValueType::Bool) => Ok(ValueType::Bool),
+                    _ => Err(format!("type mismatch: {:?} {:?} {:?}", left_type, op, right_type).into())
+                }
+            }
+            _ => Ok(ValueType::Any)
+        }
+    }
+
     fn parse_primary(&mut self) -> ASTNode {
         let token = match self.get_current_token() {
             Some(token) => token,
@@ -96,15 +124,19 @@ impl Parser {
                     Some(Token::Equal) => {
                         self.pos += 1;
                         let value = self.parse_expression(0);
-                        let value_type = match value {
-                            ASTNode::Literal(ref v) => match v {
-                                Value::Number(_) => ValueType::Number,
-                                Value::Str(_) => ValueType::Str,
-                                Value::Bool(_) => ValueType::Bool,
-                                _ => ValueType::Any
-                            },
-                            _ => ValueType::Any
+                        let value_type = match self.infer_type(&value) {
+                            Ok(value_type) => value_type,
+                            Err(e) => panic!("{}", e)
                         };
+                        //let value_type = match value {
+                        //    ASTNode::Literal(ref v) => match v {
+                        //        Value::Number(_) => ValueType::Number,
+                        //        Value::Str(_) => ValueType::Str,
+                        //        Value::Bool(_) => ValueType::Bool,
+                        //        _ => ValueType::Any
+                        //    },
+                        //    _ => ValueType::Any
+                        //};
                         ASTNode::Assign {
                             name,
                             value: Box::new(value),
@@ -114,8 +146,7 @@ impl Parser {
                     },
                     Some(Token::Colon) => {
                         self.pos += 1;
-                        let v = self.get_current_token();
-                        let value_type = match v {
+                        let value_type = match self.get_current_token() {
                             Some(token) => match token {
                                 Token::Identifier(value_type) => {
                                     match value_type.as_str() {
