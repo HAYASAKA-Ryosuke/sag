@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use crate::parser::Value;
 
-
+#[derive(Debug)]
 pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
     scope_stack: Vec<String>
 }
 
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Eq, Hash, PartialEq, Debug)]
 pub struct VariableKeyInfo {
     name: String,
     scope: String, 
@@ -22,6 +22,7 @@ pub enum EnvVariableType {
 
 #[derive(PartialEq, Debug)]
 pub enum ValueType {
+    Any,
     Number,
     Str,
     Bool

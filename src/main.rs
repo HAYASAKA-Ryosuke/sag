@@ -7,7 +7,7 @@ use std::env;
 use crate::tokenizer::tokenize;
 use crate::parser::Parser;
 use crate::environment::Env;
-use crate::eval::eval;
+use crate::eval::{eval, evals};
 
 
 fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,20 +26,22 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::read_to_string(file_path)?;
+    println!("file: {:?}", file);
     let tokens = tokenize(&file);
-    println!("{:?}", tokens);
+    println!("tokens: {:?}", tokens);
     let mut parser = Parser::new(tokens.to_vec());
-    let ast_node = parser.parse();
-    println!("{:?}", ast_node);
+    let ast_nodes = parser.parse_lines();
+    println!("ast: {:?}", ast_nodes);
     let mut env = Env::new();
-    let result = eval(ast_node, &mut env);
-    println!("{:?}", result);
+    let result = evals(ast_nodes, &mut env);
+    println!("return: {:?}, env: {:?}", result, env);
     Ok(())
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
+        println!("args: {:?}", args);
         let file_path = args[1].clone();
         run_file(file_path).unwrap();
     } else {

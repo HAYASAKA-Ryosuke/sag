@@ -1,5 +1,5 @@
 use crate::tokenizer::Token;
-use crate::environment::EnvVariableType;
+use crate::environment::{EnvVariableType, ValueType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -14,37 +14,59 @@ pub enum ASTNode {
     // 数値や文字列などのリテラル
     Literal(Value),
     // 変数
-    Variable(String),
+    Variable {
+        name: String,
+        value_type: Option<ValueType>
+    },
     // -5, !trueなどの一つのオペランドを持つ演算子
     PrefixOp {op: Token, expr: Box<ASTNode>},
     // 1 + 2のような二項演算子
     BinaryOp {left: Box<ASTNode>, op: Token, right: Box<ASTNode>},
     // 変数の代入
-    Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType},
+    Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType, value_type: ValueType},
 }
 
 pub struct Parser {
-    tokens: Vec<Token>,
-    pos: usize
+    tokens: Vec<Vec<Token>>,
+    pos: usize,
+    line: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser{tokens, pos: 0}
+        fn split_lines(tokens: Vec<Token>) -> Vec<Vec<Token>> {
+            let mut lines = Vec::new();
+            let mut current_line = Vec::new();
+            for token in tokens {
+                if token == Token::Eof {
+                    if !current_line.is_empty() {
+                        current_line.push(Token::Eof);
+                        lines.push(current_line);
+                        current_line = Vec::new();
+                    }
+                } else {
+                    current_line.push(token);
+                }
+            }
+            lines
+        }
+        let lines = split_lines(tokens);
+        Parser{tokens: lines.clone(), pos: 0, line: 0}
     }
 
+
     pub fn get_current_token(&self) -> Option<Token> {
-        if self.pos >= self.tokens.len() {
+        if self.pos >= self.tokens[self.line].len() {
             None
         } else {
-            Some(self.tokens[self.pos].clone())
+            Some(self.tokens[self.line][self.pos].clone())
         }
     }
 
     fn parse_primary(&mut self) -> ASTNode {
         let token = match self.get_current_token() {
             Some(token) => token,
-            _ => panic!("token not found")
+            _ => panic!("token not found!")
         };
         match token {
             Token::Minus => {
@@ -74,12 +96,54 @@ impl Parser {
                     Some(Token::Equal) => {
                         self.pos += 1;
                         let value = self.parse_expression(0);
+                        let value_type = match value {
+                            ASTNode::Literal(ref v) => match v {
+                                Value::Number(_) => ValueType::Number,
+                                Value::Str(_) => ValueType::Str,
+                                Value::Bool(_) => ValueType::Bool,
+                                _ => ValueType::Any
+                            },
+                            _ => ValueType::Any
+                        };
                         ASTNode::Assign {
                             name,
                             value: Box::new(value),
-                            variable_type: if token == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable}
+                            variable_type: if token == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable},
+                            value_type
                         }
                     },
+                    Some(Token::Colon) => {
+                        self.pos += 1;
+                        let v = self.get_current_token();
+                        let value_type = match v {
+                            Some(token) => match token {
+                                Token::Identifier(value_type) => {
+                                    match value_type.as_str() {
+                                        "number" => ValueType::Number,
+                                        "str" => ValueType::Str,
+                                        "bool" => ValueType::Bool,
+                                        _ => panic!("undefined type: {:?}", value_type)
+                                    }
+                                },
+                                _ => panic!("undefined type")
+                            },
+                            _ => panic!("undefined type")
+                        };
+                        self.pos += 1;
+                        match self.get_current_token() {
+                            Some(Token::Equal) => {
+                                self.pos += 1;
+                                let value = self.parse_expression(0);
+                                ASTNode::Assign {
+                                    name,
+                                    value: Box::new(value),
+                                    variable_type: if token == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable},
+                                    value_type
+                                }
+                            },
+                            _ => panic!("No valid statement found on the right-hand side")
+                        }
+                    }
                     _ => panic!("unexpected token")
                 }
             },
@@ -99,7 +163,7 @@ impl Parser {
             },
             Token::Identifier(name) => {
                 self.pos += 1;
-                ASTNode::Variable(name)
+                ASTNode::Variable{name, value_type: None}
             },
             _ => panic!("undefined token: {:?}", token)
         }
@@ -145,6 +209,17 @@ impl Parser {
     pub fn parse(&mut self) -> ASTNode {
         self.parse_expression(0)
     }
+
+    pub fn parse_lines(&mut self) -> Vec<ASTNode> {
+        let mut ast_nodes = vec![];
+        for _ in 0..self.tokens.len() {
+            println!("line: {:?}", self.tokens[self.line]);
+            ast_nodes.push(self.parse());
+            self.line += 1;
+            self.pos = 0;
+        }
+        ast_nodes
+    }
 }
 
 #[cfg(test)]
@@ -152,7 +227,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parser() {
+    fn test_four_basic_arithmetic_operations() {
         let mut parser = Parser::new(vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Mul, Token::Num(3), Token::Eof]);
         assert_eq!(parser.parse(), ASTNode::BinaryOp {
             left: Box::new(ASTNode::PrefixOp{
@@ -166,12 +241,27 @@ mod tests {
                 right: Box::new(ASTNode::Literal(Value::Number(3.0)))
             })
         });
-        let mut parser = Parser::new(vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
+    }
+
+    #[test]
+    fn test_type_specified() {
+        let mut parser = Parser::new(vec![Token::Mutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Equal, Token::Num(1), Token::Eof]);
         assert_eq!(parser.parse(), ASTNode::Assign {
             name: "x".into(),
             value: Box::new(ASTNode::Literal(Value::Number(1.0))),
-            variable_type: EnvVariableType::Mutable
+            variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number
         });
+    }
 
+    #[test]
+    fn test_type_estimate() {
+        let mut parser = Parser::new(vec![Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(parser.parse(), ASTNode::Assign {
+            name: "x".into(),
+            value: Box::new(ASTNode::Literal(Value::Number(1.0))),
+            variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number
+        });
     }
 }

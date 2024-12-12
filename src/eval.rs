@@ -32,7 +32,8 @@ mod tests {
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(5.0))),
-            variable_type: EnvVariableType::Mutable
+            variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
         assert_eq!(Value::Number(5.0), env.get("x".to_string()).unwrap().value);
@@ -41,7 +42,8 @@ mod tests {
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(5.0))),
-            variable_type: EnvVariableType::Immutable
+            variable_type: EnvVariableType::Immutable,
+            value_type: ValueType::Number
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
         assert_eq!(Value::Number(5.0), env.get("x".to_string()).unwrap().value);
@@ -58,6 +60,7 @@ mod tests {
                 right: Box::new(ASTNode::Literal(Value::Number(20.0))),
             }),
             variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number
         };
         assert_eq!(Value::Number(30.0), eval(ast, &mut env));
         assert_eq!(env.get("y".to_string()).unwrap().value, Value::Number(30.0));
@@ -70,6 +73,7 @@ mod tests {
             name: "z".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(50.0))),
             variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number
         };
         eval(ast1, &mut env);
 
@@ -78,6 +82,7 @@ mod tests {
             name: "z".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(100.0))),
             variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number
         };
 
         // 環境に新しい値が登録されていること
@@ -94,6 +99,7 @@ mod tests {
             name: "w".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(200.0))),
             variable_type: EnvVariableType::Immutable,
+            value_type: ValueType::Number
         };
         eval(ast1, &mut env);
 
@@ -102,11 +108,19 @@ mod tests {
             name: "w".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(300.0))),
             variable_type: EnvVariableType::Immutable,
+            value_type: ValueType::Number
         };
         eval(ast2, &mut env);
     }
 }
 
+pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
+    let mut values = vec![];
+    for ast in asts {
+        values.push(eval(ast, env));
+    }
+    values
+}
 
 pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
     match ast {
@@ -118,7 +132,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 _ => panic!("Unexpected prefix op: {:?}", op)
             }
         },
-        ASTNode::Assign { name, value, variable_type } => {
+        ASTNode::Assign { name, value, variable_type, value_type: _ } => {
             let value = eval(*value, env);
             let value_type = match value {
                 Value::Number(_) => ValueType::Number,
@@ -131,7 +145,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             }
             value
         },
-        ASTNode::Variable(name) => {
+        ASTNode::Variable{ name, value_type: _ } => {
             let value = env.get(name.to_string());
             if value.is_none() {
                 panic!("Variable not found: {:?}", name);

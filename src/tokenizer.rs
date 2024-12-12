@@ -8,6 +8,7 @@ struct Tokenizer {
 pub enum Token {
     Immutable,
     Mutable,
+    Colon,
     Print,
     Identifier(String),
     String(String),
@@ -71,7 +72,7 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
     let mut pos = tokenizer.pos;
     loop {
         let c = tokenizer.get_position_char(pos);
-        if c == '\0' || c == '\n' || c == ' ' {
+        if c == '\0' || c == '\n' || c == ' ' || c == ':' {
             break;
         }
         identifier += &c.to_string();
@@ -102,6 +103,10 @@ fn get_string(tokenizer: &mut Tokenizer) -> String {
 
 fn is_line_break(c: &char) -> bool {
     *c == '\n'
+}
+
+fn is_colon(c: &char) -> bool {
+    *c == ':'
 }
 
 fn is_print(tokenizer: &mut Tokenizer) -> bool {
@@ -177,6 +182,12 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_colon(&c) {
+            tokenizer.tokens.push(Token::Colon);
+            tokenizer.pos += 1;
+            continue;
+        }
+
         match c {
             '+' => tokenizer.tokens.push(Token::Plus),
             '-' => tokenizer.tokens.push(Token::Minus),
@@ -187,7 +198,8 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '=' => tokenizer.tokens.push(Token::Equal),
             _ => {
                 let value = get_identifier(&mut tokenizer);
-                tokenizer.tokens.push(Token::Identifier(value))
+                tokenizer.tokens.push(Token::Identifier(value));
+                continue;
             }
         }
         tokenizer.pos += 1;
@@ -206,5 +218,6 @@ mod tests {
         assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
         assert_eq!(tokenize(&"-1 + 2 \n val x = 1".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
         assert_eq!(tokenize(&"\"Hello World!!\"".to_string()), vec![Token::String("Hello World!!".into()), Token::Eof]);
+        assert_eq!(tokenize(&"val x: num = 1".to_string()), vec![Token::Immutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("num".into()), Token::Equal, Token::Num(1), Token::Eof]);
     }
 }
