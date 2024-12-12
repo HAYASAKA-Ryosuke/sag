@@ -128,15 +128,6 @@ impl Parser {
                             Ok(value_type) => value_type,
                             Err(e) => panic!("{}", e)
                         };
-                        //let value_type = match value {
-                        //    ASTNode::Literal(ref v) => match v {
-                        //        Value::Number(_) => ValueType::Number,
-                        //        Value::Str(_) => ValueType::Str,
-                        //        Value::Bool(_) => ValueType::Bool,
-                        //        _ => ValueType::Any
-                        //    },
-                        //    _ => ValueType::Any
-                        //};
                         ASTNode::Assign {
                             name,
                             value: Box::new(value),
