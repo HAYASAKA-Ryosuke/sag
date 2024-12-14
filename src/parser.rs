@@ -88,6 +88,9 @@ impl Parser {
                 current_line.push(token);
             }
         }
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
         lines
     }
 
