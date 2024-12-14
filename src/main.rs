@@ -19,7 +19,8 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         let ast_node = parser.parse();
         println!("{:?}", ast_node);
         let result = eval(ast_node, &mut env);
-        println!("{:?}", result);
+        println!("---------");
+        println!("res: {:?}", result);
     }
     Ok(())
 }
@@ -34,7 +35,7 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("ast: {:?}", ast_nodes);
     let mut env = Env::new();
     let result = evals(ast_nodes, &mut env);
-    println!("return: {:?}, env: {:?}", result, env);
+    println!("env: {:?}, result: {:?}", env, result);
     Ok(())
 }
 

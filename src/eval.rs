@@ -1,5 +1,5 @@
 use crate::parser::{ASTNode, Value};
-use crate::environment::{ValueType, Env};
+use crate::environment::{ValueType, Env, FunctionInfo};
 use crate::tokenizer::Token;
 
 
@@ -132,12 +132,30 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 _ => panic!("Unexpected prefix op: {:?}", op)
             }
         },
+        ASTNode::Function { name, arguments, body, return_type } => {
+            let function_info = FunctionInfo {
+                arguments,
+                body: *body,
+                return_type,
+            };
+            env.register_function(name, function_info);
+            Value::Function
+        },
+        ASTNode::Block(statements) => {
+            let mut value = Value::Number(1.0);
+            for statement in statements {
+                value = eval(statement, env);
+            }
+            value
+        },
+        ASTNode::Return(_) => todo!(),
         ASTNode::Assign { name, value, variable_type, value_type: _ } => {
             let value = eval(*value, env);
             let value_type = match value {
                 Value::Number(_) => ValueType::Number,
                 Value::Str(_) => ValueType::Str,
                 Value::Bool(_) => ValueType::Bool,
+                Value::Function => ValueType::Function,
             };
             let result = env.set(name.to_string(), value.clone(), variable_type, value_type);
             if result.is_err() {
@@ -145,6 +163,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             }
             value
         },
+        ASTNode::FunctionCall { name, arguments } => todo!(),
         ASTNode::Variable{ name, value_type: _ } => {
             let value = env.get(name.to_string());
             if value.is_none() {

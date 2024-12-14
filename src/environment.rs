@@ -1,10 +1,18 @@
 use std::collections::HashMap;
-use crate::parser::Value;
+use crate::parser::{ASTNode, Value};
 
 #[derive(Debug)]
 pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
-    scope_stack: Vec<String>
+    scope_stack: Vec<String>,
+    functions: HashMap<String, FunctionInfo>
+}
+
+#[derive(Debug)]
+pub struct FunctionInfo {
+    pub arguments: Vec<ASTNode>,
+    pub return_type: ValueType,
+    pub body: ASTNode,
 }
 
 
@@ -20,12 +28,14 @@ pub enum EnvVariableType {
     Mutable
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum ValueType {
     Any,
     Number,
     Str,
-    Bool
+    Bool,
+    Void,
+    Function
 }
 
 #[derive(Debug)]
@@ -37,7 +47,7 @@ pub struct EnvVariableValueInfo {
 
 impl Env {
     pub fn new() -> Self {
-        Self{variable_map: HashMap::new(), scope_stack: vec!["global".to_string()]}
+        Self{variable_map: HashMap::new(), scope_stack: vec!["global".to_string()], functions: HashMap::new()}
     }
 
     pub fn enter_scope(&mut self, scope: String) {
@@ -45,6 +55,14 @@ impl Env {
     }
     pub fn leave_scope(&mut self) {
         self.scope_stack.pop();
+    }
+
+    pub fn register_function(&mut self, name: String, function: FunctionInfo) {
+        self.functions.insert(name, function);
+    }
+
+    pub fn get_function(&mut self, name: String, function: FunctionInfo) -> Option<&FunctionInfo> {
+        self.functions.get(&name)
     }
 
     pub fn set(&mut self, name: String, value: Value, variable_type: EnvVariableType, value_type: ValueType) -> Result<(), String> {
