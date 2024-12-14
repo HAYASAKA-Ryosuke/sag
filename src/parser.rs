@@ -89,6 +89,7 @@ impl Parser {
             }
         }
         if !current_line.is_empty() {
+            current_line.push(Token::Eof);
             lines.push(current_line);
         }
         lines
