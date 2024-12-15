@@ -97,7 +97,7 @@ impl Parser {
     }
 
     pub fn get_current_token(&self) -> Option<Token> {
-        if self.pos >= self.tokens[self.line].len() {
+        if self.line >= self.tokens.len() || self.pos >= self.tokens[self.line].len() {
             None
         } else {
             Some(self.tokens[self.line][self.pos].clone())
@@ -362,23 +362,27 @@ impl Parser {
     }
 
     fn parse_block(&mut self) -> ASTNode {
-        self.consume_token();
         let mut statements = Vec::new();
+        if self.get_current_token() != Some(Token::LBrace) {
+            panic!("Expected LBrace at the start of a block");
+        }
+        self.consume_token();
 
         while let Some(token) = self.get_current_token() {
             if token == Token::RBrace {
-                self.pos += 1;
+                self.consume_token();
                 break;
             }
-            let statement = self.parse_expression(0);
-            statements.push(statement);
-            self.pos += 1;
             match self.get_current_token() {
                 Some(Token::Eof) => {
-                    self.pos += 1;
-                }
+                    self.pos = 0;
+                    self.line += 1;
+                    continue
+                },
                 _ => {}
             };
+            let statement = self.parse_expression(0);
+            statements.push(statement);
         }
         ASTNode::Block(statements)
     }
@@ -430,6 +434,9 @@ impl Parser {
         for _ in 0..self.tokens.len() {
             ast_nodes.push(self.parse());
             self.line += 1;
+            if self.line >= self.tokens.len() {
+                break
+            }
             self.pos = 0;
         }
         ast_nodes
@@ -498,6 +505,42 @@ mod tests {
             ),
             return_type: ValueType::Number
         })
+    }
+
+    #[test]
+    fn test_block() {
+        let mut parser = Parser::new(vec![
+            Token::LBrace,
+            Token::Identifier("x".into()),
+            Token::Plus,
+            Token::Identifier("y".into()),
+            Token::Eof,
+            Token::Return,
+            Token::Num(1),
+            Token::Minus,
+            Token::Num(1),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(parser.parse_block(), ASTNode::Block(vec![
+                ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: None
+                    }),
+                    op: Token::Plus,
+                    right: Box::new(ASTNode::Variable {
+                        name: "y".into(),
+                        value_type: None
+                    })
+                },
+                ASTNode::Return(Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Literal(Value::Number(1.0))),
+                    op: Token::Minus,
+                    right: Box::new(ASTNode::Literal(Value::Number(1.0)))
+                }))
+        ]));
     }
 
     #[test]
