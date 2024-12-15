@@ -150,8 +150,8 @@ mod tests {
             value_type: ValueType::Number
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
-        assert_eq!(Value::Number(5.0), env.get("x".to_string()).unwrap().value);
-        assert_eq!(EnvVariableType::Mutable, env.get("x".to_string()).unwrap().variable_type);
+        assert_eq!(Value::Number(5.0), env.get("x".to_string(), None).unwrap().value);
+        assert_eq!(EnvVariableType::Mutable, env.get("x".to_string(), None).unwrap().variable_type);
         let mut env = Env::new();
         let ast = ASTNode::Assign {
             name: "x".to_string(),
@@ -160,8 +160,8 @@ mod tests {
             value_type: ValueType::Number
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
-        assert_eq!(Value::Number(5.0), env.get("x".to_string()).unwrap().value);
-        assert_eq!(EnvVariableType::Immutable, env.get("x".to_string()).unwrap().variable_type);
+        assert_eq!(Value::Number(5.0), env.get("x".to_string(), None).unwrap().value);
+        assert_eq!(EnvVariableType::Immutable, env.get("x".to_string(), None).unwrap().variable_type);
     }
     #[test]
     fn test_assign_expression_value() {
@@ -177,7 +177,7 @@ mod tests {
             value_type: ValueType::Number
         };
         assert_eq!(Value::Number(30.0), eval(ast, &mut env));
-        assert_eq!(env.get("y".to_string()).unwrap().value, Value::Number(30.0));
+        assert_eq!(env.get("y".to_string(), None).unwrap().value, Value::Number(30.0));
     }
     #[test]
     fn test_assign_overwrite_mutable_variable() {
@@ -201,7 +201,7 @@ mod tests {
 
         // 環境に新しい値が登録されていること
         assert_eq!(eval(ast2, &mut env), Value::Number(100.0));
-        assert_eq!(env.get("z".to_string()).unwrap().value, Value::Number(100.0));
+        assert_eq!(env.get("z".to_string(), None).unwrap().value, Value::Number(100.0));
     }
     #[test]
     #[should_panic(expected = "Cannot reassign to immutable variable")]
