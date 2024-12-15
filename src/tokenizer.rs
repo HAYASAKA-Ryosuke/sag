@@ -25,9 +25,10 @@ pub enum Token {
     RBrace,
     Eof,
     Function,
+    FunctionCallArgs,
     Return,
     Comma,
-    RAllow,
+    RArrow,
 }
 
 impl Tokenizer {
@@ -160,6 +161,15 @@ fn is_function(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_function_call_args(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "args".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false
+        }
+    }
+    true
+}
+
 fn is_return(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "return".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -169,7 +179,7 @@ fn is_return(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
-fn is_right_allow(tokenizer: &mut Tokenizer) -> bool {
+fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "->".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false
@@ -233,6 +243,11 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             tokenizer.pos += 3;
             continue;
         }
+        if is_function_call_args(&mut tokenizer) {
+            tokenizer.tokens.push(Token::FunctionCallArgs);
+            tokenizer.pos += 4;
+            continue;
+        }
 
         if is_return(&mut tokenizer) {
             tokenizer.tokens.push(Token::Return);
@@ -240,8 +255,8 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
-        if is_right_allow(&mut tokenizer) {
-            tokenizer.tokens.push(Token::RAllow);
+        if is_right_arrow(&mut tokenizer) {
+            tokenizer.tokens.push(Token::RArrow);
             tokenizer.pos += 2;
             continue;
         }
@@ -312,6 +327,6 @@ mod tests {
     }
     #[test]
     fn test_call_function() {
-        assert_eq!(tokenize(&"(x, y) -> foo;".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RAllow, Token::Identifier("foo".into()), Token::Eof]);
+        assert_eq!(tokenize(&"(x, y) -> foo;".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RArrow, Token::Identifier("foo".into()), Token::Eof]);
     }
 }

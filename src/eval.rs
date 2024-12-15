@@ -1,7 +1,125 @@
 use crate::parser::{ASTNode, Value};
-use crate::environment::{ValueType, Env, FunctionInfo};
+use crate::environment::{ValueType, Env, FunctionInfo, EnvVariableType};
 use crate::tokenizer::Token;
 
+
+pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
+    let mut values = vec![];
+    for ast in asts {
+        values.push(eval(ast, env));
+    }
+    values
+}
+
+pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
+    match ast {
+        ASTNode::Literal(value) => value.clone(),
+        ASTNode::PrefixOp { op, expr } => {
+            let value = eval(*expr, env);
+            match (op.clone(), value) {
+                (Token::Minus, Value::Number(v)) => Value::Number(-v),
+                _ => panic!("Unexpected prefix op: {:?}", op)
+            }
+        },
+        ASTNode::Function { name, arguments, body, return_type } => {
+            let function_info = FunctionInfo {
+                arguments,
+                body: *body,
+                return_type,
+            };
+            env.register_function(name, function_info);
+            Value::Function
+        },
+        ASTNode::Block(statements) => {
+            let mut value = Value::Number(1.0);
+            for statement in statements {
+                value = eval(statement, env);
+            }
+            value
+        },
+        ASTNode::Return(value) => {
+            let result = eval(*value, env);
+            println!("res: {:?}", result);
+            result
+        },
+        ASTNode::Assign { name, value, variable_type, value_type: _ } => {
+            let value = eval(*value, env);
+            let value_type = match value {
+                Value::Number(_) => ValueType::Number,
+                Value::Str(_) => ValueType::Str,
+                Value::Bool(_) => ValueType::Bool,
+                Value::Function => ValueType::Function,
+            };
+            let result = env.set(name.to_string(), value.clone(), variable_type, value_type);
+            if result.is_err() {
+                panic!("{}", result.unwrap_err());
+            }
+            value
+        },
+        ASTNode::FunctionCall { name, arguments } => {
+            println!("name: {:?}, arguments: {:?}", name, arguments);
+            let function = match env.get_function(name.to_string()) {
+                Some(function) => function.clone(),
+                None => panic!("Function is missing: {:?}", name)
+            };
+            let mut params_vec = vec![];
+            for arg in &function.arguments {
+                params_vec.push(
+                    match arg {
+                        ASTNode::Variable { name, value_type } => (name, value_type),
+                        _ => panic!("illigal param: {:?}", function.arguments)
+                });
+            }
+
+            let args_vec = match *arguments {
+                ASTNode::FunctionCallArgs(arguments) => arguments,
+                _ => panic!("illigal arguments: {:?}", arguments)
+            };
+
+            if args_vec.len() != function.arguments.len() {
+                panic!("does not match arguments length");
+            }
+
+            let mut local_env = env.clone();
+
+            local_env.enter_scope(name.to_string());
+
+
+            for (param, arg) in params_vec.iter().zip(args_vec) {
+                let arg_value = eval(arg, env);
+                let name = param.0.to_string();
+                let value_type = param.1.clone();
+                local_env.set(name, arg_value, EnvVariableType::Immutable, value_type.unwrap_or(ValueType::Any));
+            }
+
+            println!("body: {:?}", function.body);
+            let result = eval(function.body, &mut local_env);
+
+            env.leave_scope();
+            result
+        },
+        ASTNode::Variable{ name, value_type: _ } => {
+            let value = env.get(name.to_string());
+            if value.is_none() {
+                panic!("Variable not found: {:?}", name);
+            }
+            value.unwrap().value.clone()
+        },
+        ASTNode::BinaryOp { left, op, right } => {
+            let left_val = eval(*left, env);
+            let right_val = eval(*right, env);
+
+            match (left_val, right_val, op) {
+                (Value::Str(l), Value::Str(r), Token::Plus) => Value::Str(l + &r),
+                (Value::Number(l), Value::Number(r), Token::Plus) => Value::Number(l + r),
+                (Value::Number(l), Value::Number(r), Token::Mul) => Value::Number(l * r),
+                (Value::Number(l), Value::Number(r), Token::Div) => Value::Number(l / r),
+                _ => panic!("Unsupported operation"),
+            }
+        },
+        _ => panic!("Unsupported ast node: {:?}", ast)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -112,76 +230,34 @@ mod tests {
         };
         eval(ast2, &mut env);
     }
-}
-
-pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
-    let mut values = vec![];
-    for ast in asts {
-        values.push(eval(ast, env));
-    }
-    values
-}
-
-pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
-    match ast {
-        ASTNode::Literal(value) => value.clone(),
-        ASTNode::PrefixOp { op, expr } => {
-            let value = eval(*expr, env);
-            match (op.clone(), value) {
-                (Token::Minus, Value::Number(v)) => Value::Number(-v),
-                _ => panic!("Unexpected prefix op: {:?}", op)
-            }
-        },
-        ASTNode::Function { name, arguments, body, return_type } => {
-            let function_info = FunctionInfo {
-                arguments,
-                body: *body,
-                return_type,
-            };
-            env.register_function(name, function_info);
-            Value::Function
-        },
-        ASTNode::Block(statements) => {
-            let mut value = Value::Number(1.0);
-            for statement in statements {
-                value = eval(statement, env);
-            }
-            value
-        },
-        ASTNode::Return(_) => todo!(),
-        ASTNode::Assign { name, value, variable_type, value_type: _ } => {
-            let value = eval(*value, env);
-            let value_type = match value {
-                Value::Number(_) => ValueType::Number,
-                Value::Str(_) => ValueType::Str,
-                Value::Bool(_) => ValueType::Bool,
-                Value::Function => ValueType::Function,
-            };
-            let result = env.set(name.to_string(), value.clone(), variable_type, value_type);
-            if result.is_err() {
-                panic!("{}", result.unwrap_err());
-            }
-            value
-        },
-        ASTNode::FunctionCall { name, arguments } => todo!(),
-        ASTNode::Variable{ name, value_type: _ } => {
-            let value = env.get(name.to_string());
-            if value.is_none() {
-                panic!("Variable not found: {:?}", name);
-            }
-            value.unwrap().value.clone()
-        },
-        ASTNode::BinaryOp { left, op, right } => {
-            let left_val = eval(*left, env);
-            let right_val = eval(*right, env);
-
-            match (left_val, right_val, op) {
-                (Value::Str(l), Value::Str(r), Token::Plus) => Value::Str(l + &r),
-                (Value::Number(l), Value::Number(r), Token::Plus) => Value::Number(l + r),
-                (Value::Number(l), Value::Number(r), Token::Mul) => Value::Number(l * r),
-                (Value::Number(l), Value::Number(r), Token::Div) => Value::Number(l / r),
-                _ => panic!("Unsupported operation"),
-            }
-        }
+    #[test]
+    fn test_register_function_and_function_call() {
+        let mut env = Env::new();
+        let ast = ASTNode::Function {
+            name: "foo".into(),
+            arguments: vec![ASTNode::Variable{name: "x".into(), value_type: Some(ValueType::Number)}, ASTNode::Variable{name: "y".into(), value_type: Some(ValueType::Number)}],
+            body: Box::new(
+                ASTNode::Block(vec![
+                    ASTNode::Return(Box::new(
+                        ASTNode::BinaryOp{
+                            left: Box::new(ASTNode::Variable{name: "x".into(), value_type: Some(ValueType::Number)}),
+                            op: Token::Plus,
+                            right: Box::new(ASTNode::Variable{name: "y".into(), value_type: Some(ValueType::Number)}),
+                        }
+                    ))
+                ])
+            ),
+            return_type: ValueType::Number
+        };
+        eval(ast, &mut env);
+        let ast = ASTNode::FunctionCall {
+            name: "foo".into(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![
+                    ASTNode::Literal(Value::Number(1.0)),
+                    ASTNode::Literal(Value::Number(2.0))
+            ])),
+        };
+        let result = eval(ast, &mut env);
+        assert_eq!(result, Value::Number(3.0));
     }
 }

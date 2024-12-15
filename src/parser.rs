@@ -11,7 +11,7 @@ pub enum Value {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ASTNode {
     // 数値や文字列などのリテラル
     Literal(Value),
@@ -28,7 +28,8 @@ pub enum ASTNode {
     // 変数の代入
     Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType, value_type: ValueType},
     Function {name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType},
-    FunctionCall {name: String, arguments: Vec<ASTNode>},
+    FunctionCall {name: String, arguments: Box<ASTNode>},
+    FunctionCallArgs (Vec<ASTNode>),
     Return(Box<ASTNode>),
 }
 
@@ -167,6 +168,19 @@ impl Parser {
         ASTNode::Literal(value)
     }
 
+    fn parse_function_call(&mut self, arguments: ASTNode) -> ASTNode {
+        self.consume_token();
+        let name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("failed take function name"),
+        };
+
+        ASTNode::FunctionCall {
+            name,
+            arguments: Box::new(arguments)
+        }
+    }
+
     fn parse_function(&mut self) -> ASTNode {
         self.pos += 1;
         let name = match self.get_current_token() {
@@ -303,6 +317,7 @@ impl Parser {
             Token::Num(value) => self.parse_literal(Value::Number(value.into())),
             Token::String(value) => self.parse_literal(Value::Str(value.into())),
             Token::Function => self.parse_function(),
+            Token::FunctionCallArgs => self.parse_function_call_arguments(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
             Token::LParen => {
                 self.pos += 1;
@@ -328,11 +343,28 @@ impl Parser {
         }
     }
 
+    fn parse_function_call_arguments(&mut self) -> ASTNode {
+        self.consume_token();
+        let mut arguments = vec![];
+        while let Some(token) = self.get_current_token() {
+            if token == Token::Comma {
+                self.pos += 1;
+                continue;
+            }
+            if token == Token::RParen {
+                self.pos += 1;
+                break;
+            }
+            let value = self.parse_expression(0);
+            arguments.push(value);
+        }
+        ASTNode::FunctionCallArgs(arguments)
+    }
+
     fn parse_block(&mut self) -> ASTNode {
         self.consume_token();
         let mut statements = Vec::new();
 
-        println!("parse block");
         while let Some(token) = self.get_current_token() {
             if token == Token::RBrace {
                 self.pos += 1;
@@ -353,29 +385,30 @@ impl Parser {
 
     fn parse_expression(&mut self, min_priority: u8) -> ASTNode {
         let mut lhs = self.parse_primary();
-
         loop {
             let token = match self.get_current_token() {
                 Some(token) => token,
-                //_ => panic!("token not found")
-                _ => {break;}
+                _ => break
             };
-            let priorities = self.get_priority(&token);
-            if priorities.is_none() {
-                break;
+            if token == Token::RArrow {
+                return self.parse_function_call(lhs);
             }
-            let (left_priority, right_priority) = priorities.unwrap();
-            if left_priority < min_priority {
-                println!("left < min");
-                break;
-            }
-            self.pos += 1;
 
-            let rhs = self.parse_expression(right_priority);
-            lhs = ASTNode::BinaryOp {
-                left: Box::new(lhs),
-                op: token,
-                right: Box::new(rhs),
+            // 二項演算
+            if let Some((left_priority, right_priority)) = self.get_priority(&token) {
+                if left_priority < min_priority {
+                    break;
+                }
+                self.pos += 1;
+
+                let rhs = self.parse_expression(right_priority);
+                lhs = ASTNode::BinaryOp {
+                    left: Box::new(lhs),
+                    op: token,
+                    right: Box::new(rhs),
+                }
+            } else {
+                break;
             }
         }
         lhs
@@ -395,11 +428,9 @@ impl Parser {
     pub fn parse_lines(&mut self) -> Vec<ASTNode> {
         let mut ast_nodes = vec![];
         for _ in 0..self.tokens.len() {
-            println!("line: {:?}", self.tokens[self.line]);
             ast_nodes.push(self.parse());
             self.line += 1;
             self.pos = 0;
-            println!("ast_nodes: {:?}", ast_nodes);
         }
         ast_nodes
     }
@@ -449,7 +480,7 @@ mod tests {
     }
 
     #[test]
-    fn test_function2() {
+    fn test_register_function() {
         let mut parser = Parser::new(vec![Token::Function, Token::Identifier("foo".into()), Token::Equal, Token::LParen, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Comma, Token::Identifier("y".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::Colon, Token::Identifier("number".into()), Token::LBrace, Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Identifier("y".into()), Token::RBrace, Token::Eof]);
         assert_eq!(parser.parse(), ASTNode::Function {
             name: "foo".into(),
@@ -467,5 +498,40 @@ mod tests {
             ),
             return_type: ValueType::Number
         })
+    }
+
+    #[test]
+    fn test_function_call() {
+        let mut parser = Parser::new(vec![
+            Token::FunctionCallArgs,
+            Token::LParen,
+            Token::Identifier("x".into()),
+            Token::Comma,
+            Token::Identifier("y".into()),
+            Token::Comma,
+            Token::Num(1),
+            Token::RParen,
+            Token::RArrow,
+            Token::Identifier("f1".into()),
+            Token::Eof,
+        ]);
+    
+        assert_eq!(
+            parser.parse(),
+            ASTNode::FunctionCall {
+                name: "f1".into(),
+                arguments: Box::new(ASTNode::FunctionCallArgs([
+                    ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: None,
+                    },
+                    ASTNode::Variable {
+                        name: "y".into(),
+                        value_type: None,
+                    },
+                    ASTNode::Literal(Value::Number(1.0)),
+                ].to_vec())),
+            }
+        );
     }
 }

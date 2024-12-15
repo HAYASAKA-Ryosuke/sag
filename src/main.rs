@@ -27,7 +27,6 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::read_to_string(file_path)?;
-    println!("file: {:?}", file);
     let tokens = tokenize(&file);
     println!("tokens: {:?}", tokens);
     let mut parser = Parser::new(tokens.to_vec());

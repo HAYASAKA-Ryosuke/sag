@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use crate::parser::{ASTNode, Value};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
     scope_stack: Vec<String>,
     functions: HashMap<String, FunctionInfo>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionInfo {
     pub arguments: Vec<ASTNode>,
     pub return_type: ValueType,
@@ -16,13 +16,13 @@ pub struct FunctionInfo {
 }
 
 
-#[derive(Eq, Hash, PartialEq, Debug)]
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct VariableKeyInfo {
     name: String,
     scope: String, 
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum EnvVariableType {
     Immutable,
     Mutable
@@ -38,7 +38,7 @@ pub enum ValueType {
     Function
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnvVariableValueInfo {
     pub value: Value,
     pub variable_type: EnvVariableType,
@@ -61,7 +61,7 @@ impl Env {
         self.functions.insert(name, function);
     }
 
-    pub fn get_function(&mut self, name: String, function: FunctionInfo) -> Option<&FunctionInfo> {
+    pub fn get_function(&mut self, name: String) -> Option<&FunctionInfo> {
         self.functions.get(&name)
     }
 
