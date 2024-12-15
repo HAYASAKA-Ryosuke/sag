@@ -39,7 +39,6 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         },
         ASTNode::Return(value) => {
             let result = eval(*value, env);
-            println!("res: {:?}", result);
             result
         },
         ASTNode::Assign { name, value, variable_type, value_type: _ } => {
@@ -57,7 +56,6 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             value
         },
         ASTNode::FunctionCall { name, arguments } => {
-            println!("name: {:?}, arguments: {:?}", name, arguments);
             let function = match env.get_function(name.to_string()) {
                 Some(function) => function.clone(),
                 None => panic!("Function is missing: {:?}", name)
@@ -84,22 +82,20 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
 
             local_env.enter_scope(name.to_string());
 
-
             for (param, arg) in params_vec.iter().zip(args_vec) {
                 let arg_value = eval(arg, env);
                 let name = param.0.to_string();
                 let value_type = param.1.clone();
-                local_env.set(name, arg_value, EnvVariableType::Immutable, value_type.unwrap_or(ValueType::Any));
+                let _ = local_env.set(name, arg_value, EnvVariableType::Immutable, value_type.unwrap_or(ValueType::Any));
             }
 
-            println!("body: {:?}", function.body);
             let result = eval(function.body, &mut local_env);
 
             env.leave_scope();
             result
         },
         ASTNode::Variable{ name, value_type: _ } => {
-            let value = env.get(name.to_string());
+            let value = env.get(name.to_string(), None);
             if value.is_none() {
                 panic!("Variable not found: {:?}", name);
             }

@@ -34,7 +34,7 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("ast: {:?}", ast_nodes);
     let mut env = Env::new();
     let result = evals(ast_nodes, &mut env);
-    println!("env: {:?}, result: {:?}", env, result);
+    println!("result: {:?}", result);
     Ok(())
 }
 

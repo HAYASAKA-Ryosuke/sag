@@ -2,6 +2,7 @@ struct Tokenizer {
     tokens: Vec<Token>,
     chars: Vec<char>,
     pos: usize,
+    nesting_count: usize
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,11 +30,12 @@ pub enum Token {
     Return,
     Comma,
     RArrow,
+    Match,
 }
 
 impl Tokenizer {
     pub fn new(line: &String) -> Self {
-        Tokenizer{pos: 0, chars: line.chars().collect(), tokens: vec![]}
+        Tokenizer{pos: 0, chars: line.chars().collect(), tokens: vec![], nesting_count: 0}
     }
 
     pub fn get_position_char(&self, pos: usize) -> char {
@@ -179,6 +181,15 @@ fn is_return(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_match(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "match".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false
+        }
+    }
+    true
+}
+
 fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "->".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -249,6 +260,12 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_match(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Match);
+            tokenizer.pos += 5;
+            continue
+        }
+
         if is_return(&mut tokenizer) {
             tokenizer.tokens.push(Token::Return);
             tokenizer.pos += 6;
@@ -280,10 +297,16 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '/' => tokenizer.tokens.push(Token::Div),
             '(' => tokenizer.tokens.push(Token::LParen),
             ')' => tokenizer.tokens.push(Token::RParen),
-            '{' => tokenizer.tokens.push(Token::LBrace),
+            '{' => {
+                tokenizer.nesting_count += 1;
+                tokenizer.tokens.push(Token::LBrace)
+            },
             '}' => {
+                tokenizer.nesting_count -= 1;
                 tokenizer.tokens.push(Token::RBrace);
-                tokenizer.tokens.push(Token::Eof)
+                if tokenizer.nesting_count == 0 {
+                    tokenizer.tokens.push(Token::Eof);
+                }
             },
             '=' => tokenizer.tokens.push(Token::Equal),
             _ => {
@@ -328,5 +351,10 @@ mod tests {
     #[test]
     fn test_call_function() {
         assert_eq!(tokenize(&"(x, y) -> foo;".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RArrow, Token::Identifier("foo".into()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_pattern_match() {
+        assert_eq!(tokenize(&"match x {\n 1 = { \"hello\" },\n _ = { \"other\"\n} \n}".to_string()), vec![Token::Match, Token::Identifier("x".into()), Token::LBrace, Token::Num(1), Token::Equal, Token::LBrace, Token::String("hello".into()), Token::RBrace, Token::Comma, Token::Identifier("_".into()), Token::Equal, Token::LBrace, Token::String("other".into()), Token::RBrace, Token::RBrace, Token::Eof]);
     }
 }

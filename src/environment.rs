@@ -70,19 +70,24 @@ impl Env {
         if latest_scope.is_none() {
             return Err("missing scope".into());
         }
-        let value_info = &self.get(name.clone());
+        let value_info = &self.get(name.clone(), Some(&value_type));
         if value_info.is_some() {
             if value_info.unwrap().variable_type == EnvVariableType::Immutable {
                 return Err("Cannot reassign to immutable variable".into());
             }
         }
-        self.variable_map.insert(VariableKeyInfo{name, scope: latest_scope.unwrap().clone()}, EnvVariableValueInfo{value, variable_type, value_type});
+        self.variable_map.insert(VariableKeyInfo{name: name.to_string(), scope: latest_scope.unwrap().clone()}, EnvVariableValueInfo{value, variable_type, value_type});
         Ok(())
     }
 
-    pub fn get(&self, name: String) -> Option<&EnvVariableValueInfo> {
+    pub fn get(&self, name: String, value_type: Option<&ValueType>) -> Option<&EnvVariableValueInfo> {
         for scope in self.scope_stack.iter().rev() {
-            if let Some(variable_key_info)  = self.variable_map.get(&VariableKeyInfo{name: name.to_string(), scope: scope.clone()}) {
+            if let Some(variable_key_info) = self.variable_map.get(&VariableKeyInfo{name: name.to_string(), scope: scope.clone()}) {
+                if value_type.is_some() {
+                    if variable_key_info.value_type != *value_type.unwrap() {
+                        continue
+                    }
+                }
                 return Some(variable_key_info);
             }
         }
