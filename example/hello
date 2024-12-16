@@ -1,6 +1,14 @@
+
+val z = 3;
+
 fun f1 = (x: number, y: number): number {
-  val z = 1 + 2;
+  val z = 1;
   return x + y + z;
 }
 
-args(4, 0) -> f1;
+fun f2 = (x: number, y: number): number {
+  return x + y + z;
+}
+
+args(2, 0) -> f1;
+args(2, 0) -> f2;

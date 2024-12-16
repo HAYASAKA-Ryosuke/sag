@@ -54,6 +54,10 @@ impl Env {
         self.scope_stack.push(scope);
     }
     pub fn leave_scope(&mut self) {
+        if self.scope_stack.len() == 1 && self.scope_stack[0] == "global".to_string() {
+            return
+        }
+
         self.scope_stack.pop();
     }
 
@@ -70,7 +74,7 @@ impl Env {
         if latest_scope.is_none() {
             return Err("missing scope".into());
         }
-        let value_info = &self.get(name.clone(), Some(&value_type));
+        let value_info = &self.local_get(name.clone(), latest_scope.unwrap().to_string());
         if value_info.is_some() {
             if value_info.unwrap().variable_type == EnvVariableType::Immutable {
                 return Err("Cannot reassign to immutable variable".into());
@@ -78,6 +82,13 @@ impl Env {
         }
         self.variable_map.insert(VariableKeyInfo{name: name.to_string(), scope: latest_scope.unwrap().clone()}, EnvVariableValueInfo{value, variable_type, value_type});
         Ok(())
+    }
+
+    pub fn local_get(&self, name: String, scope: String) -> Option<&EnvVariableValueInfo> {
+        if let Some(variable_key_info) = self.variable_map.get(&VariableKeyInfo{name: name.to_string(), scope: scope.clone()}) {
+            return Some(variable_key_info);
+        }
+        None
     }
 
     pub fn get(&self, name: String, value_type: Option<&ValueType>) -> Option<&EnvVariableValueInfo> {
