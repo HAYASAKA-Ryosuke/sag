@@ -338,6 +338,7 @@ impl Parser {
                 }
                 expr
             },
+            Token::LBrace => self.parse_block(),
             Token::Identifier(name) => {
                 self.pos += 1;
                 let scope = self.get_current_scope().to_string();
@@ -373,7 +374,14 @@ impl Parser {
     }
 
     fn parse_function_call_arguments(&mut self) -> ASTNode {
-        self.consume_token();
+        match self.get_current_token() {
+            Some(Token::FunctionCallArgs) => self.consume_token(),
+            _ => {None}
+        };
+        match self.get_current_token() {
+            Some(Token::LParen) => self.consume_token(),
+            _ => {None}
+        };
         let mut arguments = vec![];
         while let Some(token) = self.get_current_token() {
             if token == Token::Comma {
@@ -573,6 +581,17 @@ mod tests {
     }
 
     #[test]
+    fn test_reassign_to_mutable_variable() {
+        let mut parser = Parser::new(vec![
+            Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof, Token::Identifier("x".into()), Token::Equal, Token::Num(2), Token::Eof
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Assign{name: "x".into(), value: Box::new(ASTNode::Literal(Value::Number(1.0))), variable_type: EnvVariableType::Mutable, value_type: ValueType::Number}
+        )
+    }
+
+    #[test]
     fn test_function_call() {
         let mut parser = Parser::new(vec![
             Token::FunctionCallArgs,
@@ -605,5 +624,100 @@ mod tests {
                 ].to_vec())),
             }
         );
+    }
+    #[test]
+    #[should_panic(expected = "It is an immutable variable and cannot be reassigned")]
+    fn test_reassign_to_immutable_variable_should_panic() {
+        let mut parser = Parser::new(vec![
+            Token::Immutable, Token::Identifier("x".into()), Token::Equal, Token::Num(10), Token::Eof,
+            Token::Identifier("x".into()), Token::Equal, Token::Num(20), Token::Eof
+        ]);
+        // 最初のparseで変数定義
+        let _ = parser.parse();
+        parser.line += 1;
+        parser.pos = 0;
+        // 2回目のparseで不変変数の再代入を試みてパニックになる
+        let _ = parser.parse();
+    }
+    #[test]
+    fn test_function_without_arguments_and_void_return() {
+        let mut parser = Parser::new(vec![
+            Token::Function, Token::Identifier("no_args".into()), Token::Equal,
+            Token::LParen, Token::RParen, // 引数なし
+            // 戻り値の型指定なし → void
+            Token::LBrace,
+            Token::Return, Token::Num(42),
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Function {
+            name: "no_args".into(),
+            arguments: vec![],
+            body: Box::new(
+                ASTNode::Block(vec![
+                    ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(42.0))))
+                ])
+            ),
+            return_type: ValueType::Void
+        })
+    }
+    #[test]
+    fn test_function_call_with_no_arguments() {
+        let mut parser = Parser::new(vec![
+            Token::FunctionCallArgs, Token::LParen, Token::RParen, Token::RArrow, Token::Identifier("func".into()), Token::Eof,
+        ]);
+        assert_eq!(parser.parse(), ASTNode::FunctionCall {
+            name: "func".into(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![]))
+        });
+    }
+    
+    #[test]
+    fn test_nested_block_scope() {
+        let mut parser = Parser::new(vec![
+            Token::LBrace,
+                Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Num(10), Token::Eof,
+                Token::LBrace,
+                    Token::Immutable, Token::Identifier("y".into()), Token::Equal, Token::Num(20), Token::Eof,
+                Token::RBrace,
+                Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Num(1), Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(parser.parse_block(), ASTNode::Block(vec![
+            ASTNode::Assign {
+                name: "x".into(),
+                value: Box::new(ASTNode::Literal(Value::Number(10.0))),
+                variable_type: EnvVariableType::Mutable,
+                value_type: ValueType::Number
+            },
+            ASTNode::Block(vec![
+                ASTNode::Assign {
+                    name: "y".into(),
+                    value: Box::new(ASTNode::Literal(Value::Number(20.0))),
+                    variable_type: EnvVariableType::Immutable,
+                    value_type: ValueType::Number
+                }
+            ]),
+            ASTNode::Return(Box::new(ASTNode::BinaryOp {
+                left: Box::new(ASTNode::Variable {
+                    name: "x".into(),
+                    value_type: Some(ValueType::Number)
+                }),
+                op: Token::Plus,
+                right: Box::new(ASTNode::Literal(Value::Number(1.0)))
+            }))
+        ]));
+    }
+    
+    #[test]
+    fn test_prefix_operator_only() {
+        let mut parser = Parser::new(vec![
+            Token::Minus, Token::Num(5), Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::PrefixOp {
+            op: Token::Minus,
+            expr: Box::new(ASTNode::Literal(Value::Number(5.0)))
+        })
     }
 }

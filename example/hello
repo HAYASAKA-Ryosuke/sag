@@ -10,5 +10,10 @@ fun f2 = (x: number, y: number): number {
   return x + y + z;
 }
 
+fun f3 = (): number {
+  return 1;
+}
+
 args(2, 0) -> f1;
 args(2, 0) -> f2;
+args() -> f3;
