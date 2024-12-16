@@ -38,7 +38,7 @@ pub struct Parser {
     pos: usize,
     line: usize,
     scopes: Vec<String>,
-    variables: HashMap<(String, String), ValueType> // key: (scope, name), value: value_type
+    variables: HashMap<(String, String), (ValueType, EnvVariableType)> // key: (scope, name), value: value_type
 }
 
 impl Parser {
@@ -58,21 +58,24 @@ impl Parser {
         self.scopes.last().unwrap().to_string()
     }
 
-    fn register_variables(&mut self, scope: String, name: &String, value_type: &ValueType) {
-        self.variables.insert((scope, name.to_string()), value_type.clone());
+    fn register_variables(&mut self, scope: String, name: &String, value_type: &ValueType, variable_type: &EnvVariableType) {
+        self.variables.insert((scope, name.to_string()), (value_type.clone(), variable_type.clone()));
     }
 
-    fn find_variables(&mut self, scope: String, name: String) -> Option<ValueType> {
-        match self.variables.get(&(scope.to_string(), name.to_string())) {
-            Some(value_type) => match value_type {
-                &ValueType::Number => Some(ValueType::Number),
-                &ValueType::Str => Some(ValueType::Str),
-                &ValueType::Bool => Some(ValueType::Bool),
-                &ValueType::Function => Some(ValueType::Function),
-                _ => None
-            },
-            None => None
+    fn find_variables(&mut self, scope: String, name: String) -> Option<(ValueType, EnvVariableType)> {
+        for checked_scope in vec![scope.to_string(), "global".to_string()] {
+            match self.variables.get(&(checked_scope.to_string(), name.to_string())) {
+                Some(value) => match &value.0 {
+                    &ValueType::Number => return Some((ValueType::Number, value.1.clone())),
+                    &ValueType::Str => return Some((ValueType::Str, value.1.clone())),
+                    &ValueType::Bool => return Some((ValueType::Bool, value.1.clone())),
+                    &ValueType::Function => return Some((ValueType::Function, value.1.clone())),
+                    _ => return None
+                },
+                None => {}
+            };
         }
+        None
     }
 
     fn split_lines(tokens: Vec<Token>) -> Vec<Vec<Token>> {
@@ -227,7 +230,7 @@ impl Parser {
                     Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
                     _ => panic!("Expected type for argument"),
                 };
-                self.register_variables(scope.to_string(), &name, &arg_type);
+                self.register_variables(scope.to_string(), &name, &arg_type, &EnvVariableType::Immutable);
                 arguments.push(ASTNode::Variable {
                     name,
                     value_type: Some(arg_type),
@@ -265,11 +268,12 @@ impl Parser {
                     Ok(value_type) => value_type,
                     Err(e) => panic!("{}", e)
                 };
-                self.register_variables(scope, &name, &value_type);
+                let variable_type = if mutable_or_immutable == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable};
+                self.register_variables(scope, &name, &value_type, &variable_type);
                 ASTNode::Assign {
                     name,
                     value: Box::new(value),
-                    variable_type: if mutable_or_immutable == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable},
+                    variable_type,
                     value_type
                 }
             },
@@ -291,11 +295,12 @@ impl Parser {
                 match self.consume_token() {
                     Some(Token::Equal) => {
                         let value = self.parse_expression(0);
-                        self.register_variables(scope, &name, &value_type);
+                        let variable_type = if mutable_or_immutable == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable};
+                        self.register_variables(scope, &name, &value_type, &variable_type);
                         ASTNode::Assign {
                             name,
                             value: Box::new(value),
-                            variable_type: if mutable_or_immutable == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable},
+                            variable_type,
                             value_type
                         }
                     },
@@ -336,8 +341,32 @@ impl Parser {
             Token::Identifier(name) => {
                 self.pos += 1;
                 let scope = self.get_current_scope().to_string();
-                let value_type = self.find_variables(scope, name.clone());
-                ASTNode::Variable{name, value_type}
+                let variable_info = self.find_variables(scope, name.clone());
+                match self.get_current_token() {
+                    Some(Token::Equal) => {
+                        // 再代入
+                        self.consume_token();
+                        if variable_info.is_none() {
+                            panic!("missing variable: {:?}", name);
+                        }
+                        let (value_type, variable_type) = variable_info.clone().unwrap();
+                        if variable_type == EnvVariableType::Immutable {
+                            panic!("It is an immutable variable and cannot be reassigned: {:?}", name);
+                        }
+                        let value = self.parse_expression(0);
+                        ASTNode::Assign {
+                            name,
+                            value: Box::new(value),
+                            variable_type,
+                            value_type
+                        }
+                    },
+                    _ => {
+                        // 代入
+                        let value_type = if variable_info.is_some() {Some(variable_info.unwrap().0)} else {None};
+                        ASTNode::Variable{name, value_type}
+                    }
+                }
             },
             _ => panic!("undefined token: {:?}", token)
         }
