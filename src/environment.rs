@@ -77,11 +77,20 @@ impl Env {
         }
     }
 
-    pub fn set(&mut self, name: String, value: Value, variable_type: EnvVariableType, value_type: ValueType) -> Result<(), String> {
+    pub fn set(&mut self, name: String, value: Value, variable_type: EnvVariableType, value_type: ValueType, is_new: bool) -> Result<(), String> {
         let latest_scope = match self.scope_stack.last() {
             Some(scope) => scope.clone(),
             None => return Err("Missing scope".into()),
         };
+
+        // 新規の場合はそのまま書き込み
+        if is_new {
+            self.variable_map.insert(
+                VariableKeyInfo { name: name.clone(), scope: latest_scope },
+                EnvVariableValueInfo { value, variable_type, value_type },
+            );
+            return Ok(())
+        }
 
         // ローカルスコープの変数をチェックと存在したら更新
         if let Some(value_info) = self.get_with_scope(name.clone(), latest_scope.clone()) {

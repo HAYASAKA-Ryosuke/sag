@@ -26,7 +26,7 @@ pub enum ASTNode {
     // 1 + 2のような二項演算子
     BinaryOp {left: Box<ASTNode>, op: Token, right: Box<ASTNode>},
     // 変数の代入
-    Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType, value_type: ValueType},
+    Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType, value_type: ValueType, is_new: bool},
     Function {name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType},
     FunctionCall {name: String, arguments: Box<ASTNode>},
     FunctionCallArgs (Vec<ASTNode>),
@@ -274,7 +274,8 @@ impl Parser {
                     name,
                     value: Box::new(value),
                     variable_type,
-                    value_type
+                    value_type,
+                    is_new: true
                 }
             },
             Some(Token::Colon) => {
@@ -301,7 +302,8 @@ impl Parser {
                             name,
                             value: Box::new(value),
                             variable_type,
-                            value_type
+                            value_type,
+                            is_new: true
                         }
                     },
                     _ => panic!("No valid statement found on the right-hand side")
@@ -359,7 +361,8 @@ impl Parser {
                             name,
                             value: Box::new(value),
                             variable_type,
-                            value_type
+                            value_type,
+                            is_new: false
                         }
                     },
                     _ => {
@@ -508,7 +511,8 @@ mod tests {
             name: "x".into(),
             value: Box::new(ASTNode::Literal(Value::Number(1.0))),
             variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: true
         });
     }
 
@@ -519,7 +523,8 @@ mod tests {
             name: "x".into(),
             value: Box::new(ASTNode::Literal(Value::Number(1.0))),
             variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: true
         });
     }
 
@@ -583,13 +588,30 @@ mod tests {
     #[test]
     fn test_reassign_to_mutable_variable() {
         let mut parser = Parser::new(vec![
-            Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof, Token::Identifier("x".into()), Token::Equal, Token::Num(2), Token::Eof
+            Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof, 
+            Token::Identifier("x".into()), Token::Equal, Token::Num(2), Token::Eof
         ]);
-        assert_eq!(
-            parser.parse(),
-            ASTNode::Assign{name: "x".into(), value: Box::new(ASTNode::Literal(Value::Number(1.0))), variable_type: EnvVariableType::Mutable, value_type: ValueType::Number}
-        )
+    
+        let expected_ast = vec![
+            ASTNode::Assign {
+                name: "x".into(),
+                value: Box::new(ASTNode::Literal(Value::Number(1.0))),
+                variable_type: EnvVariableType::Mutable,
+                value_type: ValueType::Number,
+                is_new: true, // 新規定義
+            },
+            ASTNode::Assign {
+                name: "x".into(),
+                value: Box::new(ASTNode::Literal(Value::Number(2.0))),
+                variable_type: EnvVariableType::Mutable,
+                value_type: ValueType::Number,
+                is_new: false, // 再代入
+            }
+        ];
+    
+        assert_eq!(parser.parse_lines(), expected_ast);
     }
+
 
     #[test]
     fn test_function_call() {
@@ -689,14 +711,16 @@ mod tests {
                 name: "x".into(),
                 value: Box::new(ASTNode::Literal(Value::Number(10.0))),
                 variable_type: EnvVariableType::Mutable,
-                value_type: ValueType::Number
+                value_type: ValueType::Number,
+                is_new: true,
             },
             ASTNode::Block(vec![
                 ASTNode::Assign {
                     name: "y".into(),
                     value: Box::new(ASTNode::Literal(Value::Number(20.0))),
                     variable_type: EnvVariableType::Immutable,
-                    value_type: ValueType::Number
+                    value_type: ValueType::Number,
+                    is_new: true,
                 }
             ]),
             ASTNode::Return(Box::new(ASTNode::BinaryOp {

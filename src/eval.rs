@@ -41,7 +41,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             let result = eval(*value, env);
             result
         },
-        ASTNode::Assign { name, value, variable_type, value_type: _ } => {
+        ASTNode::Assign { name, value, variable_type, value_type: _, is_new } => {
             let value = eval(*value, env);
             let value_type = match value {
                 Value::Number(_) => ValueType::Number,
@@ -49,7 +49,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 Value::Bool(_) => ValueType::Bool,
                 Value::Function => ValueType::Function,
             };
-            let result = env.set(name.to_string(), value.clone(), variable_type, value_type);
+            let result = env.set(name.to_string(), value.clone(), variable_type, value_type, is_new);
             if result.is_err() {
                 panic!("{}", result.unwrap_err());
             }
@@ -86,7 +86,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 let arg_value = eval(arg, env);
                 let name = param.0.to_string();
                 let value_type = param.1.clone();
-                let _ = local_env.set(name, arg_value, EnvVariableType::Immutable, value_type.unwrap_or(ValueType::Any));
+                let _ = local_env.set(name, arg_value, EnvVariableType::Immutable, value_type.unwrap_or(ValueType::Any), true);
             }
 
             let result = eval(function.body, &mut local_env);
@@ -149,7 +149,8 @@ mod tests {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(5.0))),
             variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: true
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
         assert_eq!(Value::Number(5.0), env.get("x".to_string(), None).unwrap().value);
@@ -159,7 +160,8 @@ mod tests {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(5.0))),
             variable_type: EnvVariableType::Immutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: false
         };
         assert_eq!(Value::Number(5.0), eval(ast, &mut env));
         assert_eq!(Value::Number(5.0), env.get("x".to_string(), None).unwrap().value);
@@ -176,7 +178,8 @@ mod tests {
                 right: Box::new(ASTNode::Literal(Value::Number(20.0))),
             }),
             variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: true,
         };
         assert_eq!(Value::Number(30.0), eval(ast, &mut env));
         assert_eq!(env.get("y".to_string(), None).unwrap().value, Value::Number(30.0));
@@ -189,7 +192,8 @@ mod tests {
             name: "z".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(50.0))),
             variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: true,
         };
         eval(ast1, &mut env);
 
@@ -198,7 +202,8 @@ mod tests {
             name: "z".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(100.0))),
             variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: false,
         };
 
         // 環境に新しい値が登録されていること
@@ -215,7 +220,8 @@ mod tests {
             name: "w".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(200.0))),
             variable_type: EnvVariableType::Immutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: true,
         };
         eval(ast1, &mut env);
 
@@ -224,7 +230,8 @@ mod tests {
             name: "w".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(300.0))),
             variable_type: EnvVariableType::Immutable,
-            value_type: ValueType::Number
+            value_type: ValueType::Number,
+            is_new: false,
         };
         eval(ast2, &mut env);
     }
@@ -325,6 +332,7 @@ mod tests {
                     value: Box::new(ASTNode::Literal(Value::Number(10.0))),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
+                    is_new: true,
                 },
                 ASTNode::Return(Box::new(ASTNode::BinaryOp {
                     left: Box::new(ASTNode::Variable {
@@ -368,6 +376,7 @@ mod tests {
             value: Box::new(ASTNode::Literal(Value::Number(3.0))),
             variable_type: EnvVariableType::Mutable,
             value_type: ValueType::Number,
+            is_new: true,
         };
         eval(global_z, &mut env);
     
@@ -384,12 +393,15 @@ mod tests {
                     value: Box::new(ASTNode::Literal(Value::Number(2.0))),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
+                    is_new: false,
                 },
                 ASTNode::Assign {
                     name: "d".to_string(),
                     value: Box::new(ASTNode::Literal(Value::Number(3.0))),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
+
+                    is_new: true,
                 },
                 ASTNode::Assign {
                     name: "z".to_string(),
@@ -398,9 +410,11 @@ mod tests {
                         value: Box::new(ASTNode::Literal(Value::Number(4.0))),
                         variable_type: EnvVariableType::Mutable,
                         value_type: ValueType::Number,
+                        is_new: false,
                     }),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
+                    is_new: false,
                 },
                 ASTNode::Return(Box::new(ASTNode::BinaryOp {
                     left: Box::new(ASTNode::BinaryOp {
