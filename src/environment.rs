@@ -69,18 +69,45 @@ impl Env {
         self.functions.get(&name)
     }
 
-    pub fn set(&mut self, name: String, value: Value, variable_type: EnvVariableType, value_type: ValueType) -> Result<(), String> {
-        let latest_scope = &self.scope_stack.last();
-        if latest_scope.is_none() {
-            return Err("missing scope".into());
-        }
-        let value_info = &self.local_get(name.clone(), latest_scope.unwrap().to_string());
-        if value_info.is_some() {
-            if value_info.unwrap().variable_type == EnvVariableType::Immutable {
-                return Err("Cannot reassign to immutable variable".into());
+    pub fn update_global_env(&mut self, local_env: &Self) {
+        for (local_key, local_value) in &local_env.variable_map {
+            //let update_key_value = VariableKeyInfo{name: local_key.name.to_string(), scope: "global".to_string()};
+            //if local_key.scope != "global" && self.variable_map.contains_key(&update_key_value) {
+            if local_key.scope == "global" && self.variable_map.contains_key(local_key) {
+                //self.variable_map.insert(update_key_value, local_value.clone());
+                self.variable_map.insert(local_key.clone(), local_value.clone());
             }
         }
-        self.variable_map.insert(VariableKeyInfo{name: name.to_string(), scope: latest_scope.unwrap().clone()}, EnvVariableValueInfo{value, variable_type, value_type});
+    }
+
+    pub fn set(&mut self, name: String, value: Value, variable_type: EnvVariableType, value_type: ValueType) -> Result<(), String> {
+        let latest_scope = match self.scope_stack.last() {
+            Some(scope) => scope.clone(),
+            None => return Err("Missing scope".into()),
+        };
+
+        // ローカルスコープの変数をチェックと存在したら更新
+        if let Some(value_info) = self.local_get(name.clone(), latest_scope.clone()) {
+            if value_info.variable_type == EnvVariableType::Immutable {
+                return Err("Cannot reassign to immutable variable".into());
+            }
+            self.variable_map.insert(VariableKeyInfo {name, scope: latest_scope}, EnvVariableValueInfo {value, variable_type, value_type});
+            return Ok(());
+        }
+
+        // グローバルスコープの変数をチェックと存在したら更新
+        if let Some(value_info) = self.local_get(name.clone(), "global".to_string()) {
+            if value_info.variable_type == EnvVariableType::Immutable {
+                return Err("Cannot reassign to immutable variable".into());
+            }
+            // グローバル変数を更新
+            self.variable_map.insert(VariableKeyInfo {name, scope: "global".to_string()}, EnvVariableValueInfo {value, variable_type, value_type});
+            return Ok(());
+        }
+
+        // どこにも存在しないので新しい変数としてローカルスコープに追加
+        self.variable_map.insert(VariableKeyInfo {name, scope: latest_scope}, EnvVariableValueInfo {value, variable_type, value_type});
+
         Ok(())
     }
 

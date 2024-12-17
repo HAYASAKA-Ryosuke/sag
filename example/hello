@@ -2,7 +2,9 @@
 val mut z = 3;
 
 fun f1 = (x: number, y: number): number {
-  val z = 2;
+  z = 2;
+  val mut d = 3;
+  z = d = 4;
   return x + y + z;
 }
 

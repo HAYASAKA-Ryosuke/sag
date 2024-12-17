@@ -91,6 +91,8 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
 
             let result = eval(function.body, &mut local_env);
 
+            env.update_global_env(&local_env);
+
             env.leave_scope();
             result
         },
@@ -256,4 +258,223 @@ mod tests {
         let result = eval(ast, &mut env);
         assert_eq!(result, Value::Number(3.0));
     }
+
+    #[test]
+    #[should_panic(expected = "Unexpected prefix op: Plus")]
+    fn test_unsupported_prefix_operation() {
+        let mut env = Env::new();
+        let ast = ASTNode::PrefixOp {
+            op: Token::Plus,
+            expr: Box::new(ASTNode::Literal(Value::Number(5.0))),
+        };
+        eval(ast, &mut env);
+    }
+    
+    #[test]
+    #[should_panic(expected = "Unsupported operation")]
+    fn test_unsupported_binary_operation() {
+        let mut env = Env::new();
+        let ast = ASTNode::BinaryOp {
+            left: Box::new(ASTNode::Literal(Value::Str("hello".to_string()))),
+            op: Token::Mul,
+            right: Box::new(ASTNode::Literal(Value::Number(5.0))),
+        };
+        eval(ast, &mut env);
+    }
+    
+    #[test]
+    #[should_panic(expected = "does not match arguments length")]
+    fn test_function_call_argument_mismatch() {
+        let mut env = Env::new();
+        let ast_function = ASTNode::Function {
+            name: "bar".to_string(),
+            arguments: vec![ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }],
+            body: Box::new(ASTNode::Return(Box::new(ASTNode::Variable {
+                name: "x".into(),
+                value_type: Some(ValueType::Number),
+            }))),
+            return_type: ValueType::Number,
+        };
+        eval(ast_function, &mut env);
+    
+        // 引数の数が合わない関数呼び出し
+        let ast_call = ASTNode::FunctionCall {
+            name: "bar".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![
+                ASTNode::Literal(Value::Number(5.0)),
+                ASTNode::Literal(Value::Number(10.0)), // 余分な引数
+            ])),
+        };
+        eval(ast_call, &mut env);
+    }
+    
+    #[test]
+    fn test_scope_management_in_function() {
+        let mut env = Env::new();
+    
+        // 関数定義
+        let ast_function = ASTNode::Function {
+            name: "add_and_return".to_string(),
+            arguments: vec![ASTNode::Variable {
+                name: "a".into(),
+                value_type: Some(ValueType::Number),
+            }],
+            body: Box::new(ASTNode::Block(vec![
+                ASTNode::Assign {
+                    name: "local_var".into(),
+                    value: Box::new(ASTNode::Literal(Value::Number(10.0))),
+                    variable_type: EnvVariableType::Mutable,
+                    value_type: ValueType::Number,
+                },
+                ASTNode::Return(Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Variable {
+                        name: "a".into(),
+                        value_type: Some(ValueType::Number),
+                    }),
+                    op: Token::Plus,
+                    right: Box::new(ASTNode::Variable {
+                        name: "local_var".into(),
+                        value_type: Some(ValueType::Number),
+                    }),
+                })),
+            ])),
+            return_type: ValueType::Number,
+        };
+    
+        eval(ast_function, &mut env);
+    
+        // 関数呼び出し
+        let ast_call = ASTNode::FunctionCall {
+            name: "add_and_return".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Literal(Value::Number(5.0))])),
+        };
+    
+        // 結果の確認
+        let result = eval(ast_call, &mut env);
+        assert_eq!(result, Value::Number(15.0));
+    
+        // スコープ外でローカル変数が見つからないことを確認
+        let local_var_check = env.get("local_var".to_string(), None);
+        assert!(local_var_check.is_none());
+    }
+
+    #[test]
+    fn test_scope_and_global_variable() {
+        let mut env = Env::new();
+    
+        // グローバル変数 z を定義
+        let global_z = ASTNode::Assign {
+            name: "z".to_string(),
+            value: Box::new(ASTNode::Literal(Value::Number(3.0))),
+            variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::Number,
+        };
+        eval(global_z, &mut env);
+    
+        // f1 関数の定義
+        let f1 = ASTNode::Function {
+            name: "f1".to_string(),
+            arguments: vec![
+                ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) },
+                ASTNode::Variable { name: "y".into(), value_type: Some(ValueType::Number) },
+            ],
+            body: Box::new(ASTNode::Block(vec![
+                ASTNode::Assign {
+                    name: "z".to_string(),
+                    value: Box::new(ASTNode::Literal(Value::Number(2.0))),
+                    variable_type: EnvVariableType::Mutable,
+                    value_type: ValueType::Number,
+                },
+                ASTNode::Assign {
+                    name: "d".to_string(),
+                    value: Box::new(ASTNode::Literal(Value::Number(3.0))),
+                    variable_type: EnvVariableType::Mutable,
+                    value_type: ValueType::Number,
+                },
+                ASTNode::Assign {
+                    name: "z".to_string(),
+                    value: Box::new(ASTNode::Assign {
+                        name: "d".to_string(),
+                        value: Box::new(ASTNode::Literal(Value::Number(4.0))),
+                        variable_type: EnvVariableType::Mutable,
+                        value_type: ValueType::Number,
+                    }),
+                    variable_type: EnvVariableType::Mutable,
+                    value_type: ValueType::Number,
+                },
+                ASTNode::Return(Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::BinaryOp {
+                        left: Box::new(ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }),
+                        op: Token::Plus,
+                        right: Box::new(ASTNode::Variable { name: "y".into(), value_type: Some(ValueType::Number) }),
+                    }),
+                    op: Token::Plus,
+                    right: Box::new(ASTNode::Variable { name: "z".into(), value_type: Some(ValueType::Number) }),
+                })),
+            ])),
+            return_type: ValueType::Number,
+        };
+        eval(f1, &mut env);
+    
+        // f2 関数の定義
+        let f2 = ASTNode::Function {
+            name: "f2".to_string(),
+            arguments: vec![
+                ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) },
+                ASTNode::Variable { name: "y".into(), value_type: Some(ValueType::Number) },
+            ],
+            body: Box::new(ASTNode::Return(Box::new(ASTNode::BinaryOp {
+                left: Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }),
+                    op: Token::Plus,
+                    right: Box::new(ASTNode::Variable { name: "y".into(), value_type: Some(ValueType::Number) }),
+                }),
+                op: Token::Plus,
+                right: Box::new(ASTNode::Variable { name: "z".into(), value_type: Some(ValueType::Number) }),
+            }))),
+            return_type: ValueType::Number,
+        };
+        eval(f2, &mut env);
+    
+        // f3 関数の定義
+        let f3 = ASTNode::Function {
+            name: "f3".to_string(),
+            arguments: vec![],
+            body: Box::new(ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(1.0))))),
+            return_type: ValueType::Number,
+        };
+        eval(f3, &mut env);
+    
+        // f1 の呼び出し
+        let call_f1 = ASTNode::FunctionCall {
+            name: "f1".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![
+                ASTNode::Literal(Value::Number(2.0)),
+                ASTNode::Literal(Value::Number(0.0)),
+            ])),
+        };
+        let result_f1 = eval(call_f1, &mut env);
+        assert_eq!(result_f1, Value::Number(6.0)); // 2 + 0 + z(4) = 6
+    
+        // f2 の呼び出し (f1 の影響で z = 4)
+        let call_f2 = ASTNode::FunctionCall {
+            name: "f2".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![
+                ASTNode::Literal(Value::Number(2.0)),
+                ASTNode::Literal(Value::Number(0.0)),
+            ])),
+        };
+        let result_f2 = eval(call_f2, &mut env);
+        assert_eq!(result_f2, Value::Number(6.0)); // 2 + 0 + z(4) = 6
+    
+        // f3 の呼び出し
+        let call_f3 = ASTNode::FunctionCall {
+            name: "f3".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![])),
+        };
+        let result_f3 = eval(call_f3, &mut env);
+        assert_eq!(result_f3, Value::Number(1.0));
+    }
+
 }
+
