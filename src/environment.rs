@@ -71,10 +71,7 @@ impl Env {
 
     pub fn update_global_env(&mut self, local_env: &Self) {
         for (local_key, local_value) in &local_env.variable_map {
-            //let update_key_value = VariableKeyInfo{name: local_key.name.to_string(), scope: "global".to_string()};
-            //if local_key.scope != "global" && self.variable_map.contains_key(&update_key_value) {
             if local_key.scope == "global" && self.variable_map.contains_key(local_key) {
-                //self.variable_map.insert(update_key_value, local_value.clone());
                 self.variable_map.insert(local_key.clone(), local_value.clone());
             }
         }
