@@ -84,7 +84,7 @@ impl Env {
         };
 
         // ローカルスコープの変数をチェックと存在したら更新
-        if let Some(value_info) = self.local_get(name.clone(), latest_scope.clone()) {
+        if let Some(value_info) = self.get_with_scope(name.clone(), latest_scope.clone()) {
             if value_info.variable_type == EnvVariableType::Immutable {
                 return Err("Cannot reassign to immutable variable".into());
             }
@@ -93,7 +93,7 @@ impl Env {
         }
 
         // グローバルスコープの変数をチェックと存在したら更新
-        if let Some(value_info) = self.local_get(name.clone(), "global".to_string()) {
+        if let Some(value_info) = self.get_with_scope(name.clone(), "global".to_string()) {
             if value_info.variable_type == EnvVariableType::Immutable {
                 return Err("Cannot reassign to immutable variable".into());
             }
@@ -108,7 +108,7 @@ impl Env {
         Ok(())
     }
 
-    pub fn local_get(&self, name: String, scope: String) -> Option<&EnvVariableValueInfo> {
+    fn get_with_scope(&self, name: String, scope: String) -> Option<&EnvVariableValueInfo> {
         if let Some(variable_key_info) = self.variable_map.get(&VariableKeyInfo{name: name.to_string(), scope: scope.clone()}) {
             return Some(variable_key_info);
         }
