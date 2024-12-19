@@ -16,6 +16,11 @@ fun f3 = (): number {
   return 1
 }
 
+fun f4 = (): number {
+  return 2 + 3 / 4
+}
+
 args(2, 0) -> f1
 args(2, 0) -> f2
 args() -> f3
+args() -> f4

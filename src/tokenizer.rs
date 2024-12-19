@@ -1,3 +1,5 @@
+use fraction::Fraction;
+
 struct Tokenizer {
     tokens: Vec<Token>,
     chars: Vec<char>,
@@ -13,7 +15,7 @@ pub enum Token {
     Print,
     Identifier(String),
     String(String),
-    Num(i32),
+    Number(Fraction),
     Void,
     Equal,
     Plus,
@@ -54,8 +56,8 @@ fn is_digit(c: &char) -> bool {
     *c >= '0' && *c <= '9'
 }
 
-fn get_digit(tokenizer: &mut Tokenizer) -> i32 {
-    let mut num = 0;
+fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
+    let mut num = Fraction::from(0);
     let mut pos = tokenizer.pos;
     loop {
         let c = tokenizer.get_position_char(pos);
@@ -63,7 +65,7 @@ fn get_digit(tokenizer: &mut Tokenizer) -> i32 {
             break;
         }
         if is_digit(&c) {
-            num = num * 10 + c.to_string().parse::<i32>().unwrap();
+            num = num * 10 + Fraction::from(c.to_string().parse::<i32>().unwrap());
             pos += 1;
         } else {
             break;
@@ -219,7 +221,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
         if is_digit(&c) {
             let num = get_digit(&mut tokenizer);
-            tokenizer.tokens.push(Token::Num(num));
+            tokenizer.tokens.push(Token::Number(num));
             continue;
         }
 
@@ -327,17 +329,17 @@ mod tests {
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        assert_eq!(tokenize(&"-1 + 2 * 3/4".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Mul, Token::Num(3), Token::Div, Token::Num(4), Token::Eof]);
+        assert_eq!(tokenize(&"-1 + 2 * 3/4".to_string()), vec![Token::Minus, Token::Number(Fraction::from(1)), Token::Plus, Token::Number(Fraction::from(2)), Token::Mul, Token::Number(Fraction::from(3)), Token::Div, Token::Number(Fraction::from(4)), Token::Eof]);
     }
     #[test]
     fn test_variable_definition() {
-        assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
-        assert_eq!(tokenize(&"val x: num = 1".to_string()), vec![Token::Immutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("num".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
+        assert_eq!(tokenize(&"val x: num = 1".to_string()), vec![Token::Immutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("num".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
     }
 
     #[test]
     fn test_multiline() {
-        assert_eq!(tokenize(&"-1 + 2\n val x = 1".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(tokenize(&"-1 + 2\n val x = 1".to_string()), vec![Token::Minus, Token::Number(Fraction::from(1)), Token::Plus, Token::Number(Fraction::from(2)), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
     }
 
     #[test]
