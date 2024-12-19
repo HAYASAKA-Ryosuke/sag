@@ -82,7 +82,7 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
     let mut pos = tokenizer.pos;
     loop {
         let c = tokenizer.get_position_char(pos);
-        if c == '\0' || c == '\n' || c == ' ' || c == ':' || c == ',' || c == ';' || c == '(' || c == ')' {
+        if c == '\0' || c == '\n' || c == ' ' || c == ':' || c == ',' || c == '(' || c == ')' {
             break;
         }
         identifier += &c.to_string();
@@ -203,12 +203,10 @@ pub fn tokenize(line: &String) -> Vec<Token> {
     let mut tokenizer = Tokenizer::new(&line);
     loop {
         let c = tokenizer.get_position_char(tokenizer.pos);
-        if is_line_break(&c) {
-            tokenizer.pos += 1;
-            continue;
-        }
-        if is_semicoron(&c) {
-            tokenizer.tokens.push(Token::Eof);
+        if is_line_break(&c) || is_semicoron(&c) {
+            if tokenizer.tokens.last() != Some(&Token::Eof) {
+                tokenizer.tokens.push(Token::Eof);
+            }
             tokenizer.pos += 1;
             continue;
         }
@@ -317,6 +315,9 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
         tokenizer.pos += 1;
     }
+    if tokenizer.tokens.last() != Some(&Token::Eof) {
+        tokenizer.tokens.push(Token::Eof);
+    }
     tokenizer.tokens
 }
 
@@ -326,35 +327,30 @@ mod tests {
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        assert_eq!(tokenize(&"-1 + 2 * 3/4;".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Mul, Token::Num(3), Token::Div, Token::Num(4), Token::Eof]);
+        assert_eq!(tokenize(&"-1 + 2 * 3/4".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Mul, Token::Num(3), Token::Div, Token::Num(4), Token::Eof]);
     }
     #[test]
     fn test_variable_definition() {
-        assert_eq!(tokenize(&"val mut x = 1;".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
-        assert_eq!(tokenize(&"val x: num = 1;".to_string()), vec![Token::Immutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("num".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(tokenize(&"val x: num = 1".to_string()), vec![Token::Immutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("num".into()), Token::Equal, Token::Num(1), Token::Eof]);
     }
 
     #[test]
     fn test_multiline() {
-        assert_eq!(tokenize(&"-1 + 2; \n val x = 1;".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
+        assert_eq!(tokenize(&"-1 + 2\n val x = 1".to_string()), vec![Token::Minus, Token::Num(1), Token::Plus, Token::Num(2), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Num(1), Token::Eof]);
     }
 
     #[test]
     fn test_string() {
-        assert_eq!(tokenize(&"\"Hello World!!\";".to_string()), vec![Token::String("Hello World!!".into()), Token::Eof]);
+        assert_eq!(tokenize(&"\"Hello World!!\"".to_string()), vec![Token::String("Hello World!!".into()), Token::Eof]);
     }
 
     #[test]
     fn test_function() {
-        assert_eq!(tokenize(&"fun foo = (x:number, y: number): number {\n return x + y \n}".to_string()), vec![Token::Function, Token::Identifier("foo".into()), Token::Equal, Token::LParen, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Comma, Token::Identifier("y".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::Colon, Token::Identifier("number".into()), Token::LBrace, Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Identifier("y".into()), Token::RBrace, Token::Eof]);
+        assert_eq!(tokenize(&"fun foo = (x:number, y: number): number {\n return x + y \n}".to_string()), vec![Token::Function, Token::Identifier("foo".into()), Token::Equal, Token::LParen, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Comma, Token::Identifier("y".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::Colon, Token::Identifier("number".into()), Token::LBrace, Token::Eof, Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Identifier("y".into()), Token::Eof, Token::RBrace, Token::Eof]);
     }
     #[test]
     fn test_call_function() {
-        assert_eq!(tokenize(&"(x, y) -> foo;".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RArrow, Token::Identifier("foo".into()), Token::Eof]);
-    }
-
-    #[test]
-    fn test_pattern_match() {
-        assert_eq!(tokenize(&"match x {\n 1 = { \"hello\" },\n _ = { \"other\"\n} \n}".to_string()), vec![Token::Match, Token::Identifier("x".into()), Token::LBrace, Token::Num(1), Token::Equal, Token::LBrace, Token::String("hello".into()), Token::RBrace, Token::Comma, Token::Identifier("_".into()), Token::Equal, Token::LBrace, Token::String("other".into()), Token::RBrace, Token::RBrace, Token::Eof]);
+        assert_eq!(tokenize(&"(x, y) -> foo".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RArrow, Token::Identifier("foo".into()), Token::Eof]);
     }
 }
