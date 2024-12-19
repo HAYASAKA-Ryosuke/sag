@@ -1,6 +1,7 @@
 use crate::parser::{ASTNode, Value};
 use crate::environment::{ValueType, Env, FunctionInfo, EnvVariableType};
 use crate::tokenizer::Token;
+use fraction::Fraction;
 
 
 pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
@@ -31,7 +32,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             Value::Function
         },
         ASTNode::Block(statements) => {
-            let mut value = Value::Number(1.0);
+            let mut value = Value::Number(Fraction::from(1));
             for statement in statements {
                 value = eval(statement, env);
             }
@@ -131,40 +132,40 @@ mod tests {
             ASTNode::BinaryOp {
                 left: Box::new(ASTNode::PrefixOp{
                     op: Token::Minus,
-                    expr: Box::new(ASTNode::Literal(Value::Number(1.0)))
+                    expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
                 }),
                 op: Token::Plus,
                 right: Box::new(ASTNode::BinaryOp{
-                    left: Box::new(ASTNode::Literal(Value::Number(2.0))),
+                    left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
                     op: Token::Mul,
-                    right: Box::new(ASTNode::Literal(Value::Number(3.0)))
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
                 })
             };
-        assert_eq!(Value::Number(5.0), eval(ast, &mut env));
+        assert_eq!(Value::Number(Fraction::from(5)), eval(ast, &mut env));
     }
     #[test]
     fn test_assign() {
         let mut env = Env::new();
         let ast = ASTNode::Assign {
             name: "x".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(5.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
             variable_type: EnvVariableType::Mutable,
             value_type: ValueType::Number,
             is_new: true
         };
-        assert_eq!(Value::Number(5.0), eval(ast, &mut env));
-        assert_eq!(Value::Number(5.0), env.get("x".to_string(), None).unwrap().value);
+        assert_eq!(Value::Number(Fraction::from(5)), eval(ast, &mut env));
+        assert_eq!(Value::Number(Fraction::from(5)), env.get("x".to_string(), None).unwrap().value);
         assert_eq!(EnvVariableType::Mutable, env.get("x".to_string(), None).unwrap().variable_type);
         let mut env = Env::new();
         let ast = ASTNode::Assign {
             name: "x".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(5.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
             variable_type: EnvVariableType::Immutable,
             value_type: ValueType::Number,
             is_new: false
         };
-        assert_eq!(Value::Number(5.0), eval(ast, &mut env));
-        assert_eq!(Value::Number(5.0), env.get("x".to_string(), None).unwrap().value);
+        assert_eq!(Value::Number(Fraction::from(5)), eval(ast, &mut env));
+        assert_eq!(Value::Number(Fraction::from(5)), env.get("x".to_string(), None).unwrap().value);
         assert_eq!(EnvVariableType::Immutable, env.get("x".to_string(), None).unwrap().variable_type);
     }
     #[test]
@@ -173,16 +174,16 @@ mod tests {
         let ast = ASTNode::Assign {
             name: "y".to_string(),
             value: Box::new(ASTNode::BinaryOp {
-                left: Box::new(ASTNode::Literal(Value::Number(10.0))),
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(10)))),
                 op: Token::Plus,
-                right: Box::new(ASTNode::Literal(Value::Number(20.0))),
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(20))))
             }),
             variable_type: EnvVariableType::Mutable,
             value_type: ValueType::Number,
             is_new: true,
         };
-        assert_eq!(Value::Number(30.0), eval(ast, &mut env));
-        assert_eq!(env.get("y".to_string(), None).unwrap().value, Value::Number(30.0));
+        assert_eq!(Value::Number(Fraction::from(30)), eval(ast, &mut env));
+        assert_eq!(env.get("y".to_string(), None).unwrap().value, Value::Number(Fraction::from(30)));
     }
     #[test]
     fn test_assign_overwrite_mutable_variable() {
@@ -190,7 +191,7 @@ mod tests {
 
         let ast1 = ASTNode::Assign {
             name: "z".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(50.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(50)))),
             variable_type: EnvVariableType::Mutable,
             value_type: ValueType::Number,
             is_new: true,
@@ -200,15 +201,15 @@ mod tests {
         // 再代入
         let ast2 = ASTNode::Assign {
             name: "z".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(100.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(100)))),
             variable_type: EnvVariableType::Mutable,
             value_type: ValueType::Number,
             is_new: false,
         };
 
         // 環境に新しい値が登録されていること
-        assert_eq!(eval(ast2, &mut env), Value::Number(100.0));
-        assert_eq!(env.get("z".to_string(), None).unwrap().value, Value::Number(100.0));
+        assert_eq!(eval(ast2, &mut env), Value::Number(Fraction::from(100)));
+        assert_eq!(env.get("z".to_string(), None).unwrap().value, Value::Number(Fraction::from(100)));
     }
     #[test]
     #[should_panic(expected = "Cannot reassign to immutable variable")]
@@ -218,7 +219,7 @@ mod tests {
         // Immutable 変数の初期値を設定
         let ast1 = ASTNode::Assign {
             name: "w".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(200.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(200)))),
             variable_type: EnvVariableType::Immutable,
             value_type: ValueType::Number,
             is_new: true,
@@ -228,7 +229,7 @@ mod tests {
         // 再代入しようとしてエラー
         let ast2 = ASTNode::Assign {
             name: "w".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(300.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(300)))),
             variable_type: EnvVariableType::Immutable,
             value_type: ValueType::Number,
             is_new: false,
@@ -258,12 +259,12 @@ mod tests {
         let ast = ASTNode::FunctionCall {
             name: "foo".into(),
             arguments: Box::new(ASTNode::FunctionCallArgs(vec![
-                    ASTNode::Literal(Value::Number(1.0)),
-                    ASTNode::Literal(Value::Number(2.0))
+                    ASTNode::Literal(Value::Number(Fraction::from(1))),
+                    ASTNode::Literal(Value::Number(Fraction::from(2)))
             ])),
         };
         let result = eval(ast, &mut env);
-        assert_eq!(result, Value::Number(3.0));
+        assert_eq!(result, Value::Number(Fraction::from(3)));
     }
 
     #[test]
@@ -272,7 +273,7 @@ mod tests {
         let mut env = Env::new();
         let ast = ASTNode::PrefixOp {
             op: Token::Plus,
-            expr: Box::new(ASTNode::Literal(Value::Number(5.0))),
+            expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
         };
         eval(ast, &mut env);
     }
@@ -284,7 +285,7 @@ mod tests {
         let ast = ASTNode::BinaryOp {
             left: Box::new(ASTNode::Literal(Value::Str("hello".to_string()))),
             op: Token::Mul,
-            right: Box::new(ASTNode::Literal(Value::Number(5.0))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
         };
         eval(ast, &mut env);
     }
@@ -308,8 +309,8 @@ mod tests {
         let ast_call = ASTNode::FunctionCall {
             name: "bar".to_string(),
             arguments: Box::new(ASTNode::FunctionCallArgs(vec![
-                ASTNode::Literal(Value::Number(5.0)),
-                ASTNode::Literal(Value::Number(10.0)), // 余分な引数
+                ASTNode::Literal(Value::Number(Fraction::from(5))),
+                ASTNode::Literal(Value::Number(Fraction::from(10))), // 余分な引数
             ])),
         };
         eval(ast_call, &mut env);
@@ -329,7 +330,7 @@ mod tests {
             body: Box::new(ASTNode::Block(vec![
                 ASTNode::Assign {
                     name: "local_var".into(),
-                    value: Box::new(ASTNode::Literal(Value::Number(10.0))),
+                    value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(10)))),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
                     is_new: true,
@@ -354,12 +355,12 @@ mod tests {
         // 関数呼び出し
         let ast_call = ASTNode::FunctionCall {
             name: "add_and_return".to_string(),
-            arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Literal(Value::Number(5.0))])),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Literal(Value::Number(Fraction::from(5)))])),
         };
     
         // 結果の確認
         let result = eval(ast_call, &mut env);
-        assert_eq!(result, Value::Number(15.0));
+        assert_eq!(result, Value::Number(Fraction::from(15)));
     
         // スコープ外でローカル変数が見つからないことを確認
         let local_var_check = env.get("local_var".to_string(), None);
@@ -373,7 +374,7 @@ mod tests {
         // グローバル変数 z を定義
         let global_z = ASTNode::Assign {
             name: "z".to_string(),
-            value: Box::new(ASTNode::Literal(Value::Number(3.0))),
+            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
             variable_type: EnvVariableType::Mutable,
             value_type: ValueType::Number,
             is_new: true,
@@ -390,14 +391,14 @@ mod tests {
             body: Box::new(ASTNode::Block(vec![
                 ASTNode::Assign {
                     name: "z".to_string(),
-                    value: Box::new(ASTNode::Literal(Value::Number(2.0))),
+                    value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
                     is_new: false,
                 },
                 ASTNode::Assign {
                     name: "d".to_string(),
-                    value: Box::new(ASTNode::Literal(Value::Number(3.0))),
+                    value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
                     variable_type: EnvVariableType::Mutable,
                     value_type: ValueType::Number,
 
@@ -407,7 +408,7 @@ mod tests {
                     name: "z".to_string(),
                     value: Box::new(ASTNode::Assign {
                         name: "d".to_string(),
-                        value: Box::new(ASTNode::Literal(Value::Number(4.0))),
+                        value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4)))),
                         variable_type: EnvVariableType::Mutable,
                         value_type: ValueType::Number,
                         is_new: false,
@@ -454,7 +455,7 @@ mod tests {
         let f3 = ASTNode::Function {
             name: "f3".to_string(),
             arguments: vec![],
-            body: Box::new(ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(1.0))))),
+            body: Box::new(ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))))),
             return_type: ValueType::Number,
         };
         eval(f3, &mut env);
@@ -463,23 +464,23 @@ mod tests {
         let call_f1 = ASTNode::FunctionCall {
             name: "f1".to_string(),
             arguments: Box::new(ASTNode::FunctionCallArgs(vec![
-                ASTNode::Literal(Value::Number(2.0)),
-                ASTNode::Literal(Value::Number(0.0)),
+                ASTNode::Literal(Value::Number(Fraction::from(2))),
+                ASTNode::Literal(Value::Number(Fraction::from(0))),
             ])),
         };
         let result_f1 = eval(call_f1, &mut env);
-        assert_eq!(result_f1, Value::Number(6.0)); // 2 + 0 + z(4) = 6
+        assert_eq!(result_f1, Value::Number(Fraction::from(6))); // 2 + 0 + z(4) = 6
     
         // f2 の呼び出し (f1 の影響で z = 4)
         let call_f2 = ASTNode::FunctionCall {
             name: "f2".to_string(),
             arguments: Box::new(ASTNode::FunctionCallArgs(vec![
-                ASTNode::Literal(Value::Number(2.0)),
-                ASTNode::Literal(Value::Number(0.0)),
+                ASTNode::Literal(Value::Number(Fraction::from(2))),
+                ASTNode::Literal(Value::Number(Fraction::from(0))),
             ])),
         };
         let result_f2 = eval(call_f2, &mut env);
-        assert_eq!(result_f2, Value::Number(6.0)); // 2 + 0 + z(4) = 6
+        assert_eq!(result_f2, Value::Number(Fraction::from(6))); // 2 + 0 + z(4) = 6
     
         // f3 の呼び出し
         let call_f3 = ASTNode::FunctionCall {
@@ -487,7 +488,7 @@ mod tests {
             arguments: Box::new(ASTNode::FunctionCallArgs(vec![])),
         };
         let result_f3 = eval(call_f3, &mut env);
-        assert_eq!(result_f3, Value::Number(1.0));
+        assert_eq!(result_f3, Value::Number(Fraction::from(1)));
     }
 
 }
