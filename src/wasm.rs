@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use crate::tokenizer::tokenize;
 use crate::parser::Parser;
 use crate::environment::Env;
-use crate::eval::{eval, evals};
+use crate::eval::evals;
 
 #[wasm_bindgen]
 pub fn evaluate(input: &str) -> String {
