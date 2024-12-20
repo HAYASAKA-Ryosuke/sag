@@ -12,10 +12,17 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - run: wasm-pack build --target web
+      - name: Upload Pages Artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
   deploy:
     needs: build
     permissions:
       pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
