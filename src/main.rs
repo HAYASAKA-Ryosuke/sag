@@ -2,6 +2,7 @@ mod tokenizer;
 mod parser;
 mod environment;
 mod eval;
+mod wasm;
 
 use std::env;
 use crate::tokenizer::tokenize;

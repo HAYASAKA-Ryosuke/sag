@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use crate::parser::{ASTNode, Value};
+use wasm_bindgen::prelude::*;
 
+#[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
