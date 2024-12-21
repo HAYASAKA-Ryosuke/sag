@@ -32,6 +32,8 @@ pub enum Token {
     Comma,
     RArrow,
     Match,
+    LBrancket,
+    RBrancket,
 }
 
 impl Tokenizer {
@@ -289,6 +291,8 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '/' => tokenizer.tokens.push(Token::Div),
             '(' => tokenizer.tokens.push(Token::LParen),
             ')' => tokenizer.tokens.push(Token::RParen),
+            '[' => tokenizer.tokens.push(Token::LBrancket),
+            ']' => tokenizer.tokens.push(Token::RBrancket),
             '{' => {
                 tokenizer.nesting_count += 1;
                 tokenizer.tokens.push(Token::LBrace)
@@ -351,5 +355,11 @@ mod tests {
     #[test]
     fn test_decimal_point() {
         assert_eq!(tokenize(&"1.5".to_string()), vec![Token::Number(Fraction::from(1.5)), Token::Eof]);
+    }
+
+    #[test]
+    fn test_list() {
+        assert_eq!(tokenize(&"[1, 2, 3]".to_string()), vec![Token::LBrancket, Token::Number(Fraction::from(1)), Token::Comma, Token::Number(Fraction::from(2)), Token::Comma, Token::Number(Fraction::from(3)), Token::RBrancket, Token::Eof]);
+        assert_eq!(tokenize(&"[\"Hello\", \"World\"]".to_string()), vec![Token::LBrancket, Token::String("Hello".into()), Token::Comma, Token::String("World".into()), Token::RBrancket, Token::Eof]);
     }
 }

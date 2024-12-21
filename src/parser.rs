@@ -10,17 +10,65 @@ pub enum Value {
     Str(String),
     Bool(bool),
     Void,
+    List(Vec<Value>),
     Function,
+}
+
+impl Value {
+    pub fn value_type(&self) -> ValueType {
+        match self {
+            Value::Number(_) => ValueType::Number,
+            Value::Str(_) => ValueType::Str,
+            Value::Bool(_) => ValueType::Bool,
+            Value::Void => ValueType::Void,
+            Value::List(_) => ValueType::List(Box::new(ValueType::Any)),
+            Value::Function => ValueType::Function,
+        }
+    }
+    pub fn to_number(&self) -> Fraction {
+        match self {
+            Value::Number(value) => value.clone(),
+            _ => panic!("expected number")
+        }
+    }
+    pub fn to_str(&self) -> String {
+        match self {
+            Value::Str(value) => value.clone(),
+            _ => panic!("expected string")
+        }
+    }
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Value::Bool(value) => value.clone(),
+            _ => panic!("expected bool")
+        }
+    }
+    pub fn to_list(&self) -> Vec<Value> {
+        match self {
+            Value::List(value) => value.clone(),
+            _ => panic!("expected list")
+        }
+    }
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Number(value) => write!(f, "{}aaa", value),
+            Value::Number(value) => write!(f, "{}", value),
             Value::Str(s) => write!(f, "{}", s),
             Value::Bool(b) => write!(f, "{}", b),
             Value::Void => write!(f, "Void"),
             Value::Function => write!(f, "Function"),
+            Value::List(list) => {
+                let mut result = String::new();
+                for (i, value) in list.iter().enumerate() {
+                    if i > 0 {
+                        result.push_str(", ");
+                    }
+                    result.push_str(&format!("{}", value));
+                }
+                write!(f, "[{}]", result)
+            }
         }
     }
 }
@@ -363,6 +411,7 @@ impl Parser {
                 expr
             },
             Token::LBrace => self.parse_block(),
+            Token::LBrancket => self.parse_list(),
             Token::Identifier(name) => {
                 self.pos += 1;
                 let scope = self.get_current_scope().to_string();
@@ -421,6 +470,31 @@ impl Parser {
             arguments.push(value);
         }
         ASTNode::FunctionCallArgs(arguments)
+    }
+
+    fn parse_list(&mut self) -> ASTNode {
+        self.consume_token();
+        let mut list = vec![];
+        while let Some(token) = self.get_current_token() {
+            if token == Token::RBrancket {
+                break;
+            }
+            if token == Token::Comma {
+                self.consume_token();
+                continue;
+            }
+            let value = match token {
+                Token::Number(value) => Value::Number(value),
+                Token::String(value) => Value::Str(value),
+                _ => panic!("unexpected token: {:?}", token)
+            };
+            list.push(ASTNode::Literal(value));
+            self.consume_token();
+        }
+        ASTNode::Literal(Value::List(list.iter().map(|x| match x {
+            ASTNode::Literal(value) => value.clone(),
+            _ => panic!("unexpected node")
+        }).collect()))
     }
 
     fn parse_block(&mut self) -> ASTNode {
@@ -765,6 +839,18 @@ mod tests {
             op: Token::Minus,
             expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5))))
         })
+    }
+
+    #[test]
+    fn test_list() {
+        let mut parser = Parser::new(vec![
+            Token::LBrancket, Token::Number(Fraction::from(1)), Token::Comma, Token::Number(Fraction::from(2)), Token::Comma, Token::Number(Fraction::from(3)), Token::RBrancket, Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Literal(Value::List(vec![
+            Value::Number(Fraction::from(1)),
+            Value::Number(Fraction::from(2)),
+            Value::Number(Fraction::from(3))
+        ])));
     }
 
     #[test]

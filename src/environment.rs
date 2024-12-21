@@ -39,6 +39,7 @@ pub enum ValueType {
     Str,
     Bool,
     Void,
+    List(Box<ValueType>),
     Function
 }
 

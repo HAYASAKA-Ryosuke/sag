@@ -51,6 +51,20 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 Value::Bool(_) => ValueType::Bool,
                 Value::Function => ValueType::Function,
                 Value::Void => ValueType::Void,
+                Value::List(ref elements) => {
+                    if elements.len() == 0 {
+                        ValueType::List(Box::new(ValueType::Any))
+                    } else {
+                        let first_element = elements.first().unwrap();
+                        let value_type = first_element.value_type();
+                        for e in elements{
+                            if e.value_type() != value_type {
+                                panic!("List value type mismatch");
+                            }
+                        }
+                        ValueType::List(Box::new(value_type))
+                    }
+                },
             };
             let result = env.set(name.to_string(), value.clone(), variable_type, value_type, is_new);
             if result.is_err() {
@@ -301,6 +315,32 @@ mod tests {
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
         };
         eval(ast, &mut env);
+    }
+
+    #[test]
+    fn test_list() {
+        let mut env = Env::new();
+        let ast = ASTNode::Assign {
+            name: "x".to_string(),
+            value: Box::new(ASTNode::Literal(Value::List(vec![
+                Value::Number(Fraction::from(1)),
+                Value::Number(Fraction::from(2)),
+                Value::Number(Fraction::from(3)),
+            ]))),
+            variable_type: EnvVariableType::Mutable,
+            value_type: ValueType::List(Box::new(ValueType::Number)),
+            is_new: true,
+        };
+        assert_eq!(Value::List(vec![
+            Value::Number(Fraction::from(1)),
+            Value::Number(Fraction::from(2)),
+            Value::Number(Fraction::from(3)),
+        ]), eval(ast, &mut env));
+        assert_eq!(Value::List(vec![
+            Value::Number(Fraction::from(1)),
+            Value::Number(Fraction::from(2)),
+            Value::Number(Fraction::from(3)),
+        ]), env.get("x".to_string(), None).unwrap().value);
     }
     
     #[test]
