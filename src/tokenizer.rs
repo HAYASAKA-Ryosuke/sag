@@ -12,7 +12,6 @@ pub enum Token {
     Immutable,
     Mutable,
     Colon,
-    Print,
     Identifier(String),
     String(String),
     Number(Fraction),
@@ -229,12 +228,6 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             let str = get_string(&mut tokenizer);
             tokenizer.tokens.push(Token::String(str));
             continue
-        }
-
-        if is_print(&mut tokenizer) {
-            tokenizer.tokens.push(Token::Print);
-            tokenizer.pos += 5;
-            continue;
         }
 
         if is_mutable(&mut tokenizer) {

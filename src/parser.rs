@@ -2,13 +2,27 @@ use crate::tokenizer::Token;
 use crate::environment::{EnvVariableType, ValueType};
 use std::collections::HashMap;
 use fraction::Fraction;
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(Fraction),
     Str(String),
     Bool(bool),
+    Void,
     Function,
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Number(value) => write!(f, "{}aaa", value),
+            Value::Str(s) => write!(f, "{}", s),
+            Value::Bool(b) => write!(f, "{}", b),
+            Value::Void => write!(f, "Void"),
+            Value::Function => write!(f, "Function"),
+        }
+    }
 }
 
 
@@ -176,7 +190,7 @@ impl Parser {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token::Identifier(name)) => name,
-            _ => panic!("failed take function name"),
+            _ => panic!("failed take function name: {:?}", self.get_current_token()),
         };
 
         ASTNode::FunctionCall {

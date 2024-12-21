@@ -7,14 +7,16 @@ use wasm_bindgen::prelude::*;
 pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
     scope_stack: Vec<String>,
-    functions: HashMap<String, FunctionInfo>
+    functions: HashMap<String, FunctionInfo>,
+    builtins: HashMap<String, FunctionInfo>
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionInfo {
     pub arguments: Vec<ASTNode>,
     pub return_type: ValueType,
-    pub body: ASTNode,
+    pub body: Option<ASTNode>,
+    pub builtin: Option<fn(Vec<Value>) -> Value>
 }
 
 
@@ -49,7 +51,21 @@ pub struct EnvVariableValueInfo {
 
 impl Env {
     pub fn new() -> Self {
-        Self{variable_map: HashMap::new(), scope_stack: vec!["global".to_string()], functions: HashMap::new()}
+        Self{variable_map: HashMap::new(), scope_stack: vec!["global".to_string()], functions: HashMap::new(), builtins: HashMap::new()}
+    }
+
+    pub fn register_builtin(&mut self, name: String, function: fn(Vec<Value>) -> Value) {
+        let function_info = FunctionInfo {
+            arguments: vec![],
+            return_type: ValueType::Any,
+            body: None,
+            builtin: Some(function),
+        };
+        self.builtins.insert(name, function_info);
+    }
+
+    pub fn get_builtin(&self, name: String) -> Option<&FunctionInfo> {
+        self.builtins.get(&name)
     }
 
     pub fn enter_scope(&mut self, scope: String) {

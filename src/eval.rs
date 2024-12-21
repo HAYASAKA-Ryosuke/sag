@@ -25,8 +25,9 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         ASTNode::Function { name, arguments, body, return_type } => {
             let function_info = FunctionInfo {
                 arguments,
-                body: *body,
+                body: Some(*body),
                 return_type,
+                builtin: None,
             };
             env.register_function(name, function_info);
             Value::Function
@@ -49,6 +50,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 Value::Str(_) => ValueType::Str,
                 Value::Bool(_) => ValueType::Bool,
                 Value::Function => ValueType::Function,
+                Value::Void => ValueType::Void,
             };
             let result = env.set(name.to_string(), value.clone(), variable_type, value_type, is_new);
             if result.is_err() {
@@ -59,7 +61,13 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         ASTNode::FunctionCall { name, arguments } => {
             let function = match env.get_function(name.to_string()) {
                 Some(function) => function.clone(),
-                None => panic!("Function is missing: {:?}", name)
+                None => {
+                    let builtin = env.get_builtin(name.to_string());
+                    if builtin.is_none() {
+                        panic!("Function is missing: {:?}", name);
+                    }
+                    builtin.unwrap().clone()
+                }
             };
             let mut params_vec = vec![];
             for arg in &function.arguments {
@@ -75,6 +83,11 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 _ => panic!("illigal arguments: {:?}", arguments)
             };
 
+            if let Some(func) = function.builtin {
+                let result = func(args_vec.iter().map(|arg| eval(arg.clone(), env)).collect());
+                return result;
+            };
+
             if args_vec.len() != function.arguments.len() {
                 panic!("does not match arguments length");
             }
@@ -83,14 +96,14 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
 
             local_env.enter_scope(name.to_string());
 
-            for (param, arg) in params_vec.iter().zip(args_vec) {
-                let arg_value = eval(arg, env);
+            for (param, arg) in params_vec.iter().zip(&args_vec) {
+                let arg_value = eval(arg.clone(), env);
                 let name = param.0.to_string();
                 let value_type = param.1.clone();
                 let _ = local_env.set(name, arg_value, EnvVariableType::Immutable, value_type.unwrap_or(ValueType::Any), true);
             }
 
-            let result = eval(function.body, &mut local_env);
+            let result = eval(function.body.unwrap(), &mut local_env);
 
             env.update_global_env(&local_env);
 

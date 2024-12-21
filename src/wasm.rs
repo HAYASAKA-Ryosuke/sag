@@ -3,6 +3,7 @@ use crate::tokenizer::tokenize;
 use crate::parser::Parser;
 use crate::environment::Env;
 use crate::eval::evals;
+use crate::builtin::register_builtins;
 
 #[wasm_bindgen]
 pub fn evaluate(input: &str) -> String {
@@ -10,6 +11,7 @@ pub fn evaluate(input: &str) -> String {
     let mut parser = Parser::new(tokens);
     let ast_nodes = parser.parse_lines();
     let mut env = Env::new();
+    register_builtins(&mut env);
     let result = evals(ast_nodes, &mut env);
     format!("{:?}", result.last().unwrap())
 } 
