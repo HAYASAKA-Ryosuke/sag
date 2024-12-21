@@ -362,4 +362,9 @@ mod tests {
         assert_eq!(tokenize(&"[1, 2, 3]".to_string()), vec![Token::LBrancket, Token::Number(Fraction::from(1)), Token::Comma, Token::Number(Fraction::from(2)), Token::Comma, Token::Number(Fraction::from(3)), Token::RBrancket, Token::Eof]);
         assert_eq!(tokenize(&"[\"Hello\", \"World\"]".to_string()), vec![Token::LBrancket, Token::String("Hello".into()), Token::Comma, Token::String("World".into()), Token::RBrancket, Token::Eof]);
     }
+
+    #[test]
+    fn test_call_functions() {
+        assert_eq!(tokenize(&"1 -> f1 -> f2".to_string()), vec![Token::Number(Fraction::from(1)), Token::RArrow, Token::Identifier("f1".into()), Token::RArrow, Token::Identifier("f2".into()), Token::Eof]);
+    }
 }

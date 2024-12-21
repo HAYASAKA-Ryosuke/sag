@@ -897,4 +897,18 @@ mod tests {
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(2u64, 5u64))))
         });
     }
+
+    #[test]
+    fn test_function_call_chain() {
+        let mut parser = Parser::new(vec![Token::Number(Fraction::from(1)), Token::RArrow, Token::Identifier("f1".into()), Token::RArrow, Token::Identifier("f2".into()), Token::Eof]);
+        assert_eq!(parser.parse(),
+        ASTNode::FunctionCall { name: "f2".into(),
+        arguments: Box::new(ASTNode::FunctionCallArgs(vec![
+            ASTNode::FunctionCall { name: "f1".into(),
+            arguments: Box::new(ASTNode::FunctionCallArgs(vec![
+                ASTNode::Literal(Value::Number(Fraction::from(1)))]))
+            }]))
+        });
+    }
+
 }
