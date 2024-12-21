@@ -128,15 +128,6 @@ fn is_semicoron(c: &char) -> bool {
     *c == ';'
 }
 
-fn is_print(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "print".chars().enumerate() {
-        if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
-        }
-    }
-    true
-}
-
 fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "val".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
