@@ -248,10 +248,24 @@ impl Parser {
 
         self.consume_token();
 
-        ASTNode::FunctionCall {
+        let mut function_call = ASTNode::FunctionCall {
             name,
             arguments: Box::new(arguments)
+        };
+        // チェーンされた関数呼び出しの処理
+        if self.get_current_token() == Some(Token::RArrow) {
+            self.consume_token(); // "->" を消費
+            let next_name = match self.get_current_token() {
+                Some(Token::Identifier(name)) => name,
+                _ => panic!("Expected function name after '->'"),
+            };
+            self.consume_token(); // 関数名を消費
+            function_call = ASTNode::FunctionCall {
+                name: next_name,
+                arguments: Box::new(ASTNode::FunctionCallArgs(vec![function_call])),
+            };
         }
+        function_call
     }
 
     fn parse_function(&mut self) -> ASTNode {
