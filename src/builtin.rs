@@ -15,7 +15,7 @@ pub fn register_builtins(env: &mut Env) {
         }
         match &args[0] {
             Value::List(l) => Value::Number(l.len().into()),
-            Value::Str(s) => Value::Number(s.len().into()),
+            Value::String(s) => Value::Number(s.len().into()),
             _ => panic!("len function takes a list as an argument"),
         }
     });

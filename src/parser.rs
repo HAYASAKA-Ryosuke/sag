@@ -7,7 +7,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(Fraction),
-    Str(String),
+    String(String),
     Bool(bool),
     Void,
     List(Vec<Value>),
@@ -18,7 +18,7 @@ impl Value {
     pub fn value_type(&self) -> ValueType {
         match self {
             Value::Number(_) => ValueType::Number,
-            Value::Str(_) => ValueType::Str,
+            Value::String(_) => ValueType::String,
             Value::Bool(_) => ValueType::Bool,
             Value::Void => ValueType::Void,
             Value::List(_) => ValueType::List(Box::new(ValueType::Any)),
@@ -33,7 +33,7 @@ impl Value {
     }
     pub fn to_str(&self) -> String {
         match self {
-            Value::Str(value) => value.clone(),
+            Value::String(value) => value.clone(),
             _ => panic!("expected string")
         }
     }
@@ -55,7 +55,7 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::Number(value) => write!(f, "{}", value),
-            Value::Str(s) => write!(f, "{}", s),
+            Value::String(s) => write!(f, "{}", s),
             Value::Bool(b) => write!(f, "{}", b),
             Value::Void => write!(f, "Void"),
             Value::Function => write!(f, "Function"),
@@ -130,7 +130,7 @@ impl Parser {
             match self.variables.get(&(checked_scope.to_string(), name.to_string())) {
                 Some(value) => match &value.0 {
                     &ValueType::Number => return Some((ValueType::Number, value.1.clone())),
-                    &ValueType::Str => return Some((ValueType::Str, value.1.clone())),
+                    &ValueType::String => return Some((ValueType::String, value.1.clone())),
                     &ValueType::Bool => return Some((ValueType::Bool, value.1.clone())),
                     &ValueType::Function => return Some((ValueType::Function, value.1.clone())),
                     _ => return None
@@ -190,7 +190,7 @@ impl Parser {
         match ast {
             ASTNode::Literal(ref v) => match v {
                 Value::Number(_) => Ok(ValueType::Number),
-                Value::Str(_) => Ok(ValueType::Str),
+                Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
                 _ => Ok(ValueType::Any)
             },
@@ -204,8 +204,8 @@ impl Parser {
 
                 match (&left_type, &right_type) {
                     (ValueType::Number, ValueType::Number) => Ok(ValueType::Number),
-                    (ValueType::Number, ValueType::Str) => Ok(ValueType::Str),
-                    (ValueType::Str, ValueType::Number) => Ok(ValueType::Str),
+                    (ValueType::Number, ValueType::String) => Ok(ValueType::String),
+                    (ValueType::String, ValueType::Number) => Ok(ValueType::String),
                     (ValueType::Bool, ValueType::Bool) => Ok(ValueType::Bool),
                     _ => Err(format!("type mismatch: {:?} {:?} {:?}", left_type, op, right_type).into())
                 }
@@ -296,7 +296,7 @@ impl Parser {
     fn string_to_value_type(&mut self, type_name: String) -> ValueType {
         match type_name.as_str() {
             "number" => ValueType::Number,
-            "string" => ValueType::Str,
+            "string" => ValueType::String,
             "bool" => ValueType::Bool,
             _ => panic!("undefined type")
         }
@@ -368,7 +368,7 @@ impl Parser {
                         Token::Identifier(value_type) => {
                             match value_type.as_str() {
                                 "number" => ValueType::Number,
-                                "str" => ValueType::Str,
+                                "str" => ValueType::String,
                                 "bool" => ValueType::Bool,
                                 _ => panic!("undefined type: {:?}", value_type)
                             }
@@ -406,7 +406,7 @@ impl Parser {
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
             Token::Number(value) => self.parse_literal(Value::Number(value)),
-            Token::String(value) => self.parse_literal(Value::Str(value.into())),
+            Token::String(value) => self.parse_literal(Value::String(value.into())),
             Token::Function => self.parse_function(),
             Token::Pipe => self.parse_function_call_arguments(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
@@ -495,7 +495,7 @@ impl Parser {
             }
             let value = match token {
                 Token::Number(value) => Value::Number(value),
-                Token::String(value) => Value::Str(value),
+                Token::String(value) => Value::String(value),
                 _ => panic!("unexpected token: {:?}", token)
             };
             list.push(ASTNode::Literal(value));

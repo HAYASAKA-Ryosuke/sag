@@ -47,7 +47,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             let value = eval(*value, env);
             let value_type = match value {
                 Value::Number(_) => ValueType::Number,
-                Value::Str(_) => ValueType::Str,
+                Value::String(_) => ValueType::String,
                 Value::Bool(_) => ValueType::Bool,
                 Value::Function => ValueType::Function,
                 Value::Void => ValueType::Void,
@@ -136,7 +136,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             let right_val = eval(*right, env);
 
             match (left_val, right_val, op) {
-                (Value::Str(l), Value::Str(r), Token::Plus) => Value::Str(l + &r),
+                (Value::String(l), Value::String(r), Token::Plus) => Value::String(l + &r),
                 (Value::Number(l), Value::Number(r), Token::Plus) => Value::Number(l + r),
                 (Value::Number(l), Value::Number(r), Token::Mul) => Value::Number(l * r),
                 (Value::Number(l), Value::Number(r), Token::Div) => Value::Number(l / r),
@@ -310,7 +310,7 @@ mod tests {
     fn test_unsupported_binary_operation() {
         let mut env = Env::new();
         let ast = ASTNode::BinaryOp {
-            left: Box::new(ASTNode::Literal(Value::Str("hello".to_string()))),
+            left: Box::new(ASTNode::Literal(Value::String("hello".to_string()))),
             op: Token::Mul,
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
         };

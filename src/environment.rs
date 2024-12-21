@@ -36,7 +36,7 @@ pub enum EnvVariableType {
 pub enum ValueType {
     Any,
     Number,
-    Str,
+    String,
     Bool,
     Void,
     List(Box<ValueType>),
