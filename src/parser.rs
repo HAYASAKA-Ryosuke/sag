@@ -253,13 +253,13 @@ impl Parser {
             arguments: Box::new(arguments)
         };
         // チェーンされた関数呼び出しの処理
-        if self.get_current_token() == Some(Token::RArrow) {
-            self.consume_token(); // "->" を消費
+        while self.get_current_token() == Some(Token::RArrow) {
+            self.consume_token();
             let next_name = match self.get_current_token() {
                 Some(Token::Identifier(name)) => name,
                 _ => panic!("Expected function name after '->'"),
             };
-            self.consume_token(); // 関数名を消費
+            self.consume_token();
             function_call = ASTNode::FunctionCall {
                 name: next_name,
                 arguments: Box::new(ASTNode::FunctionCallArgs(vec![function_call])),
@@ -296,7 +296,7 @@ impl Parser {
     fn string_to_value_type(&mut self, type_name: String) -> ValueType {
         match type_name.as_str() {
             "number" => ValueType::Number,
-            "str" => ValueType::Str,
+            "string" => ValueType::Str,
             "bool" => ValueType::Bool,
             _ => panic!("undefined type")
         }
