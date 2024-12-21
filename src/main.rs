@@ -48,9 +48,13 @@ fn main() {
     if args.len() > 1 {
         //println!("args: {:?}", args);
         let file_path = args[1].clone();
-        run_file(file_path).unwrap();
+        if let Err(e) = run_file(file_path) {
+            eprintln!("Error: {}", e);
+        }
     } else {
-        run_repl().unwrap();
+        if let Err(e) = run_repl() {
+            eprintln!("Error: {}", e);
+        }
     }
 }
 
