@@ -58,13 +58,21 @@ fn is_digit(c: &char) -> bool {
 fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
     let mut num = Fraction::from(0);
     let mut pos = tokenizer.pos;
+    let mut is_float = false;
     loop {
         let c = tokenizer.get_position_char(pos);
         if c == '\0' {
             break;
         }
         if is_digit(&c) {
-            num = num * 10 + Fraction::from(c.to_string().parse::<i32>().unwrap());
+            if is_float {
+                num = num + Fraction::from(c.to_string().parse::<i32>().unwrap()) / Fraction::from(10);
+            } else {
+                num = num * 10 + Fraction::from(c.to_string().parse::<i32>().unwrap());
+            }
+            pos += 1;
+        } else if c == '.' {
+            is_float = true;
             pos += 1;
         } else {
             break;
@@ -338,5 +346,10 @@ mod tests {
     #[test]
     fn test_call_function() {
         assert_eq!(tokenize(&"(x, y) -> foo".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RArrow, Token::Identifier("foo".into()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_float() {
+        assert_eq!(tokenize(&"1.5".to_string()), vec![Token::Number(Fraction::from(1.5)), Token::Eof]);
     }
 }
