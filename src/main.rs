@@ -32,7 +32,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
 fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::read_to_string(file_path)?;
     let tokens = tokenize(&file);
-    //println!("tokens: {:?}", tokens);
+    println!("tokens: {:?}", tokens);
     let mut parser = Parser::new(tokens.to_vec());
     let ast_nodes = parser.parse_lines();
     println!("ast: {:?}", ast_nodes);

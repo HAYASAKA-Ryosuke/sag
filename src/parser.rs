@@ -192,6 +192,7 @@ impl Parser {
             Some(Token::Identifier(name)) => name,
             _ => panic!("failed take function name: {:?}", self.get_current_token()),
         };
+        self.consume_token();
 
         ASTNode::FunctionCall {
             name,
