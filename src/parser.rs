@@ -186,12 +186,18 @@ impl Parser {
         ASTNode::Literal(value)
     }
 
-    fn parse_function_call(&mut self, arguments: ASTNode) -> ASTNode {
+    fn parse_function_call(&mut self, left: ASTNode) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token::Identifier(name)) => name,
             _ => panic!("failed take function name: {:?}", self.get_current_token()),
         };
+
+        let arguments = ASTNode::FunctionCallArgs(match left {
+            ASTNode::FunctionCallArgs(arguments) => arguments,
+            _ => vec![left]
+        });
+
         self.consume_token();
 
         ASTNode::FunctionCall {
