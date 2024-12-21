@@ -27,7 +27,7 @@ pub enum Token {
     RBrace,
     Eof,
     Function,
-    FunctionCallArgs,
+    Pipe,
     Return,
     Comma,
     RArrow,
@@ -138,6 +138,11 @@ fn is_semicoron(c: &char) -> bool {
     *c == ';'
 }
 
+
+fn is_function_call_args(c: &char) -> bool {
+    *c == '|'
+}
+
 fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "val".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -158,15 +163,6 @@ fn is_mutable(tokenizer: &mut Tokenizer) -> bool {
 
 fn is_function(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "fun".chars().enumerate() {
-        if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
-        }
-    }
-    true
-}
-
-fn is_function_call_args(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "args".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false
         }
@@ -248,11 +244,6 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             tokenizer.pos += 3;
             continue;
         }
-        if is_function_call_args(&mut tokenizer) {
-            tokenizer.tokens.push(Token::FunctionCallArgs);
-            tokenizer.pos += 4;
-            continue;
-        }
 
         if is_match(&mut tokenizer) {
             tokenizer.tokens.push(Token::Match);
@@ -280,6 +271,12 @@ pub fn tokenize(line: &String) -> Vec<Token> {
 
         if is_comma(&c) {
             tokenizer.tokens.push(Token::Comma);
+            tokenizer.pos += 1;
+            continue;
+        }
+
+        if is_function_call_args(&c) {
+            tokenizer.tokens.push(Token::Pipe);
             tokenizer.pos += 1;
             continue;
         }

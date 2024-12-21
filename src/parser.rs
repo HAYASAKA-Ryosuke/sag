@@ -408,7 +408,7 @@ impl Parser {
             Token::Number(value) => self.parse_literal(Value::Number(value)),
             Token::String(value) => self.parse_literal(Value::Str(value.into())),
             Token::Function => self.parse_function(),
-            Token::FunctionCallArgs => self.parse_function_call_arguments(),
+            Token::Pipe => self.parse_function_call_arguments(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
             Token::LParen => {
                 self.pos += 1;
@@ -463,11 +463,7 @@ impl Parser {
 
     fn parse_function_call_arguments(&mut self) -> ASTNode {
         match self.get_current_token() {
-            Some(Token::FunctionCallArgs) => self.consume_token(),
-            _ => {None}
-        };
-        match self.get_current_token() {
-            Some(Token::LParen) => self.consume_token(),
+            Some(Token::Pipe) => self.consume_token(),
             _ => {None}
         };
         let mut arguments = vec![];
@@ -476,7 +472,7 @@ impl Parser {
                 self.pos += 1;
                 continue;
             }
-            if token == Token::RParen {
+            if token == Token::Pipe {
                 self.pos += 1;
                 break;
             }
@@ -726,14 +722,13 @@ mod tests {
     #[test]
     fn test_function_call() {
         let mut parser = Parser::new(vec![
-            Token::FunctionCallArgs,
-            Token::LParen,
+            Token::Pipe,
             Token::Identifier("x".into()),
             Token::Comma,
             Token::Identifier("y".into()),
             Token::Comma,
             Token::Number(Fraction::from(1)),
-            Token::RParen,
+            Token::Pipe,
             Token::RArrow,
             Token::Identifier("f1".into()),
             Token::Eof,
@@ -796,7 +791,7 @@ mod tests {
     #[test]
     fn test_function_call_with_no_arguments() {
         let mut parser = Parser::new(vec![
-            Token::FunctionCallArgs, Token::LParen, Token::RParen, Token::RArrow, Token::Identifier("func".into()), Token::Eof,
+            Token::Pipe, Token::Pipe, Token::RArrow, Token::Identifier("func".into()), Token::Eof,
         ]);
         assert_eq!(parser.parse(), ASTNode::FunctionCall {
             name: "func".into(),

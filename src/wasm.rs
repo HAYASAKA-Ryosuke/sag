@@ -38,7 +38,7 @@ fun f1 = (x: number, y: number): number {
     return x + y + z
 }
 
-args(2, 0) -> f1
+|2, 0| -> f1
 "#;
         let result = evaluate(input);
         assert_eq!(result, "Number(Rational(Plus, Ratio { numer: 6, denom: 1 }))");
@@ -68,10 +68,10 @@ fun f4 = (): number {
     return 2 + 3 / 4
 }
 
-args(2, 0) -> f1
-args(2, 0) -> f2
-args() -> f3
-args() -> f4
+|2, 0| -> f1
+|2, 0| -> f2
+|| -> f3
+|| -> f4
 "#;
         let result = evaluate(input);
         assert_eq!(result, "Number(Rational(Plus, Ratio { numer: 11, denom: 4 }))");
