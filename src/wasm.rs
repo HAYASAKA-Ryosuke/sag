@@ -4,10 +4,11 @@ use crate::parser::Parser;
 use crate::environment::Env;
 use crate::eval::evals;
 use crate::parser::Value;
+use crate::builtin::register_builtins;
 use std::cell::RefCell;
 
 thread_local! {
-    static CONSOLE_OUTPUT: RefCell<String> = RefCell::new(String::new());
+    pub(crate) static CONSOLE_OUTPUT: RefCell<String> = RefCell::new(String::new());
 }
 
 #[wasm_bindgen]
@@ -18,31 +19,12 @@ pub fn evaluate(input: &str) -> String {
     let mut parser = Parser::new(tokens);
     let ast_nodes = parser.parse_lines();
     let mut env = Env::new();
-    register_wasm_builtins(&mut env);
+    register_builtins(&mut env);
     let result = evals(ast_nodes, &mut env);
     
     let output = CONSOLE_OUTPUT.with(|output| output.borrow().clone());
     let result_str = format!("{}", result.last().unwrap_or(&Value::Void));
     format!("__ConsoleOutput__{}__Result__{}", output.trim_end(), result_str)
-}
-
-fn register_wasm_builtins(env: &mut Env) {
-    env.register_builtin("print".to_string(), |args: Vec<Value>| {
-        let output = args.iter()
-            .map(|arg| format!("{}", arg))
-            .collect::<Vec<_>>()
-            .join(" ");
-        
-        CONSOLE_OUTPUT.with(|console| {
-            let mut console = console.borrow_mut();
-            if !console.is_empty() {
-                console.push('\n');
-            }
-            console.push_str(&output);
-        });
-        
-        Value::Void
-    });
 }
 
 #[cfg(test)]
