@@ -21,10 +21,8 @@ pub fn evaluate(input: &str) -> String {
     register_wasm_builtins(&mut env);
     let result = evals(ast_nodes, &mut env);
     
-    // 出力とリターン値を組み合わせる
     let output = CONSOLE_OUTPUT.with(|output| output.borrow().clone());
-    let result_str = format!("{:?}", result.last().unwrap_or(&Value::Void));
-    
+    let result_str = format!("{}", result.last().unwrap_or(&Value::Void));
     format!("__ConsoleOutput__{}__Result__{}", output.trim_end(), result_str)
 }
 
