@@ -13,7 +13,7 @@ pub fn evaluate(input: &str) -> String {
     let mut env = Env::new();
     register_builtins(&mut env);
     let result = evals(ast_nodes, &mut env);
-    format!("{:?}", result.last().unwrap())
+    format!("{}", result.last().unwrap())
 } 
 
 #[cfg(test)]
