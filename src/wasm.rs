@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn test_evaluate_basic_arithmetic() {
         let result = evaluate("1 + 2");
-        assert_eq!(result, "Number(Rational(Plus, Ratio { numer: 3, denom: 1 }))");
+        assert_eq!(result, "__ConsoleOutput____Result__3");
     }
 
     #[test]
@@ -70,7 +70,7 @@ fun f1 = (x: number, y: number): number {
 |2, 0| -> f1
 "#;
         let result = evaluate(input);
-        assert_eq!(result, "Number(Rational(Plus, Ratio { numer: 6, denom: 1 }))");
+        assert_eq!(result, "__ConsoleOutput____Result__6");
     }
 
     #[test]
@@ -103,6 +103,6 @@ fun f4 = (): number {
 || -> f4
 "#;
         let result = evaluate(input);
-        assert_eq!(result, "Number(Rational(Plus, Ratio { numer: 11, denom: 4 }))");
+        assert_eq!(result, "__ConsoleOutput____Result__11/4");
     }
 }
