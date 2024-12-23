@@ -1,5 +1,5 @@
 use crate::tokenizer::Token;
-use crate::environment::{EnvVariableType, ValueType};
+use crate::environment::{EnvVariableType, ValueType, Env};
 use std::collections::HashMap;
 use fraction::Fraction;
 use std::fmt;
@@ -12,6 +12,11 @@ pub enum Value {
     Void,
     List(Vec<Value>),
     Function,
+    Lambda {
+        arguments: Vec<ASTNode>,
+        body: Box<ASTNode>,
+        env: Env
+    },
 }
 
 impl Value {
@@ -23,6 +28,7 @@ impl Value {
             Value::Void => ValueType::Void,
             Value::List(_) => ValueType::List(Box::new(ValueType::Any)),
             Value::Function => ValueType::Function,
+            Value::Lambda{..} => ValueType::Lambda,
         }
     }
     pub fn to_number(&self) -> Fraction {
@@ -59,6 +65,7 @@ impl fmt::Display for Value {
             Value::Bool(b) => write!(f, "{}", b),
             Value::Void => write!(f, "Void"),
             Value::Function => write!(f, "Function"),
+            Value::Lambda{..} => write!(f, "Lambda"),
             Value::List(list) => {
                 let mut result = String::new();
                 for (i, value) in list.iter().enumerate() {
@@ -94,6 +101,7 @@ pub enum ASTNode {
     FunctionCall {name: String, arguments: Box<ASTNode>},
     FunctionCallArgs (Vec<ASTNode>),
     Return(Box<ASTNode>),
+    Lambda {arguments: Vec<ASTNode>, body: Box<ASTNode>},
 }
 
 pub struct Parser {
@@ -194,6 +202,7 @@ impl Parser {
                 Value::Bool(_) => Ok(ValueType::Bool),
                 _ => Ok(ValueType::Any)
             },
+            ASTNode::Lambda {..} => Ok(ValueType::Lambda),
             ASTNode::PrefixOp { op: _, expr } => {
                 let value_type = self.infer_type(&expr)?;
                 Ok(value_type)
@@ -266,6 +275,80 @@ impl Parser {
             };
         }
         function_call
+    }
+
+    fn parse_lambda(&mut self) -> ASTNode {
+        self.consume_token();
+        let mut arguments = vec![];
+
+        self.enter_scope("lambda".to_string());
+        match self.get_current_token() {
+            Some(Token::Pipe) => {
+                self.consume_token();
+                while let Some(token) = self.get_current_token() {
+                    if token == Token::Pipe {
+                        self.consume_token();
+                        break;
+                    }
+                    if self.get_current_token() == Some(Token::Comma) {
+                        self.consume_token();
+                        continue;
+                    }
+                    if let Token::Identifier(argument) = token {
+                        self.consume_token();
+                        self.extract_token(Token::Colon);
+                        let value_type = if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+                            Some(self.string_to_value_type(type_name))
+                        } else {
+                            None
+                        };
+                        arguments.push(ASTNode::Variable{
+                            name: argument.clone(),
+                            value_type: value_type.clone()
+                        });
+                        self.register_variables("lambda".to_string(), &argument, &value_type.unwrap(), &EnvVariableType::Immutable);
+                        self.consume_token();
+                        continue;
+                    }
+                }
+            },
+            Some(Token::Identifier(argument)) => {
+                self.consume_token();
+                self.extract_token(Token::Colon);
+                let value_type = if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+                    Some(self.string_to_value_type(type_name))
+                } else {
+                    None
+                };
+                arguments.push(ASTNode::Variable{
+                    name: argument.clone(),
+                    value_type
+                });
+                self.consume_token();
+            },
+            _ => {}
+        };
+
+        self.extract_token(Token::RRocket);
+
+        let result = match self.get_current_token() {
+            Some(Token::LBrace) => {
+                let statement = self.parse_block();
+                ASTNode::Lambda {
+                    arguments,
+                    body: Box::new(statement),
+                }
+            },
+            _ => {
+                let statement = self.parse_expression(0);
+                ASTNode::Lambda {
+                    arguments,
+                    body: Box::new(statement)
+                }
+            }
+        };
+        self.leave_scope();
+        result
     }
 
     fn parse_function(&mut self) -> ASTNode {
@@ -409,6 +492,7 @@ impl Parser {
             Token::String(value) => self.parse_literal(Value::String(value.into())),
             Token::Function => self.parse_function(),
             Token::Pipe => self.parse_function_call_arguments(),
+            Token::BackSlash => self.parse_lambda(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
             Token::LParen => {
                 self.pos += 1;
@@ -448,6 +532,18 @@ impl Parser {
                             variable_type,
                             value_type,
                             is_new: false
+                        }
+                    },
+                    Some(Token::Colon) => {
+                        self.consume_token();
+                        let value_type = if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+                            Some(self.string_to_value_type(type_name))
+                        } else {
+                            panic!("undefined type")
+                        };
+                        ASTNode::Variable {
+                            name,
+                            value_type
                         }
                     },
                     _ => {
@@ -903,6 +999,25 @@ mod tests {
             arguments: Box::new(ASTNode::FunctionCallArgs(vec![
                 ASTNode::Literal(Value::Number(Fraction::from(1)))]))
             }]))
+        });
+    }
+
+    #[test]
+    fn  test_lambda() {
+        let mut parser = Parser::new(vec![Token::Immutable, Token::Identifier("inc".into()), Token::Equal, Token::BackSlash, Token::Pipe, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Pipe, Token::RRocket, Token::Identifier("x".into()), Token::Plus, Token::Number(Fraction::from(1)), Token::Eof]);
+        assert_eq!(parser.parse(), ASTNode::Assign {
+            name: "inc".into(),
+            variable_type: EnvVariableType::Immutable,
+            is_new: true,
+            value_type: ValueType::Lambda,
+            value: Box::new(ASTNode::Lambda {
+                arguments: vec![ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }],
+                body: Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }),
+                    op: Token::Plus,
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                })
+            }),
         });
     }
 

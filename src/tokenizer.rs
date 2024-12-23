@@ -27,6 +27,7 @@ pub enum Token {
     RBrace,
     Eof,
     Function,
+    BackSlash,
     Pipe,
     Return,
     Comma,
@@ -34,6 +35,7 @@ pub enum Token {
     Match,
     LBrancket,
     RBrancket,
+    RRocket,
 }
 
 impl Tokenizer {
@@ -93,7 +95,7 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
     let mut pos = tokenizer.pos;
     loop {
         let c = tokenizer.get_position_char(pos);
-        if c == '\0' || c == '\n' || c == ' ' || c == ':' || c == ',' || c == '(' || c == ')' {
+        if c == '\0' || c == '\n' || c == ' ' || c == ':' || c == ',' || c == '(' || c == ')' || c == '|' {
             break;
         }
         identifier += &c.to_string();
@@ -197,6 +199,15 @@ fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "=>".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false
+        }
+    }
+    true
+}
+
 pub fn tokenize(line: &String) -> Vec<Token> {
     let mut tokenizer = Tokenizer::new(&line);
     loop {
@@ -263,6 +274,12 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_right_rocket(&mut tokenizer) {
+            tokenizer.tokens.push(Token::RRocket);
+            tokenizer.pos += 2;
+            continue;
+        }
+
         if is_colon(&c) {
             tokenizer.tokens.push(Token::Colon);
             tokenizer.pos += 1;
@@ -290,6 +307,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             ')' => tokenizer.tokens.push(Token::RParen),
             '[' => tokenizer.tokens.push(Token::LBrancket),
             ']' => tokenizer.tokens.push(Token::RBrancket),
+            '\\' => tokenizer.tokens.push(Token::BackSlash),
             '{' => {
                 tokenizer.nesting_count += 1;
                 tokenizer.tokens.push(Token::LBrace)
@@ -363,5 +381,10 @@ mod tests {
     #[test]
     fn test_call_functions() {
         assert_eq!(tokenize(&"1 -> f1 -> f2".to_string()), vec![Token::Number(Fraction::from(1)), Token::RArrow, Token::Identifier("f1".into()), Token::RArrow, Token::Identifier("f2".into()), Token::Eof]);
+    }
+
+    #[test]
+    fn test_lambda() {
+        assert_eq!(tokenize(&"val inc = \\|x: number| => x + 1".to_string()), vec![Token::Immutable, Token::Identifier("inc".into()), Token::Equal, Token::BackSlash, Token::Pipe, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Pipe, Token::RRocket, Token::Identifier("x".into()), Token::Plus, Token::Number(Fraction::from(1)), Token::Eof]);
     }
 }

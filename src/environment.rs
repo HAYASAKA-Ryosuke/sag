@@ -3,7 +3,7 @@ use crate::parser::{ASTNode, Value};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
     scope_stack: Vec<String>,
@@ -11,7 +11,7 @@ pub struct Env {
     builtins: HashMap<String, FunctionInfo>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionInfo {
     pub arguments: Vec<ASTNode>,
     pub return_type: ValueType,
@@ -40,10 +40,11 @@ pub enum ValueType {
     Bool,
     Void,
     List(Box<ValueType>),
-    Function
+    Function,
+    Lambda
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EnvVariableValueInfo {
     pub value: Value,
     pub variable_type: EnvVariableType,
