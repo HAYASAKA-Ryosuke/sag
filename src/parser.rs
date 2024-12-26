@@ -244,6 +244,26 @@ impl Parser {
         ASTNode::Literal(value)
     }
 
+    fn is_lambda_call(&mut self) -> bool {
+        self.pos += 1;
+        let next_token = self.get_current_token();
+        self.pos -= 1;
+        next_token == Some(Token::BackSlash)
+    }
+
+    fn parse_lambda_call(&mut self, left: ASTNode) -> ASTNode {
+        self.consume_token();
+        let lambda = self.parse_lambda();
+        let arguments = match left {
+            ASTNode::FunctionCallArgs(arguments) => arguments,
+            _ => vec![left]
+        };
+        ASTNode::LambdaCall {
+            lambda: Box::new(lambda),
+            arguments
+        }
+    }
+
     fn parse_function_call(&mut self, left: ASTNode) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
@@ -639,7 +659,11 @@ impl Parser {
             };
             if token == Token::RArrow {
                 // next token is function or lambda call
-                lhs = self.parse_function_call(lhs);
+                if self.is_lambda_call() {
+                    lhs = self.parse_lambda_call(lhs);
+                } else {
+                    lhs = self.parse_function_call(lhs);
+                }
                 continue;
             }
 
