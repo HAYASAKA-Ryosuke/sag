@@ -4,6 +4,7 @@ use crate::parser::Value;
 #[cfg(not(target_arch = "wasm32"))]
 pub fn register_builtins(env: &mut Env) {
     env.register_builtin("print".to_string(), |args: Vec<Value>| {
+        println!("Printing: {:?}", args);
         for arg in args {
             print!("{} ", arg);
         }

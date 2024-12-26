@@ -191,7 +191,7 @@ impl Parser {
                 self.pos += 1;
                 current_token
             },
-            _ => panic!("unexpected token")
+            _ => panic!("unexpected token: {:?}", token)
         }
     }
 
@@ -244,6 +244,13 @@ impl Parser {
         ASTNode::Literal(value)
     }
 
+    fn is_LParen_call(&mut self) -> bool {
+        self.pos += 1;
+        let next_token = self.get_current_token();
+        self.pos -= 1;
+        next_token == Some(Token::LParen)
+    }
+
     fn is_lambda_call(&mut self) -> bool {
         self.pos += 1;
         let next_token = self.get_current_token();
@@ -254,6 +261,7 @@ impl Parser {
     fn parse_lambda_call(&mut self, left: ASTNode) -> ASTNode {
         self.consume_token();
         let lambda = self.parse_lambda();
+        println!("{:?}", lambda);
         let arguments = match left {
             ASTNode::FunctionCallArgs(arguments) => arguments,
             _ => vec![left]
@@ -282,19 +290,6 @@ impl Parser {
             name,
             arguments: Box::new(arguments)
         };
-        //// チェーンされた関数呼び出しの処理
-        //while self.get_current_token() == Some(Token::RArrow) {
-        //    self.consume_token();
-        //    let next_name = match self.get_current_token() {
-        //        Some(Token::Identifier(name)) => name,
-        //        _ => panic!("Expected function name after '->'"),
-        //    };
-        //    self.consume_token();
-        //    function_call = ASTNode::FunctionCall {
-        //        name: next_name,
-        //        arguments: Box::new(ASTNode::FunctionCallArgs(vec![function_call])),
-        //    };
-        //}
         function_call
     }
 
@@ -658,7 +653,15 @@ impl Parser {
                 _ => break
             };
             if token == Token::RArrow {
-                // next token is function or lambda call
+                if self.is_LParen_call() {
+                    self.pos += 1;
+                    let rhs = self.parse_primary();
+                    lhs = ASTNode::LambdaCall{
+                        lambda: Box::new(rhs),
+                        arguments: vec![lhs]
+                    };
+                    continue;
+                }
                 if self.is_lambda_call() {
                     lhs = self.parse_lambda_call(lhs);
                 } else {
