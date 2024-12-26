@@ -244,7 +244,7 @@ impl Parser {
         ASTNode::Literal(value)
     }
 
-    fn is_LParen_call(&mut self) -> bool {
+    fn is_lparen_call(&mut self) -> bool {
         self.pos += 1;
         let next_token = self.get_current_token();
         self.pos -= 1;
@@ -653,7 +653,7 @@ impl Parser {
                 _ => break
             };
             if token == Token::RArrow {
-                if self.is_LParen_call() {
+                if self.is_lparen_call() {
                     self.pos += 1;
                     let rhs = self.parse_primary();
                     lhs = ASTNode::LambdaCall{
