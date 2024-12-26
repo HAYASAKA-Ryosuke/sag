@@ -98,10 +98,13 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             let mut args_vec = vec![];
 
             for arg in arguments {
-                if let ASTNode::FunctionCallArgs(arguments) = arg {
-                    args_vec = arguments;
-                } else {
-                    panic!("illigal arguments: {:?}", arg)
+                match arg {
+                    ASTNode::FunctionCallArgs(arguments) => {
+                        args_vec = arguments;
+                    },
+                    _ => {
+                        args_vec.push(arg);
+                    }
                 }
             }
             if args_vec.len() != lambda.0.len() {
