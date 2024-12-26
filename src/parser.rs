@@ -102,6 +102,7 @@ pub enum ASTNode {
     FunctionCallArgs (Vec<ASTNode>),
     Return(Box<ASTNode>),
     Lambda {arguments: Vec<ASTNode>, body: Box<ASTNode>},
+    LambdaCall {lambda: Box<ASTNode>, arguments: Vec<ASTNode>},
 }
 
 pub struct Parser {
@@ -257,23 +258,23 @@ impl Parser {
 
         self.consume_token();
 
-        let mut function_call = ASTNode::FunctionCall {
+        let function_call = ASTNode::FunctionCall {
             name,
             arguments: Box::new(arguments)
         };
-        // チェーンされた関数呼び出しの処理
-        while self.get_current_token() == Some(Token::RArrow) {
-            self.consume_token();
-            let next_name = match self.get_current_token() {
-                Some(Token::Identifier(name)) => name,
-                _ => panic!("Expected function name after '->'"),
-            };
-            self.consume_token();
-            function_call = ASTNode::FunctionCall {
-                name: next_name,
-                arguments: Box::new(ASTNode::FunctionCallArgs(vec![function_call])),
-            };
-        }
+        //// チェーンされた関数呼び出しの処理
+        //while self.get_current_token() == Some(Token::RArrow) {
+        //    self.consume_token();
+        //    let next_name = match self.get_current_token() {
+        //        Some(Token::Identifier(name)) => name,
+        //        _ => panic!("Expected function name after '->'"),
+        //    };
+        //    self.consume_token();
+        //    function_call = ASTNode::FunctionCall {
+        //        name: next_name,
+        //        arguments: Box::new(ASTNode::FunctionCallArgs(vec![function_call])),
+        //    };
+        //}
         function_call
     }
 
@@ -637,7 +638,9 @@ impl Parser {
                 _ => break
             };
             if token == Token::RArrow {
-                return self.parse_function_call(lhs);
+                // next token is function or lambda call
+                lhs = self.parse_function_call(lhs);
+                continue;
             }
 
             // 二項演算
