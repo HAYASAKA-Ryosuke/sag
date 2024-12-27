@@ -1,11 +1,11 @@
-use wasm_bindgen::prelude::*;
-use crate::tokenizer::tokenize;
-use crate::parser::Parser;
+use crate::builtin::register_builtins;
 use crate::environment::Env;
 use crate::eval::evals;
+use crate::parser::Parser;
 use crate::parser::Value;
-use crate::builtin::register_builtins;
+use crate::tokenizer::tokenize;
 use std::cell::RefCell;
+use wasm_bindgen::prelude::*;
 
 thread_local! {
     pub(crate) static CONSOLE_OUTPUT: RefCell<String> = RefCell::new(String::new());
@@ -21,10 +21,14 @@ pub fn evaluate(input: &str) -> String {
     let mut env = Env::new();
     register_builtins(&mut env);
     let result = evals(ast_nodes, &mut env);
-    
+
     let output = CONSOLE_OUTPUT.with(|output| output.borrow().clone());
     let result_str = format!("{}", result.last().unwrap_or(&Value::Void));
-    format!("__ConsoleOutput__{}__Result__{}", output.trim_end(), result_str)
+    format!(
+        "__ConsoleOutput__{}__Result__{}",
+        output.trim_end(),
+        result_str
+    )
 }
 
 #[cfg(test)]

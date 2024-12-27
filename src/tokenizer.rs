@@ -4,7 +4,7 @@ struct Tokenizer {
     tokens: Vec<Token>,
     chars: Vec<char>,
     pos: usize,
-    nesting_count: usize
+    nesting_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,11 +36,19 @@ pub enum Token {
     LBrancket,
     RBrancket,
     RRocket,
+    If,
+    Else,
+    Eq,
 }
 
 impl Tokenizer {
     pub fn new(line: &String) -> Self {
-        Tokenizer{pos: 0, chars: line.chars().collect(), tokens: vec![], nesting_count: 0}
+        Tokenizer {
+            pos: 0,
+            chars: line.chars().collect(),
+            tokens: vec![],
+            nesting_count: 0,
+        }
     }
 
     pub fn get_position_char(&self, pos: usize) -> char {
@@ -70,7 +78,8 @@ fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
         }
         if is_digit(&c) {
             if is_decimal_point {
-                num = num + Fraction::from(c.to_string().parse::<i32>().unwrap()) / Fraction::from(10);
+                num = num
+                    + Fraction::from(c.to_string().parse::<i32>().unwrap()) / Fraction::from(10);
             } else {
                 num = num * 10 + Fraction::from(c.to_string().parse::<i32>().unwrap());
             }
@@ -95,7 +104,15 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
     let mut pos = tokenizer.pos;
     loop {
         let c = tokenizer.get_position_char(pos);
-        if c == '\0' || c == '\n' || c == ' ' || c == ':' || c == ',' || c == '(' || c == ')' || c == '|' {
+        if c == '\0'
+            || c == '\n'
+            || c == ' '
+            || c == ':'
+            || c == ','
+            || c == '('
+            || c == ')'
+            || c == '|'
+        {
             break;
         }
         identifier += &c.to_string();
@@ -140,7 +157,6 @@ fn is_semicoron(c: &char) -> bool {
     *c == ';'
 }
 
-
 fn is_function_call_args(c: &char) -> bool {
     *c == '|'
 }
@@ -148,7 +164,7 @@ fn is_function_call_args(c: &char) -> bool {
 fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "val".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
         }
     }
     true
@@ -157,7 +173,7 @@ fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
 fn is_mutable(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "val mut".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
         }
     }
     true
@@ -166,7 +182,7 @@ fn is_mutable(tokenizer: &mut Tokenizer) -> bool {
 fn is_function(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "fun".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
         }
     }
     true
@@ -175,7 +191,7 @@ fn is_function(tokenizer: &mut Tokenizer) -> bool {
 fn is_return(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "return".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
         }
     }
     true
@@ -184,7 +200,7 @@ fn is_return(tokenizer: &mut Tokenizer) -> bool {
 fn is_match(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "match".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
         }
     }
     true
@@ -193,7 +209,7 @@ fn is_match(tokenizer: &mut Tokenizer) -> bool {
 fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "->".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
         }
     }
     true
@@ -202,7 +218,34 @@ fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
 fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "=>".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false
+            return false;
+        }
+    }
+    true
+}
+
+fn is_eq(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "==".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_if(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "if".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_else(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "else".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
         }
     }
     true
@@ -220,7 +263,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
         if c == '\0' {
-            break
+            break;
         }
         if is_space(&c) {
             tokenizer.pos += 1;
@@ -235,7 +278,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_string(&c) {
             let str = get_string(&mut tokenizer);
             tokenizer.tokens.push(Token::String(str));
-            continue
+            continue;
         }
 
         if is_mutable(&mut tokenizer) {
@@ -259,7 +302,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_match(&mut tokenizer) {
             tokenizer.tokens.push(Token::Match);
             tokenizer.pos += 5;
-            continue
+            continue;
         }
 
         if is_return(&mut tokenizer) {
@@ -276,6 +319,24 @@ pub fn tokenize(line: &String) -> Vec<Token> {
 
         if is_right_rocket(&mut tokenizer) {
             tokenizer.tokens.push(Token::RRocket);
+            tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_if(&mut tokenizer) {
+            tokenizer.tokens.push(Token::If);
+            tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_else(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Else);
+            tokenizer.pos += 4;
+            continue;
+        }
+
+        if is_eq(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Eq);
             tokenizer.pos += 2;
             continue;
         }
@@ -311,14 +372,14 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '{' => {
                 tokenizer.nesting_count += 1;
                 tokenizer.tokens.push(Token::LBrace)
-            },
+            }
             '}' => {
                 tokenizer.nesting_count -= 1;
                 tokenizer.tokens.push(Token::RBrace);
                 if tokenizer.nesting_count == 0 {
                     tokenizer.tokens.push(Token::Eof);
                 }
-            },
+            }
             '=' => tokenizer.tokens.push(Token::Equal),
             _ => {
                 let value = get_identifier(&mut tokenizer);
@@ -340,51 +401,213 @@ mod tests {
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        assert_eq!(tokenize(&"-1 + 2 * 3/4".to_string()), vec![Token::Minus, Token::Number(Fraction::from(1)), Token::Plus, Token::Number(Fraction::from(2)), Token::Mul, Token::Number(Fraction::from(3)), Token::Div, Token::Number(Fraction::from(4)), Token::Eof]);
+        assert_eq!(
+            tokenize(&"-1 + 2 * 3/4".to_string()),
+            vec![
+                Token::Minus,
+                Token::Number(Fraction::from(1)),
+                Token::Plus,
+                Token::Number(Fraction::from(2)),
+                Token::Mul,
+                Token::Number(Fraction::from(3)),
+                Token::Div,
+                Token::Number(Fraction::from(4)),
+                Token::Eof
+            ]
+        );
     }
     #[test]
     fn test_variable_definition() {
-        assert_eq!(tokenize(&"val mut x = 1".to_string()), vec![Token::Mutable , Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
-        assert_eq!(tokenize(&"val x: num = 1".to_string()), vec![Token::Immutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("num".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
+        assert_eq!(
+            tokenize(&"val mut x = 1".to_string()),
+            vec![
+                Token::Mutable,
+                Token::Identifier("x".into()),
+                Token::Equal,
+                Token::Number(Fraction::from(1)),
+                Token::Eof
+            ]
+        );
+        assert_eq!(
+            tokenize(&"val x: num = 1".to_string()),
+            vec![
+                Token::Immutable,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("num".into()),
+                Token::Equal,
+                Token::Number(Fraction::from(1)),
+                Token::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_multiline() {
-        assert_eq!(tokenize(&"-1 + 2\n val x = 1".to_string()), vec![Token::Minus, Token::Number(Fraction::from(1)), Token::Plus, Token::Number(Fraction::from(2)), Token::Eof, Token::Immutable , Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
+        assert_eq!(
+            tokenize(&"-1 + 2\n val x = 1".to_string()),
+            vec![
+                Token::Minus,
+                Token::Number(Fraction::from(1)),
+                Token::Plus,
+                Token::Number(Fraction::from(2)),
+                Token::Eof,
+                Token::Immutable,
+                Token::Identifier("x".into()),
+                Token::Equal,
+                Token::Number(Fraction::from(1)),
+                Token::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_string() {
-        assert_eq!(tokenize(&"\"Hello World!!\"".to_string()), vec![Token::String("Hello World!!".into()), Token::Eof]);
+        assert_eq!(
+            tokenize(&"\"Hello World!!\"".to_string()),
+            vec![Token::String("Hello World!!".into()), Token::Eof]
+        );
     }
 
     #[test]
     fn test_function() {
-        assert_eq!(tokenize(&"fun foo = (x:number, y: number): number {\n return x + y \n}".to_string()), vec![Token::Function, Token::Identifier("foo".into()), Token::Equal, Token::LParen, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Comma, Token::Identifier("y".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::Colon, Token::Identifier("number".into()), Token::LBrace, Token::Eof, Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Identifier("y".into()), Token::Eof, Token::RBrace, Token::Eof]);
+        assert_eq!(
+            tokenize(&"fun foo = (x:number, y: number): number {\n return x + y \n}".to_string()),
+            vec![
+                Token::Function,
+                Token::Identifier("foo".into()),
+                Token::Equal,
+                Token::LParen,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Comma,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::RParen,
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Identifier("x".into()),
+                Token::Plus,
+                Token::Identifier("y".into()),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
     }
     #[test]
     fn test_call_function() {
-        assert_eq!(tokenize(&"(x, y) -> foo".to_string()), vec![Token::LParen, Token::Identifier("x".into()), Token::Comma, Token::Identifier("y".into()), Token::RParen, Token::RArrow, Token::Identifier("foo".into()), Token::Eof]);
+        assert_eq!(
+            tokenize(&"(x, y) -> foo".to_string()),
+            vec![
+                Token::LParen,
+                Token::Identifier("x".into()),
+                Token::Comma,
+                Token::Identifier("y".into()),
+                Token::RParen,
+                Token::RArrow,
+                Token::Identifier("foo".into()),
+                Token::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_decimal_point() {
-        assert_eq!(tokenize(&"1.5".to_string()), vec![Token::Number(Fraction::from(1.5)), Token::Eof]);
+        assert_eq!(
+            tokenize(&"1.5".to_string()),
+            vec![Token::Number(Fraction::from(1.5)), Token::Eof]
+        );
     }
 
     #[test]
     fn test_list() {
-        assert_eq!(tokenize(&"[1, 2, 3]".to_string()), vec![Token::LBrancket, Token::Number(Fraction::from(1)), Token::Comma, Token::Number(Fraction::from(2)), Token::Comma, Token::Number(Fraction::from(3)), Token::RBrancket, Token::Eof]);
-        assert_eq!(tokenize(&"[\"Hello\", \"World\"]".to_string()), vec![Token::LBrancket, Token::String("Hello".into()), Token::Comma, Token::String("World".into()), Token::RBrancket, Token::Eof]);
+        assert_eq!(
+            tokenize(&"[1, 2, 3]".to_string()),
+            vec![
+                Token::LBrancket,
+                Token::Number(Fraction::from(1)),
+                Token::Comma,
+                Token::Number(Fraction::from(2)),
+                Token::Comma,
+                Token::Number(Fraction::from(3)),
+                Token::RBrancket,
+                Token::Eof
+            ]
+        );
+        assert_eq!(
+            tokenize(&"[\"Hello\", \"World\"]".to_string()),
+            vec![
+                Token::LBrancket,
+                Token::String("Hello".into()),
+                Token::Comma,
+                Token::String("World".into()),
+                Token::RBrancket,
+                Token::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_call_functions() {
-        assert_eq!(tokenize(&"1 -> f1 -> f2".to_string()), vec![Token::Number(Fraction::from(1)), Token::RArrow, Token::Identifier("f1".into()), Token::RArrow, Token::Identifier("f2".into()), Token::Eof]);
+        assert_eq!(
+            tokenize(&"1 -> f1 -> f2".to_string()),
+            vec![
+                Token::Number(Fraction::from(1)),
+                Token::RArrow,
+                Token::Identifier("f1".into()),
+                Token::RArrow,
+                Token::Identifier("f2".into()),
+                Token::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_lambda() {
-        assert_eq!(tokenize(&"val inc = \\|x: number| => x + 1".to_string()), vec![Token::Immutable, Token::Identifier("inc".into()), Token::Equal, Token::BackSlash, Token::Pipe, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Pipe, Token::RRocket, Token::Identifier("x".into()), Token::Plus, Token::Number(Fraction::from(1)), Token::Eof]);
+        assert_eq!(
+            tokenize(&"val inc = \\|x: number| => x + 1".to_string()),
+            vec![
+                Token::Immutable,
+                Token::Identifier("inc".into()),
+                Token::Equal,
+                Token::BackSlash,
+                Token::Pipe,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Pipe,
+                Token::RRocket,
+                Token::Identifier("x".into()),
+                Token::Plus,
+                Token::Number(Fraction::from(1)),
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!(
+            tokenize(&"if x == 1 {\n return 1\n }".to_string()),
+            vec![
+                Token::If,
+                Token::Identifier("x".into()),
+                Token::Eq,
+                Token::Number(Fraction::from(1)),
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Number(Fraction::from(1)),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
     }
 }

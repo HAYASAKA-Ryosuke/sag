@@ -10,7 +10,7 @@ pub fn register_builtins(env: &mut Env) {
         println!();
         Value::Void
     });
-    
+
     env.register_builtin("len".to_string(), |args: Vec<Value>| {
         if args.len() != 1 {
             panic!("len function takes exactly one argument");
@@ -26,13 +26,14 @@ pub fn register_builtins(env: &mut Env) {
 #[cfg(target_arch = "wasm32")]
 pub fn register_builtins(env: &mut Env) {
     use crate::wasm::CONSOLE_OUTPUT;
-    
+
     env.register_builtin("print".to_string(), |args: Vec<Value>| {
-        let output = args.iter()
+        let output = args
+            .iter()
             .map(|arg| format!("{}", arg))
             .collect::<Vec<_>>()
             .join(" ");
-        
+
         CONSOLE_OUTPUT.with(|console| {
             let mut console = console.borrow_mut();
             if !console.is_empty() {
@@ -40,10 +41,10 @@ pub fn register_builtins(env: &mut Env) {
             }
             console.push_str(&output);
         });
-        
+
         Value::Void
     });
-    
+
     env.register_builtin("len".to_string(), |args: Vec<Value>| {
         if args.len() != 1 {
             panic!("len function takes exactly one argument");

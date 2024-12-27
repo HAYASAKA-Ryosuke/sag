@@ -1,7 +1,7 @@
+use crate::environment::{Env, EnvVariableType, ValueType};
 use crate::tokenizer::Token;
-use crate::environment::{EnvVariableType, ValueType, Env};
-use std::collections::HashMap;
 use fraction::Fraction;
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,7 +15,7 @@ pub enum Value {
     Lambda {
         arguments: Vec<ASTNode>,
         body: Box<ASTNode>,
-        env: Env
+        env: Env,
     },
 }
 
@@ -28,31 +28,31 @@ impl Value {
             Value::Void => ValueType::Void,
             Value::List(_) => ValueType::List(Box::new(ValueType::Any)),
             Value::Function => ValueType::Function,
-            Value::Lambda{..} => ValueType::Lambda,
+            Value::Lambda { .. } => ValueType::Lambda,
         }
     }
     pub fn to_number(&self) -> Fraction {
         match self {
             Value::Number(value) => value.clone(),
-            _ => panic!("expected number")
+            _ => panic!("expected number"),
         }
     }
     pub fn to_str(&self) -> String {
         match self {
             Value::String(value) => value.clone(),
-            _ => panic!("expected string")
+            _ => panic!("expected string"),
         }
     }
     pub fn to_bool(&self) -> bool {
         match self {
             Value::Bool(value) => value.clone(),
-            _ => panic!("expected bool")
+            _ => panic!("expected bool"),
         }
     }
     pub fn to_list(&self) -> Vec<Value> {
         match self {
             Value::List(value) => value.clone(),
-            _ => panic!("expected list")
+            _ => panic!("expected list"),
         }
     }
 }
@@ -65,7 +65,7 @@ impl fmt::Display for Value {
             Value::Bool(b) => write!(f, "{}", b),
             Value::Void => write!(f, "Void"),
             Value::Function => write!(f, "Function"),
-            Value::Lambda{..} => write!(f, "Lambda"),
+            Value::Lambda { .. } => write!(f, "Lambda"),
             Value::List(list) => {
                 let mut result = String::new();
                 for (i, value) in list.iter().enumerate() {
@@ -80,7 +80,6 @@ impl fmt::Display for Value {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum ASTNode {
     // 数値や文字列などのリテラル
@@ -88,21 +87,58 @@ pub enum ASTNode {
     // 変数
     Variable {
         name: String,
-        value_type: Option<ValueType>
+        value_type: Option<ValueType>,
     },
     Block(Vec<ASTNode>),
     // -5, !trueなどの一つのオペランドを持つ演算子
-    PrefixOp {op: Token, expr: Box<ASTNode>},
+    PrefixOp {
+        op: Token,
+        expr: Box<ASTNode>,
+    },
     // 1 + 2のような二項演算子
-    BinaryOp {left: Box<ASTNode>, op: Token, right: Box<ASTNode>},
+    BinaryOp {
+        left: Box<ASTNode>,
+        op: Token,
+        right: Box<ASTNode>,
+    },
     // 変数の代入
-    Assign {name: String, value: Box<ASTNode>, variable_type: EnvVariableType, value_type: ValueType, is_new: bool},
-    Function {name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType},
-    FunctionCall {name: String, arguments: Box<ASTNode>},
-    FunctionCallArgs (Vec<ASTNode>),
+    Assign {
+        name: String,
+        value: Box<ASTNode>,
+        variable_type: EnvVariableType,
+        value_type: ValueType,
+        is_new: bool,
+    },
+    Function {
+        name: String,
+        arguments: Vec<ASTNode>,
+        body: Box<ASTNode>,
+        return_type: ValueType,
+    },
+    FunctionCall {
+        name: String,
+        arguments: Box<ASTNode>,
+    },
+    FunctionCallArgs(Vec<ASTNode>),
     Return(Box<ASTNode>),
-    Lambda {arguments: Vec<ASTNode>, body: Box<ASTNode>},
-    LambdaCall {lambda: Box<ASTNode>, arguments: Vec<ASTNode>},
+    Lambda {
+        arguments: Vec<ASTNode>,
+        body: Box<ASTNode>,
+    },
+    LambdaCall {
+        lambda: Box<ASTNode>,
+        arguments: Vec<ASTNode>,
+    },
+    Eq {
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
+    },
+    If {
+        condition: Box<ASTNode>,
+        then: Box<ASTNode>,
+        else_: Option<Box<ASTNode>>,
+        value_type: ValueType,
+    },
 }
 
 pub struct Parser {
@@ -110,13 +146,19 @@ pub struct Parser {
     pos: usize,
     line: usize,
     scopes: Vec<String>,
-    variables: HashMap<(String, String), (ValueType, EnvVariableType)> // key: (scope, name), value: value_type
+    variables: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         let lines = Self::split_lines(tokens);
-        Parser{tokens: lines.clone(), pos: 0, line: 0, scopes: vec!["global".into()], variables: HashMap::new()}
+        Parser {
+            tokens: lines.clone(),
+            pos: 0,
+            line: 0,
+            scopes: vec!["global".into()],
+            variables: HashMap::new(),
+        }
     }
 
     fn enter_scope(&mut self, scope_name: String) {
@@ -130,19 +172,35 @@ impl Parser {
         self.scopes.last().unwrap().to_string()
     }
 
-    fn register_variables(&mut self, scope: String, name: &String, value_type: &ValueType, variable_type: &EnvVariableType) {
-        self.variables.insert((scope, name.to_string()), (value_type.clone(), variable_type.clone()));
+    fn register_variables(
+        &mut self,
+        scope: String,
+        name: &String,
+        value_type: &ValueType,
+        variable_type: &EnvVariableType,
+    ) {
+        self.variables.insert(
+            (scope, name.to_string()),
+            (value_type.clone(), variable_type.clone()),
+        );
     }
 
-    fn find_variables(&mut self, scope: String, name: String) -> Option<(ValueType, EnvVariableType)> {
+    fn find_variables(
+        &mut self,
+        scope: String,
+        name: String,
+    ) -> Option<(ValueType, EnvVariableType)> {
         for checked_scope in vec![scope.to_string(), "global".to_string()] {
-            match self.variables.get(&(checked_scope.to_string(), name.to_string())) {
+            match self
+                .variables
+                .get(&(checked_scope.to_string(), name.to_string()))
+            {
                 Some(value) => match &value.0 {
                     &ValueType::Number => return Some((ValueType::Number, value.1.clone())),
                     &ValueType::String => return Some((ValueType::String, value.1.clone())),
                     &ValueType::Bool => return Some((ValueType::Bool, value.1.clone())),
                     &ValueType::Function => return Some((ValueType::Function, value.1.clone())),
-                    _ => return None
+                    _ => return None,
                 },
                 None => {}
             };
@@ -190,8 +248,8 @@ impl Parser {
             Some(current_token) if current_token == token => {
                 self.pos += 1;
                 current_token
-            },
-            _ => panic!("unexpected token: {:?}", token)
+            }
+            _ => panic!("unexpected token: {:?}", token),
         }
     }
 
@@ -201,9 +259,9 @@ impl Parser {
                 Value::Number(_) => Ok(ValueType::Number),
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
-                _ => Ok(ValueType::Any)
+                _ => Ok(ValueType::Any),
             },
-            ASTNode::Lambda {..} => Ok(ValueType::Lambda),
+            ASTNode::Lambda { .. } => Ok(ValueType::Lambda),
             ASTNode::PrefixOp { op: _, expr } => {
                 let value_type = self.infer_type(&expr)?;
                 Ok(value_type)
@@ -217,10 +275,12 @@ impl Parser {
                     (ValueType::Number, ValueType::String) => Ok(ValueType::String),
                     (ValueType::String, ValueType::Number) => Ok(ValueType::String),
                     (ValueType::Bool, ValueType::Bool) => Ok(ValueType::Bool),
-                    _ => Err(format!("type mismatch: {:?} {:?} {:?}", left_type, op, right_type).into())
+                    _ => Err(
+                        format!("type mismatch: {:?} {:?} {:?}", left_type, op, right_type).into(),
+                    ),
                 }
             }
-            _ => Ok(ValueType::Any)
+            _ => Ok(ValueType::Any),
         }
     }
 
@@ -229,7 +289,7 @@ impl Parser {
         let value = self.parse_expression(std::u8::MAX);
         ASTNode::PrefixOp {
             op,
-            expr: Box::new(value)
+            expr: Box::new(value),
         }
     }
 
@@ -264,11 +324,11 @@ impl Parser {
         println!("{:?}", lambda);
         let arguments = match left {
             ASTNode::FunctionCallArgs(arguments) => arguments,
-            _ => vec![left]
+            _ => vec![left],
         };
         ASTNode::LambdaCall {
             lambda: Box::new(lambda),
-            arguments
+            arguments,
         }
     }
 
@@ -281,14 +341,14 @@ impl Parser {
 
         let arguments = ASTNode::FunctionCallArgs(match left {
             ASTNode::FunctionCallArgs(arguments) => arguments,
-            _ => vec![left]
+            _ => vec![left],
         });
 
         self.consume_token();
 
         let function_call = ASTNode::FunctionCall {
             name,
-            arguments: Box::new(arguments)
+            arguments: Box::new(arguments),
         };
         function_call
     }
@@ -313,35 +373,42 @@ impl Parser {
                     if let Token::Identifier(argument) = token {
                         self.consume_token();
                         self.extract_token(Token::Colon);
-                        let value_type = if let Some(Token::Identifier(type_name)) = self.get_current_token() {
-                            Some(self.string_to_value_type(type_name))
-                        } else {
-                            None
-                        };
-                        arguments.push(ASTNode::Variable{
+                        let value_type =
+                            if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+                                Some(self.string_to_value_type(type_name))
+                            } else {
+                                None
+                            };
+                        arguments.push(ASTNode::Variable {
                             name: argument.clone(),
-                            value_type: value_type.clone()
+                            value_type: value_type.clone(),
                         });
-                        self.register_variables("lambda".to_string(), &argument, &value_type.unwrap(), &EnvVariableType::Immutable);
+                        self.register_variables(
+                            "lambda".to_string(),
+                            &argument,
+                            &value_type.unwrap(),
+                            &EnvVariableType::Immutable,
+                        );
                         self.consume_token();
                         continue;
                     }
                 }
-            },
+            }
             Some(Token::Identifier(argument)) => {
                 self.consume_token();
                 self.extract_token(Token::Colon);
-                let value_type = if let Some(Token::Identifier(type_name)) = self.get_current_token() {
-                    Some(self.string_to_value_type(type_name))
-                } else {
-                    None
-                };
-                arguments.push(ASTNode::Variable{
+                let value_type =
+                    if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+                        Some(self.string_to_value_type(type_name))
+                    } else {
+                        None
+                    };
+                arguments.push(ASTNode::Variable {
                     name: argument.clone(),
-                    value_type
+                    value_type,
                 });
                 self.consume_token();
-            },
+            }
             _ => {}
         };
 
@@ -354,12 +421,12 @@ impl Parser {
                     arguments,
                     body: Box::new(statement),
                 }
-            },
+            }
             _ => {
                 let statement = self.parse_expression(0);
                 ASTNode::Lambda {
                     arguments,
-                    body: Box::new(statement)
+                    body: Box::new(statement),
                 }
             }
         };
@@ -371,7 +438,7 @@ impl Parser {
         self.pos += 1;
         let name = match self.get_current_token() {
             Some(Token::Identifier(name)) => name,
-            _ => panic!("undefined function name")
+            _ => panic!("undefined function name"),
         };
         self.enter_scope(name.to_string());
         self.pos += 1;
@@ -388,16 +455,15 @@ impl Parser {
             name,
             arguments,
             body: Box::new(body),
-            return_type
+            return_type,
         }
-
     }
     fn string_to_value_type(&mut self, type_name: String) -> ValueType {
         match type_name.as_str() {
             "number" => ValueType::Number,
             "string" => ValueType::String,
             "bool" => ValueType::Bool,
-            _ => panic!("undefined type")
+            _ => panic!("undefined type"),
         }
     }
     fn parse_function_arguments(&mut self) -> Vec<ASTNode> {
@@ -413,7 +479,12 @@ impl Parser {
                     Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
                     _ => panic!("Expected type for argument"),
                 };
-                self.register_variables(scope.to_string(), &name, &arg_type, &EnvVariableType::Immutable);
+                self.register_variables(
+                    scope.to_string(),
+                    &name,
+                    &arg_type,
+                    &EnvVariableType::Immutable,
+                );
                 arguments.push(ASTNode::Variable {
                     name,
                     value_type: Some(arg_type),
@@ -442,64 +513,70 @@ impl Parser {
         let mutable_or_immutable = self.consume_token().unwrap();
         let name = match self.consume_token() {
             Some(Token::Identifier(name)) => name,
-            _ => panic!("unexpected token")
+            _ => panic!("unexpected token"),
         };
         match self.consume_token() {
             Some(Token::Equal) => {
                 let value = self.parse_expression(0);
                 let value_type = match self.infer_type(&value) {
                     Ok(value_type) => value_type,
-                    Err(e) => panic!("{}", e)
+                    Err(e) => panic!("{}", e),
                 };
-                let variable_type = if mutable_or_immutable == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable};
+                let variable_type = if mutable_or_immutable == Token::Mutable {
+                    EnvVariableType::Mutable
+                } else {
+                    EnvVariableType::Immutable
+                };
                 self.register_variables(scope, &name, &value_type, &variable_type);
                 ASTNode::Assign {
                     name,
                     value: Box::new(value),
                     variable_type,
                     value_type,
-                    is_new: true
+                    is_new: true,
                 }
-            },
+            }
             Some(Token::Colon) => {
                 let value_type = match self.consume_token() {
                     Some(token) => match token {
-                        Token::Identifier(value_type) => {
-                            match value_type.as_str() {
-                                "number" => ValueType::Number,
-                                "str" => ValueType::String,
-                                "bool" => ValueType::Bool,
-                                _ => panic!("undefined type: {:?}", value_type)
-                            }
+                        Token::Identifier(value_type) => match value_type.as_str() {
+                            "number" => ValueType::Number,
+                            "str" => ValueType::String,
+                            "bool" => ValueType::Bool,
+                            _ => panic!("undefined type: {:?}", value_type),
                         },
-                        _ => panic!("undefined type")
+                        _ => panic!("undefined type"),
                     },
-                    _ => panic!("undefined type")
+                    _ => panic!("undefined type"),
                 };
                 match self.consume_token() {
                     Some(Token::Equal) => {
                         let value = self.parse_expression(0);
-                        let variable_type = if mutable_or_immutable == Token::Mutable {EnvVariableType::Mutable} else {EnvVariableType::Immutable};
+                        let variable_type = if mutable_or_immutable == Token::Mutable {
+                            EnvVariableType::Mutable
+                        } else {
+                            EnvVariableType::Immutable
+                        };
                         self.register_variables(scope, &name, &value_type, &variable_type);
                         ASTNode::Assign {
                             name,
                             value: Box::new(value),
                             variable_type,
                             value_type,
-                            is_new: true
+                            is_new: true,
                         }
-                    },
-                    _ => panic!("No valid statement found on the right-hand side")
+                    }
+                    _ => panic!("No valid statement found on the right-hand side"),
                 }
             }
-            _ => panic!("unexpected token")
+            _ => panic!("unexpected token"),
         }
     }
 
     fn parse_primary(&mut self) -> ASTNode {
         let token = match self.get_current_token() {
             Some(token) => token,
-            _ => panic!("token not found!")
+            _ => panic!("token not found!"),
         };
         match token {
             Token::Minus => self.parse_prefix_op(Token::Minus),
@@ -510,6 +587,7 @@ impl Parser {
             Token::Pipe => self.parse_function_call_arguments(),
             Token::BackSlash => self.parse_lambda(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
+            Token::If => self.parse_if(),
             Token::LParen => {
                 self.pos += 1;
                 let expr = self.parse_expression(0);
@@ -519,11 +597,11 @@ impl Parser {
                         if t == Token::RParen {
                             panic!("unexpected token: {:?}", t)
                         }
-                    },
-                    None => panic!("unexpected token: {:?}", token)
+                    }
+                    None => panic!("unexpected token: {:?}", token),
                 }
                 expr
-            },
+            }
             Token::LBrace => self.parse_block(),
             Token::LBrancket => self.parse_list(),
             Token::Identifier(name) => {
@@ -539,7 +617,10 @@ impl Parser {
                         }
                         let (value_type, variable_type) = variable_info.clone().unwrap();
                         if variable_type == EnvVariableType::Immutable {
-                            panic!("It is an immutable variable and cannot be reassigned: {:?}", name);
+                            panic!(
+                                "It is an immutable variable and cannot be reassigned: {:?}",
+                                name
+                            );
                         }
                         let value = self.parse_expression(0);
                         ASTNode::Assign {
@@ -547,36 +628,76 @@ impl Parser {
                             value: Box::new(value),
                             variable_type,
                             value_type,
-                            is_new: false
+                            is_new: false,
                         }
-                    },
+                    }
                     Some(Token::Colon) => {
                         self.consume_token();
-                        let value_type = if let Some(Token::Identifier(type_name)) = self.get_current_token() {
-                            Some(self.string_to_value_type(type_name))
-                        } else {
-                            panic!("undefined type")
-                        };
-                        ASTNode::Variable {
-                            name,
-                            value_type
-                        }
-                    },
+                        let value_type =
+                            if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+                                Some(self.string_to_value_type(type_name))
+                            } else {
+                                panic!("undefined type")
+                            };
+                        ASTNode::Variable { name, value_type }
+                    }
                     _ => {
                         // 代入
-                        let value_type = if variable_info.is_some() {Some(variable_info.unwrap().0)} else {None};
-                        ASTNode::Variable{name, value_type}
+                        let value_type = if variable_info.is_some() {
+                            Some(variable_info.unwrap().0)
+                        } else {
+                            None
+                        };
+                        ASTNode::Variable { name, value_type }
                     }
                 }
-            },
-            _ => panic!("undefined token: {:?}", token)
+            }
+            _ => panic!("undefined token: {:?}", token),
+        }
+    }
+
+    fn parse_eq(&mut self, left: ASTNode) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::Eq) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+
+        let right = self.parse_expression(0);
+
+        ASTNode::Eq {
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+
+    fn parse_if(&mut self) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::If) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+        let condition = self.parse_expression(0);
+        println!("condition: {:?}", condition);
+        let then = self.parse_expression(0);
+        println!("then: {:?}", then);
+        let else_ = if self.get_current_token() == Some(Token::Else) {
+            Some(Box::new(self.parse_expression(0)))
+        } else {
+            None
+        };
+        println!("else_: {:?}", else_);
+
+        ASTNode::If {
+            condition: Box::new(condition),
+            then: Box::new(then),
+            else_,
+            value_type: ValueType::Any,
         }
     }
 
     fn parse_function_call_arguments(&mut self) -> ASTNode {
         match self.get_current_token() {
             Some(Token::Pipe) => self.consume_token(),
-            _ => {None}
+            _ => None,
         };
         let mut arguments = vec![];
         while let Some(token) = self.get_current_token() {
@@ -608,15 +729,19 @@ impl Parser {
             let value = match token {
                 Token::Number(value) => Value::Number(value),
                 Token::String(value) => Value::String(value),
-                _ => panic!("unexpected token: {:?}", token)
+                _ => panic!("unexpected token: {:?}", token),
             };
             list.push(ASTNode::Literal(value));
             self.consume_token();
         }
-        ASTNode::Literal(Value::List(list.iter().map(|x| match x {
-            ASTNode::Literal(value) => value.clone(),
-            _ => panic!("unexpected node")
-        }).collect()))
+        ASTNode::Literal(Value::List(
+            list.iter()
+                .map(|x| match x {
+                    ASTNode::Literal(value) => value.clone(),
+                    _ => panic!("unexpected node"),
+                })
+                .collect(),
+        ))
     }
 
     fn parse_block(&mut self) -> ASTNode {
@@ -635,8 +760,8 @@ impl Parser {
                 Some(Token::Eof) => {
                     self.pos = 0;
                     self.line += 1;
-                    continue
-                },
+                    continue;
+                }
                 _ => {}
             };
             let statement = self.parse_expression(0);
@@ -650,15 +775,19 @@ impl Parser {
         loop {
             let token = match self.get_current_token() {
                 Some(token) => token,
-                _ => break
+                _ => break,
             };
+            if token == Token::Eq {
+                lhs = self.parse_eq(lhs);
+                continue;
+            }
             if token == Token::RArrow {
                 if self.is_lparen_call() {
                     self.pos += 1;
                     let rhs = self.parse_primary();
-                    lhs = ASTNode::LambdaCall{
+                    lhs = ASTNode::LambdaCall {
                         lambda: Box::new(rhs),
-                        arguments: vec![lhs]
+                        arguments: vec![lhs],
                     };
                     continue;
                 }
@@ -693,7 +822,7 @@ impl Parser {
         match token {
             Token::Plus | Token::Minus => Some((1, 2)),
             Token::Mul | Token::Div => Some((3, 4)),
-            _ => None
+            _ => None,
         }
     }
 
@@ -707,7 +836,7 @@ impl Parser {
             ast_nodes.push(self.parse());
             self.line += 1;
             if self.line >= self.tokens.len() {
-                break
+                break;
             }
             self.pos = 0;
         }
@@ -721,64 +850,131 @@ mod tests {
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        let mut parser = Parser::new(vec![Token::Minus, Token::Number(Fraction::from(1)), Token::Plus, Token::Number(Fraction::from(2)), Token::Mul, Token::Number(Fraction::from(3)), Token::Eof]);
-        assert_eq!(parser.parse(), ASTNode::BinaryOp {
-            left: Box::new(ASTNode::PrefixOp{
-                op: Token::Minus,
-                expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-            }),
-            op: Token::Plus,
-            right: Box::new(ASTNode::BinaryOp{
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
-                op: Token::Mul,
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
-            })
-        });
+        let mut parser = Parser::new(vec![
+            Token::Minus,
+            Token::Number(Fraction::from(1)),
+            Token::Plus,
+            Token::Number(Fraction::from(2)),
+            Token::Mul,
+            Token::Number(Fraction::from(3)),
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::BinaryOp {
+                left: Box::new(ASTNode::PrefixOp {
+                    op: Token::Minus,
+                    expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                }),
+                op: Token::Plus,
+                right: Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
+                    op: Token::Mul,
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
+                })
+            }
+        );
     }
 
     #[test]
     fn test_type_specified() {
-        let mut parser = Parser::new(vec![Token::Mutable, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
-        assert_eq!(parser.parse(), ASTNode::Assign {
-            name: "x".into(),
-            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-            variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number,
-            is_new: true
-        });
+        let mut parser = Parser::new(vec![
+            Token::Mutable,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Assign {
+                name: "x".into(),
+                value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                variable_type: EnvVariableType::Mutable,
+                value_type: ValueType::Number,
+                is_new: true
+            }
+        );
     }
 
     #[test]
     fn test_type_estimate() {
-        let mut parser = Parser::new(vec![Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof]);
-        assert_eq!(parser.parse(), ASTNode::Assign {
-            name: "x".into(),
-            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-            variable_type: EnvVariableType::Mutable,
-            value_type: ValueType::Number,
-            is_new: true
-        });
+        let mut parser = Parser::new(vec![
+            Token::Mutable,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Assign {
+                name: "x".into(),
+                value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                variable_type: EnvVariableType::Mutable,
+                value_type: ValueType::Number,
+                is_new: true
+            }
+        );
     }
 
     #[test]
     fn test_register_function() {
-        let mut parser = Parser::new(vec![Token::Function, Token::Identifier("foo".into()), Token::Equal, Token::LParen, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Comma, Token::Identifier("y".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::Colon, Token::Identifier("number".into()), Token::LBrace, Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Identifier("y".into()), Token::RBrace, Token::Eof]);
-        assert_eq!(parser.parse(), ASTNode::Function {
-            name: "foo".into(),
-            arguments: vec![ASTNode::Variable{name: "x".into(), value_type: Some(ValueType::Number)}, ASTNode::Variable{name: "y".into(), value_type: Some(ValueType::Number)}],
-            body: Box::new(
-                ASTNode::Block(vec![
-                    ASTNode::Return(Box::new(
-                        ASTNode::BinaryOp{
-                            left: Box::new(ASTNode::Variable{name: "x".into(), value_type: Some(ValueType::Number)}),
-                            op: Token::Plus,
-                            right: Box::new(ASTNode::Variable{name: "y".into(), value_type: Some(ValueType::Number)}),
-                        }
-                    ))
-                ])
-            ),
-            return_type: ValueType::Number
-        })
+        let mut parser = Parser::new(vec![
+            Token::Function,
+            Token::Identifier("foo".into()),
+            Token::Equal,
+            Token::LParen,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Comma,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::RParen,
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::LBrace,
+            Token::Return,
+            Token::Identifier("x".into()),
+            Token::Plus,
+            Token::Identifier("y".into()),
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Function {
+                name: "foo".into(),
+                arguments: vec![
+                    ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: Some(ValueType::Number)
+                    },
+                    ASTNode::Variable {
+                        name: "y".into(),
+                        value_type: Some(ValueType::Number)
+                    }
+                ],
+                body: Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(
+                    ASTNode::BinaryOp {
+                        left: Box::new(ASTNode::Variable {
+                            name: "x".into(),
+                            value_type: Some(ValueType::Number)
+                        }),
+                        op: Token::Plus,
+                        right: Box::new(ASTNode::Variable {
+                            name: "y".into(),
+                            value_type: Some(ValueType::Number)
+                        }),
+                    }
+                ))])),
+                return_type: ValueType::Number
+            }
+        )
     }
 
     #[test]
@@ -797,7 +993,9 @@ mod tests {
             Token::RBrace,
             Token::Eof,
         ]);
-        assert_eq!(parser.parse_block(), ASTNode::Block(vec![
+        assert_eq!(
+            parser.parse_block(),
+            ASTNode::Block(vec![
                 ASTNode::BinaryOp {
                     left: Box::new(ASTNode::Variable {
                         name: "x".into(),
@@ -814,16 +1012,24 @@ mod tests {
                     op: Token::Minus,
                     right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
                 }))
-        ]));
+            ])
+        );
     }
 
     #[test]
     fn test_reassign_to_mutable_variable() {
         let mut parser = Parser::new(vec![
-            Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(1)), Token::Eof, 
-            Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(2)), Token::Eof
+            Token::Mutable,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(2)),
+            Token::Eof,
         ]);
-    
+
         let expected_ast = vec![
             ASTNode::Assign {
                 name: "x".into(),
@@ -838,12 +1044,11 @@ mod tests {
                 variable_type: EnvVariableType::Mutable,
                 value_type: ValueType::Number,
                 is_new: false, // 再代入
-            }
+            },
         ];
-    
+
         assert_eq!(parser.parse_lines(), expected_ast);
     }
-
 
     #[test]
     fn test_function_call() {
@@ -859,22 +1064,25 @@ mod tests {
             Token::Identifier("f1".into()),
             Token::Eof,
         ]);
-    
+
         assert_eq!(
             parser.parse(),
             ASTNode::FunctionCall {
                 name: "f1".into(),
-                arguments: Box::new(ASTNode::FunctionCallArgs([
-                    ASTNode::Variable {
-                        name: "x".into(),
-                        value_type: None,
-                    },
-                    ASTNode::Variable {
-                        name: "y".into(),
-                        value_type: None,
-                    },
-                    ASTNode::Literal(Value::Number(Fraction::from(1))),
-                ].to_vec())),
+                arguments: Box::new(ASTNode::FunctionCallArgs(
+                    [
+                        ASTNode::Variable {
+                            name: "x".into(),
+                            value_type: None,
+                        },
+                        ASTNode::Variable {
+                            name: "y".into(),
+                            value_type: None,
+                        },
+                        ASTNode::Literal(Value::Number(Fraction::from(1))),
+                    ]
+                    .to_vec()
+                )),
             }
         );
     }
@@ -882,8 +1090,15 @@ mod tests {
     #[should_panic(expected = "It is an immutable variable and cannot be reassigned")]
     fn test_reassign_to_immutable_variable_should_panic() {
         let mut parser = Parser::new(vec![
-            Token::Immutable, Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(10)), Token::Eof,
-            Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(20)), Token::Eof
+            Token::Immutable,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(10)),
+            Token::Eof,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(20)),
+            Token::Eof,
         ]);
         // 最初のparseで変数定義
         let _ = parser.parse();
@@ -895,97 +1110,137 @@ mod tests {
     #[test]
     fn test_function_without_arguments_and_void_return() {
         let mut parser = Parser::new(vec![
-            Token::Function, Token::Identifier("no_args".into()), Token::Equal,
-            Token::LParen, Token::RParen, // 引数なし
+            Token::Function,
+            Token::Identifier("no_args".into()),
+            Token::Equal,
+            Token::LParen,
+            Token::RParen, // 引数なし
             // 戻り値の型指定なし → void
             Token::LBrace,
-            Token::Return, Token::Number(Fraction::from(42)),
+            Token::Return,
+            Token::Number(Fraction::from(42)),
             Token::RBrace,
             Token::Eof,
         ]);
-        assert_eq!(parser.parse(), ASTNode::Function {
-            name: "no_args".into(),
-            arguments: vec![],
-            body: Box::new(
-                ASTNode::Block(vec![
-                    ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(42)))))
-                ])
-            ),
-            return_type: ValueType::Void
-        })
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Function {
+                name: "no_args".into(),
+                arguments: vec![],
+                body: Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(
+                    ASTNode::Literal(Value::Number(Fraction::from(42)))
+                ))])),
+                return_type: ValueType::Void
+            }
+        )
     }
     #[test]
     fn test_function_call_with_no_arguments() {
         let mut parser = Parser::new(vec![
-            Token::Pipe, Token::Pipe, Token::RArrow, Token::Identifier("func".into()), Token::Eof,
+            Token::Pipe,
+            Token::Pipe,
+            Token::RArrow,
+            Token::Identifier("func".into()),
+            Token::Eof,
         ]);
-        assert_eq!(parser.parse(), ASTNode::FunctionCall {
-            name: "func".into(),
-            arguments: Box::new(ASTNode::FunctionCallArgs(vec![]))
-        });
+        assert_eq!(
+            parser.parse(),
+            ASTNode::FunctionCall {
+                name: "func".into(),
+                arguments: Box::new(ASTNode::FunctionCallArgs(vec![]))
+            }
+        );
     }
-    
+
     #[test]
     fn test_nested_block_scope() {
         let mut parser = Parser::new(vec![
             Token::LBrace,
-                Token::Mutable, Token::Identifier("x".into()), Token::Equal, Token::Number(Fraction::from(10)), Token::Eof,
-                Token::LBrace,
-                    Token::Immutable, Token::Identifier("y".into()), Token::Equal, Token::Number(Fraction::from(20)), Token::Eof,
-                Token::RBrace,
-                Token::Return, Token::Identifier("x".into()), Token::Plus, Token::Number(Fraction::from(1)), Token::Eof,
+            Token::Mutable,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(10)),
+            Token::Eof,
+            Token::LBrace,
+            Token::Immutable,
+            Token::Identifier("y".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(20)),
+            Token::Eof,
+            Token::RBrace,
+            Token::Return,
+            Token::Identifier("x".into()),
+            Token::Plus,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
             Token::RBrace,
             Token::Eof,
         ]);
-        assert_eq!(parser.parse_block(), ASTNode::Block(vec![
-            ASTNode::Assign {
-                name: "x".into(),
-                value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(10)))),
-                variable_type: EnvVariableType::Mutable,
-                value_type: ValueType::Number,
-                is_new: true,
-            },
+        assert_eq!(
+            parser.parse_block(),
             ASTNode::Block(vec![
                 ASTNode::Assign {
+                    name: "x".into(),
+                    value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(10)))),
+                    variable_type: EnvVariableType::Mutable,
+                    value_type: ValueType::Number,
+                    is_new: true,
+                },
+                ASTNode::Block(vec![ASTNode::Assign {
                     name: "y".into(),
                     value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(20)))),
                     variable_type: EnvVariableType::Immutable,
                     value_type: ValueType::Number,
                     is_new: true,
-                }
-            ]),
-            ASTNode::Return(Box::new(ASTNode::BinaryOp {
-                left: Box::new(ASTNode::Variable {
-                    name: "x".into(),
-                    value_type: Some(ValueType::Number)
-                }),
-                op: Token::Plus,
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-            }))
-        ]));
+                }]),
+                ASTNode::Return(Box::new(ASTNode::BinaryOp {
+                    left: Box::new(ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: Some(ValueType::Number)
+                    }),
+                    op: Token::Plus,
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                }))
+            ])
+        );
     }
-    
+
     #[test]
     fn test_prefix_operator_only() {
         let mut parser = Parser::new(vec![
-            Token::Minus, Token::Number(Fraction::from(5)), Token::Eof
+            Token::Minus,
+            Token::Number(Fraction::from(5)),
+            Token::Eof,
         ]);
-        assert_eq!(parser.parse(), ASTNode::PrefixOp {
-            op: Token::Minus,
-            expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5))))
-        })
+        assert_eq!(
+            parser.parse(),
+            ASTNode::PrefixOp {
+                op: Token::Minus,
+                expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5))))
+            }
+        )
     }
 
     #[test]
     fn test_list() {
         let mut parser = Parser::new(vec![
-            Token::LBrancket, Token::Number(Fraction::from(1)), Token::Comma, Token::Number(Fraction::from(2)), Token::Comma, Token::Number(Fraction::from(3)), Token::RBrancket, Token::Eof
+            Token::LBrancket,
+            Token::Number(Fraction::from(1)),
+            Token::Comma,
+            Token::Number(Fraction::from(2)),
+            Token::Comma,
+            Token::Number(Fraction::from(3)),
+            Token::RBrancket,
+            Token::Eof,
         ]);
-        assert_eq!(parser.parse(), ASTNode::Literal(Value::List(vec![
-            Value::Number(Fraction::from(1)),
-            Value::Number(Fraction::from(2)),
-            Value::Number(Fraction::from(3))
-        ])));
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Literal(Value::List(vec![
+                Value::Number(Fraction::from(1)),
+                Value::Number(Fraction::from(2)),
+                Value::Number(Fraction::from(3))
+            ]))
+        );
     }
 
     #[test]
@@ -995,60 +1250,134 @@ mod tests {
             Token::Number(Fraction::new(5u64, 2u64)), // 2.5
             Token::Plus,
             Token::Number(Fraction::new(3u64, 2u64)), // 1.5
-            Token::Eof
+            Token::Eof,
         ]);
-        
-        assert_eq!(parser.parse(), ASTNode::BinaryOp {
-            left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(5u64, 2u64)))),
-            op: Token::Plus,
-            right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(3u64, 2u64))))
-        });
+
+        assert_eq!(
+            parser.parse(),
+            ASTNode::BinaryOp {
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(5u64, 2u64)))),
+                op: Token::Plus,
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(3u64, 2u64))))
+            }
+        );
 
         // 分数の演算テスト
         let mut parser = Parser::new(vec![
             Token::Number(Fraction::new(1u64, 3u64)), // 1/3
             Token::Mul,
             Token::Number(Fraction::new(2u64, 5u64)), // 2/5
-            Token::Eof
+            Token::Eof,
         ]);
-        
-        assert_eq!(parser.parse(), ASTNode::BinaryOp {
-            left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(1u64, 3u64)))),
-            op: Token::Mul,
-            right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(2u64, 5u64))))
-        });
+
+        assert_eq!(
+            parser.parse(),
+            ASTNode::BinaryOp {
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(1u64, 3u64)))),
+                op: Token::Mul,
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(2u64, 5u64))))
+            }
+        );
     }
 
     #[test]
     fn test_function_call_chain() {
-        let mut parser = Parser::new(vec![Token::Number(Fraction::from(1)), Token::RArrow, Token::Identifier("f1".into()), Token::RArrow, Token::Identifier("f2".into()), Token::Eof]);
-        assert_eq!(parser.parse(),
-        ASTNode::FunctionCall { name: "f2".into(),
-        arguments: Box::new(ASTNode::FunctionCallArgs(vec![
-            ASTNode::FunctionCall { name: "f1".into(),
-            arguments: Box::new(ASTNode::FunctionCallArgs(vec![
-                ASTNode::Literal(Value::Number(Fraction::from(1)))]))
-            }]))
-        });
+        let mut parser = Parser::new(vec![
+            Token::Number(Fraction::from(1)),
+            Token::RArrow,
+            Token::Identifier("f1".into()),
+            Token::RArrow,
+            Token::Identifier("f2".into()),
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::FunctionCall {
+                name: "f2".into(),
+                arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::FunctionCall {
+                    name: "f1".into(),
+                    arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Literal(
+                        Value::Number(Fraction::from(1))
+                    )]))
+                }]))
+            }
+        );
     }
 
     #[test]
-    fn  test_lambda() {
-        let mut parser = Parser::new(vec![Token::Immutable, Token::Identifier("inc".into()), Token::Equal, Token::BackSlash, Token::Pipe, Token::Identifier("x".into()), Token::Colon, Token::Identifier("number".into()), Token::Pipe, Token::RRocket, Token::Identifier("x".into()), Token::Plus, Token::Number(Fraction::from(1)), Token::Eof]);
-        assert_eq!(parser.parse(), ASTNode::Assign {
-            name: "inc".into(),
-            variable_type: EnvVariableType::Immutable,
-            is_new: true,
-            value_type: ValueType::Lambda,
-            value: Box::new(ASTNode::Lambda {
-                arguments: vec![ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }],
-                body: Box::new(ASTNode::BinaryOp {
-                    left: Box::new(ASTNode::Variable { name: "x".into(), value_type: Some(ValueType::Number) }),
-                    op: Token::Plus,
-                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-                })
-            }),
-        });
+    fn test_lambda() {
+        let mut parser = Parser::new(vec![
+            Token::Immutable,
+            Token::Identifier("inc".into()),
+            Token::Equal,
+            Token::BackSlash,
+            Token::Pipe,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Pipe,
+            Token::RRocket,
+            Token::Identifier("x".into()),
+            Token::Plus,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Assign {
+                name: "inc".into(),
+                variable_type: EnvVariableType::Immutable,
+                is_new: true,
+                value_type: ValueType::Lambda,
+                value: Box::new(ASTNode::Lambda {
+                    arguments: vec![ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: Some(ValueType::Number)
+                    }],
+                    body: Box::new(ASTNode::BinaryOp {
+                        left: Box::new(ASTNode::Variable {
+                            name: "x".into(),
+                            value_type: Some(ValueType::Number)
+                        }),
+                        op: Token::Plus,
+                        right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                    })
+                }),
+            }
+        );
     }
 
+    #[test]
+    fn test_if() {
+        let mut parser = Parser::new(vec![
+            Token::If,
+            Token::Identifier("x".into()),
+            Token::Eq,
+            Token::Number(Fraction::from(1)),
+            Token::LBrace,
+            Token::Eof,
+            Token::Return,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::If {
+                condition: Box::new(ASTNode::Eq {
+                    left: Box::new(ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: None
+                    }),
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                }),
+                then: Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(
+                    ASTNode::Literal(Value::Number(Fraction::from(1)))
+                ))])),
+                else_: None,
+                value_type: ValueType::Any
+            }
+        );
+    }
 }

@@ -1,17 +1,16 @@
-mod tokenizer;
-mod parser;
+mod builtin;
 mod environment;
 mod eval;
+mod parser;
+mod tokenizer;
 mod wasm;
-mod builtin;
 
-use std::env;
-use crate::tokenizer::tokenize;
-use crate::parser::Parser;
+use crate::builtin::register_builtins;
 use crate::environment::Env;
 use crate::eval::{eval, evals};
-use crate::builtin::register_builtins;
-
+use crate::parser::Parser;
+use crate::tokenizer::tokenize;
+use std::env;
 
 fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
     let mut env = Env::new();
@@ -57,5 +56,3 @@ fn main() {
         }
     }
 }
-
-
