@@ -52,6 +52,33 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             let result = eval(*value, env);
             result
         }
+        ASTNode::Eq { left, right } => {
+            let left_value = eval(*left, env);
+            let right_value = eval(*right, env);
+            match (left_value, right_value) {
+                (Value::Number(l), Value::Number(r)) => Value::Bool(l == r),
+                _ => panic!("Unsupported operation"),
+            }
+        }
+        ASTNode::If {
+            condition,
+            then,
+            else_,
+            value_type: _,
+        } => {
+            let condition = eval(*condition, env);
+            match condition {
+                Value::Bool(true) => eval(*then, env),
+                Value::Bool(false) => {
+                    if let Some(else_) = else_{
+                        eval(*else_, env)
+                    } else {
+                        Value::Void
+                    }
+                }
+                _ => panic!("Unexpected value type"),
+            }
+        }
         ASTNode::Assign {
             name,
             value,
@@ -847,5 +874,22 @@ mod tests {
         };
         let result = eval(call_f1, &mut env);
         assert_eq!(result, Value::Number(Fraction::from(6))); // 2 + 0 + 4 = 6
+    }
+
+    #[test]
+    fn test_if() {
+        let mut env = Env::new();
+        let ast = ASTNode::If {
+            condition: Box::new(ASTNode::Eq {
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+            }),
+            then: Box::new(ASTNode::Block(vec![
+                ASTNode::Literal(Value::Number(Fraction::from(1)))
+            ])),
+            else_: None,
+            value_type: ValueType::Void
+        };
+        assert_eq!(Value::Number(Fraction::from(1)), eval(ast, &mut env));
     }
 }

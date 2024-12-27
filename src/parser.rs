@@ -321,7 +321,6 @@ impl Parser {
     fn parse_lambda_call(&mut self, left: ASTNode) -> ASTNode {
         self.consume_token();
         let lambda = self.parse_lambda();
-        println!("{:?}", lambda);
         let arguments = match left {
             ASTNode::FunctionCallArgs(arguments) => arguments,
             _ => vec![left],
@@ -587,7 +586,25 @@ impl Parser {
             Token::Pipe => self.parse_function_call_arguments(),
             Token::BackSlash => self.parse_lambda(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
-            Token::If => self.parse_if(),
+            Token::If => {
+                let ast_if = self.parse_if();
+                match ast_if {
+                    ASTNode::If {
+                        condition: _,
+                        then: _,
+                        ref else_,
+                        ref value_type,
+                    } => {
+                        if *value_type != ValueType::Void {
+                            if else_.is_none() {
+                                panic!("if expressions without else");
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                ast_if
+            },
             Token::LParen => {
                 self.pos += 1;
                 let expr = self.parse_expression(0);
@@ -676,21 +693,77 @@ impl Parser {
             _ => panic!("unexpected token"),
         };
         let condition = self.parse_expression(0);
-        println!("condition: {:?}", condition);
         let then = self.parse_expression(0);
-        println!("then: {:?}", then);
-        let else_ = if self.get_current_token() == Some(Token::Else) {
-            Some(Box::new(self.parse_expression(0)))
-        } else {
-            None
+        match then {
+            ASTNode::Block(_) => {
+                self.pos = 0;
+                self.line += 1;
+            }
+            _ => {}
         };
-        println!("else_: {:?}", else_);
+        let else_ = match self.get_current_token() {
+            Some(Token::Else) => {
+                self.consume_token();
+                if self.get_current_token() == Some(Token::If) {
+                    Some(Box::new(self.parse_if()))
+                } else {
+                    Some(Box::new(self.parse_expression(0)))
+                }
+            }
+            _ => None,
+        };
+
+        let value_type = {
+            let mut then_type = None;
+            let mut else_type = None;
+
+            match then {
+                ASTNode::Return(ref value) => {
+                    then_type = Some(self.infer_type(&value));
+                },
+                ASTNode::Block(ref statements) => {
+                    for statement in statements {
+                        if let ASTNode::Return(ref value) = statement {
+                            then_type = Some(self.infer_type(&value));
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            if let Some(else_node) = &else_ {
+                match &**else_node {
+                    ASTNode::Return(ref value) => {
+                        else_type = Some(self.infer_type(&value));
+                    },
+                    ASTNode::Block(ref statements) => {
+                        for statement in statements {
+                            if let ASTNode::Return(ref value) = statement { 
+                                else_type = Some(self.infer_type(&value));
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            match (then_type, else_type) {
+                (Some(t), Some(e)) if t == e => t,
+                (Some(t), None) => t,
+                (None, Some(e)) => e,
+                (None, None) => Ok(ValueType::Void),
+                _ => Err("Type mismatch in if statement".to_string())
+            }
+        };
+        if value_type.is_err() {
+            panic!("{}", value_type.err().unwrap());
+        }
 
         ASTNode::If {
             condition: Box::new(condition),
             then: Box::new(then),
             else_,
-            value_type: ValueType::Any,
+            value_type: value_type.unwrap(),
         }
     }
 
@@ -1356,6 +1429,40 @@ mod tests {
             Token::Number(Fraction::from(1)),
             Token::LBrace,
             Token::Eof,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::If {
+                condition: Box::new(ASTNode::Eq {
+                    left: Box::new(ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: None
+                    }),
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                }),
+                then: Box::new(ASTNode::Block(vec![
+                    ASTNode::Literal(Value::Number(Fraction::from(1)))
+                ])),
+                else_: None,
+                value_type: ValueType::Void
+            }
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "if expressions without else")]
+    fn test_partial_return_if() {
+        let mut parser = Parser::new(vec![
+            Token::If,
+            Token::Identifier("x".into()),
+            Token::Eq,
+            Token::Number(Fraction::from(1)),
+            Token::LBrace,
+            Token::Eof,
             Token::Return,
             Token::Number(Fraction::from(1)),
             Token::Eof,
@@ -1376,7 +1483,174 @@ mod tests {
                     ASTNode::Literal(Value::Number(Fraction::from(1)))
                 ))])),
                 else_: None,
-                value_type: ValueType::Any
+                value_type: ValueType::Number
+            }
+        );
+    }
+
+    #[test]
+    fn test_non_return_if() {
+        let mut parser = Parser::new(vec![
+            Token::If,
+            Token::Identifier("x".into()),
+            Token::Eq,
+            Token::Number(Fraction::from(1)),
+            Token::LBrace,
+            Token::Eof,
+            Token::Number(Fraction::from(1)),
+            Token::RBrace,
+            Token::Eof,
+        ]);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::If {
+                condition: Box::new(ASTNode::Eq {
+                    left: Box::new(ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: None
+                    }),
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+                }),
+                then: Box::new(ASTNode::Block(vec![ASTNode::Literal(Value::Number(Fraction::from(1)))])),
+                else_: None,
+                value_type: ValueType::Void
+            }
+        );
+    }
+
+    #[test]
+    fn test_else() {
+        let tokens = vec![
+            Token::If,
+            Token::Identifier("x".into()),
+            Token::Eq,
+            Token::Number(Fraction::from(1)),
+            Token::LBrace,
+            Token::Eof,
+            Token::Return,
+            Token::Number(Fraction::from(1)),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+            Token::Else,
+            Token::LBrace,
+            Token::Eof,
+            Token::Return,
+            Token::Number(Fraction::from(0)),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        let condition = Box::new(ASTNode::Eq {
+            left: Box::new(ASTNode::Variable {
+                name: "x".into(),
+                value_type: None
+            }),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        });
+        let then = Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))))]));
+        let else_ = Some(Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(0)))))])));
+        assert_eq!(
+            parser.parse_lines(),
+            vec![
+            ASTNode::If {
+                condition,
+                then,
+                else_,
+                value_type: ValueType::Number
+            }
+            ]
+        );
+    }
+    #[test]
+    fn test_else_if() {
+        let tokens = vec![
+           Token::If,
+           Token::Identifier("x".into()),
+           Token::Eq,
+           Token::Number(Fraction::from(1)),
+           Token::LBrace,
+           Token::Eof,
+           Token::Return,
+           Token::Number(Fraction::from(1)),
+           Token::Eof,
+           Token::RBrace,
+           Token::Eof,
+           Token::Else,
+           Token::If,
+           Token::Identifier("x".into()),
+           Token::Eq,
+           Token::Number(Fraction::from(2)),
+           Token::LBrace,
+           Token::Eof,
+           Token::Return,
+           Token::Number(Fraction::from(2)),
+           Token::Eof,
+           Token::RBrace,
+           Token::Eof,
+           Token::Else,
+           Token::If,
+           Token::Identifier("x".into()),
+           Token::Eq,
+           Token::Number(Fraction::from(3)),
+           Token::LBrace,
+           Token::Eof,
+           Token::Return,
+           Token::Number(Fraction::from(3)),
+           Token::Eof,
+           Token::RBrace,
+           Token::Eof,
+           Token::Else,
+           Token::LBrace,
+           Token::Eof,
+           Token::Return,
+           Token::Number(Fraction::from(0)),
+           Token::Eof,
+           Token::RBrace,
+           Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        let condition = Box::new(ASTNode::Eq {
+            left: Box::new(ASTNode::Variable {
+                name: "x".into(),
+                value_type: None
+            }),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        });
+        let then = Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))))]));
+        let else_ = Some(Box::new(ASTNode::If {
+            condition: Box::new(ASTNode::Eq {
+                left: Box::new(ASTNode::Variable {
+                    name: "x".into(),
+                    value_type: None
+                }),
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))
+                )
+            }),
+            then: Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))))])),
+            else_: Some(Box::new(ASTNode::If {
+                condition: Box::new(ASTNode::Eq {
+                    left: Box::new(ASTNode::Variable {
+                        name: "x".into(),
+                        value_type: None
+                    }),
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))
+                    )
+                }),
+                then: Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))))])),
+                else_: Some(Box::new(ASTNode::Block(vec![ASTNode::Return(Box::new(ASTNode::Literal(Value::Number(Fraction::from(0)))))]))),
+                value_type: ValueType::Number
+            })),
+            value_type: ValueType::Number
+        }));
+        assert_eq!(
+            parser.parse(),
+            ASTNode::If {
+                condition,
+                then,
+                else_,
+                value_type: ValueType::Number
             }
         );
     }

@@ -610,4 +610,72 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_else() {
+        assert_eq!(
+            tokenize(&"if x == 1 {\n return 1\n } else {\n return 0 \n}".to_string()),
+            vec![
+                Token::If,
+                Token::Identifier("x".into()),
+                Token::Eq,
+                Token::Number(Fraction::from(1)),
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Number(Fraction::from(1)),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof,
+                Token::Else,
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Number(Fraction::from(0)),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_else_if() {
+        assert_eq!(
+            tokenize(&"if x == 1 {\n return 1\n } else if x == 2 {\n return 2 \n} else {\n return 0 \n}".to_string()),
+            vec![
+                Token::If,
+                Token::Identifier("x".into()),
+                Token::Eq,
+                Token::Number(Fraction::from(1)),
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Number(Fraction::from(1)),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof,
+                Token::Else,
+                Token::If,
+                Token::Identifier("x".into()),
+                Token::Eq,
+                Token::Number(Fraction::from(2)),
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Number(Fraction::from(2)),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof,
+                Token::Else,
+                Token::LBrace,
+                Token::Eof,
+                Token::Return,
+                Token::Number(Fraction::from(0)),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
 }
