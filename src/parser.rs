@@ -694,6 +694,13 @@ impl Parser {
         };
         let condition = self.parse_expression(0);
         let then = self.parse_expression(0);
+        match then {
+            ASTNode::Block(_) => {
+                self.pos = 0;
+                self.line += 1;
+            }
+            _ => {}
+        };
         let else_ = match self.get_current_token() {
             Some(Token::Else) => {
                 self.consume_token();
@@ -1524,6 +1531,7 @@ mod tests {
             Token::Number(Fraction::from(1)),
             Token::Eof,
             Token::RBrace,
+            Token::Eof,
             Token::Else,
             Token::LBrace,
             Token::Eof,
@@ -1568,6 +1576,7 @@ mod tests {
            Token::Number(Fraction::from(1)),
            Token::Eof,
            Token::RBrace,
+           Token::Eof,
            Token::Else,
            Token::If,
            Token::Identifier("x".into()),
@@ -1579,6 +1588,7 @@ mod tests {
            Token::Number(Fraction::from(2)),
            Token::Eof,
            Token::RBrace,
+           Token::Eof,
            Token::Else,
            Token::If,
            Token::Identifier("x".into()),
@@ -1590,6 +1600,7 @@ mod tests {
            Token::Number(Fraction::from(3)),
            Token::Eof,
            Token::RBrace,
+           Token::Eof,
            Token::Else,
            Token::LBrace,
            Token::Eof,
