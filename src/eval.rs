@@ -314,8 +314,22 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 _ => panic!("Unsupported operation"),
             }
         }
+        ASTNode::Match { expr, arms } => eval_match(*expr, arms, env),
         _ => panic!("Unsupported ast node: {:?}", ast),
     }
+}
+
+fn eval_match(expr: ASTNode, arms: Vec<ASTNode>, env: &mut Env) -> Value {
+    let expr_value = eval(expr, env);
+    for arm in arms {
+        if let ASTNode::MatchArm { pattern, body } = arm {
+            let pattern_value = eval(*pattern, env);
+            if pattern_value == expr_value {
+                return eval(*body, env);
+            }
+        }
+    }
+    Value::Void
 }
 
 #[cfg(test)]
@@ -891,5 +905,24 @@ mod tests {
             value_type: ValueType::Void
         };
         assert_eq!(Value::Number(Fraction::from(1)), eval(ast, &mut env));
+    }
+
+    #[test]
+    fn test_match() {
+        let mut env = Env::new();
+        let ast = ASTNode::Match {
+            expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            arms: vec![
+                ASTNode::MatchArm {
+                    pattern: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                    body: Box::new(ASTNode::Literal(Value::String("one".into()))),
+                },
+                ASTNode::MatchArm {
+                    pattern: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
+                    body: Box::new(ASTNode::Literal(Value::String("two".into()))),
+                },
+            ],
+        };
+        assert_eq!(Value::String("one".into()), eval(ast, &mut env));
     }
 }

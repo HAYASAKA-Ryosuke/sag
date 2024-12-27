@@ -139,6 +139,14 @@ pub enum ASTNode {
         else_: Option<Box<ASTNode>>,
         value_type: ValueType,
     },
+    Match {
+        expr: Box<ASTNode>,
+        arms: Vec<ASTNode>,
+    },
+    MatchArm {
+        pattern: Box<ASTNode>,
+        body: Box<ASTNode>,
+    },
 }
 
 pub struct Parser {
@@ -605,6 +613,7 @@ impl Parser {
                 }
                 ast_if
             },
+            Token::Match => self.parse_match(),
             Token::LParen => {
                 self.pos += 1;
                 let expr = self.parse_expression(0);
@@ -896,6 +905,33 @@ impl Parser {
             Token::Plus | Token::Minus => Some((1, 2)),
             Token::Mul | Token::Div => Some((3, 4)),
             _ => None,
+        }
+    }
+
+    fn parse_match(&mut self) -> ASTNode {
+        self.consume_token();
+        let expr = self.parse_expression(0);
+        self.extract_token(Token::LBrace);
+        let mut arms = vec![];
+        while let Some(token) = self.get_current_token() {
+            if token == Token::RBrace {
+                self.consume_token();
+                break;
+            }
+            let pattern = self.parse_expression(0);
+            self.extract_token(Token::RArrow);
+            let body = self.parse_expression(0);
+            arms.push(ASTNode::MatchArm {
+                pattern: Box::new(pattern),
+                body: Box::new(body),
+            });
+            if self.get_current_token() == Some(Token::Comma) {
+                self.consume_token();
+            }
+        }
+        ASTNode::Match {
+            expr: Box::new(expr),
+            arms,
         }
     }
 
@@ -1651,6 +1687,44 @@ mod tests {
                 then,
                 else_,
                 value_type: ValueType::Number
+            }
+        );
+    }
+
+    #[test]
+    fn test_match() {
+        let tokens = vec![
+            Token::Match,
+            Token::Identifier("x".into()),
+            Token::LBrace,
+            Token::Number(Fraction::from(1)),
+            Token::RArrow,
+            Token::String("one".into()),
+            Token::Comma,
+            Token::Number(Fraction::from(2)),
+            Token::RArrow,
+            Token::String("two".into()),
+            Token::RBrace,
+            Token::Eof,
+        ];
+        let mut parser = Parser::new(tokens);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Match {
+                expr: Box::new(ASTNode::Variable {
+                    name: "x".into(),
+                    value_type: None
+                }),
+                arms: vec![
+                    ASTNode::MatchArm {
+                        pattern: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                        body: Box::new(ASTNode::Literal(Value::String("one".into()))),
+                    },
+                    ASTNode::MatchArm {
+                        pattern: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
+                        body: Box::new(ASTNode::Literal(Value::String("two".into()))),
+                    },
+                ],
             }
         );
     }
