@@ -364,6 +364,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
 mod tests {
     use super::*;
     use crate::environment::EnvVariableType;
+    use fraction::Fraction;
 
     #[test]
     fn test_four_basic_arithmetic_operations() {

@@ -734,6 +734,19 @@ mod tests {
     }
 
     #[test]
+    fn test_funtion_call_front() {
+        assert_eq!(
+            tokenize(&"f1()".to_string()),
+            vec![
+                Token::Identifier("f1".into()),
+                Token::LParen,
+                Token::RParen,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
     fn test_comparison_operations() {
         assert_eq!(
             tokenize(&"1 == 1".to_string()),

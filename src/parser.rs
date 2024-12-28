@@ -356,6 +356,16 @@ impl Parser {
         }
     }
 
+    fn parse_function_call_front(&mut self, name: String, arguments: ASTNode) -> ASTNode {
+        self.consume_token();
+
+        let function_call = ASTNode::FunctionCall {
+            name,
+            arguments: Box::new(arguments),
+        };
+        function_call
+    }
+
     fn parse_function_call(&mut self, left: ASTNode) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
@@ -634,14 +644,6 @@ impl Parser {
                 self.pos += 1;
                 let expr = self.parse_expression(0);
                 self.pos += 1;
-                match self.get_current_token() {
-                    Some(t) => {
-                        if t == Token::RParen {
-                            panic!("unexpected token: {:?}", t)
-                        }
-                    }
-                    None => panic!("unexpected token: {:?}", token),
-                }
                 expr
             }
             Token::LBrace => self.parse_block(),
@@ -651,6 +653,13 @@ impl Parser {
                 let scope = self.get_current_scope().to_string();
                 let variable_info = self.find_variables(scope, name.clone());
                 match self.get_current_token() {
+                    Some(Token::LParen) => {
+                        // 関数呼び出し
+                        self.consume_token();
+                        let arguments = self.parse_function_call_arguments_paren();
+                        let function_call = self.parse_function_call_front(name, arguments);
+                        function_call
+                    }
                     Some(Token::Equal) => {
                         // 再代入
                         self.consume_token();
@@ -860,6 +869,27 @@ impl Parser {
                 continue;
             }
             if token == Token::Pipe {
+                self.pos += 1;
+                break;
+            }
+            let value = self.parse_expression(0);
+            arguments.push(value);
+        }
+        ASTNode::FunctionCallArgs(arguments)
+    }
+
+    fn parse_function_call_arguments_paren(&mut self) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::LParen) => self.consume_token(),
+            _ => None,
+        };
+        let mut arguments = vec![];
+        while let Some(token) = self.get_current_token() {
+            if token == Token::Comma {
+                self.pos += 1;
+                continue;
+            }
+            if token == Token::RParen {
                 self.pos += 1;
                 break;
             }
