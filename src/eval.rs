@@ -61,6 +61,38 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 _ => panic!("Unsupported operation"),
             }
         }
+        ASTNode::Gte { left, right } => {
+            let left_value = eval(*left, env);
+            let right_value = eval(*right, env);
+            match (left_value, right_value) {
+                (Value::Number(l), Value::Number(r)) => Value::Bool(l >= r),
+                _ => panic!("Unsupported operation"),
+            }
+        }
+        ASTNode::Gt { left, right } => {
+            let left_value = eval(*left, env);
+            let right_value = eval(*right, env);
+            match (left_value, right_value) {
+                (Value::Number(l), Value::Number(r)) => Value::Bool(l > r),
+                _ => panic!("Unsupported operation"),
+            }
+        }
+        ASTNode::Lte { left, right } => {
+            let left_value = eval(*left, env);
+            let right_value = eval(*right, env);
+            match (left_value, right_value) {
+                (Value::Number(l), Value::Number(r)) => Value::Bool(l <= r),
+                _ => panic!("Unsupported operation"),
+            }
+        }
+        ASTNode::Lt { left, right } => {
+            let left_value = eval(*left, env);
+            let right_value = eval(*right, env);
+            match (left_value, right_value) {
+                (Value::Number(l), Value::Number(r)) => Value::Bool(l < r),
+                _ => panic!("Unsupported operation"),
+            }
+        }
         ASTNode::If {
             condition,
             then,
@@ -919,5 +951,40 @@ mod tests {
             value_type: ValueType::Void
         };
         assert_eq!(Value::Void, eval(ast, &mut env));
+    }
+
+    #[test]
+    fn test_comparison_operations() {
+        let mut env = Env::new();
+        let ast = ASTNode::Eq {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        };
+        assert_eq!(Value::Bool(true), eval(ast, &mut env));
+
+        let ast = ASTNode::Gte {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        };
+        assert_eq!(Value::Bool(true), eval(ast, &mut env));
+
+        let ast = ASTNode::Gt {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        };
+        assert_eq!(Value::Bool(false), eval(ast, &mut env));
+
+        let ast = ASTNode::Lte {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        };
+        assert_eq!(Value::Bool(true), eval(ast, &mut env));
+
+        let ast = ASTNode::Lt {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        };
+        assert_eq!(Value::Bool(false), eval(ast, &mut env));
+
     }
 }

@@ -39,6 +39,10 @@ pub enum Token {
     If,
     Else,
     Eq,
+    Lte,
+    Lt,
+    Gte,
+    Gt,
 }
 
 impl Tokenizer {
@@ -233,6 +237,32 @@ fn is_eq(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_lte(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "<=".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_lt(c: char) -> bool {
+    c == '<'
+}
+
+fn is_gte(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in ">=".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_gt(c: char) -> bool {
+    c == '>'
+}
+
 fn is_if(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "if".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -338,6 +368,30 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_eq(&mut tokenizer) {
             tokenizer.tokens.push(Token::Eq);
             tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_lte(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Lte);
+            tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_lt(c) {
+            tokenizer.tokens.push(Token::Lt);
+            tokenizer.pos += 1;
+            continue;
+        }
+
+        if is_gte(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Gte);
+            tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_gt(c) {
+            tokenizer.tokens.push(Token::Gt);
+            tokenizer.pos += 1;
             continue;
         }
 
@@ -674,6 +728,59 @@ mod tests {
                 Token::Number(Fraction::from(0)),
                 Token::Eof,
                 Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_comparison_operations() {
+        assert_eq!(
+            tokenize(&"1 == 1".to_string()),
+            vec![
+                Token::Number(Fraction::from(1)),
+                Token::Eq,
+                Token::Number(Fraction::from(1)),
+                Token::Eof
+            ]
+        );
+
+        assert_eq!(
+            tokenize(&"2 > 1".to_string()),
+            vec![
+                Token::Number(Fraction::from(2)),
+                Token::Gt,
+                Token::Number(Fraction::from(1)),
+                Token::Eof
+            ]
+        );
+
+        assert_eq!(
+            tokenize(&"3 >= 3".to_string()),
+            vec![
+                Token::Number(Fraction::from(3)),
+                Token::Gte,
+                Token::Number(Fraction::from(3)),
+                Token::Eof
+            ]
+        );
+
+        assert_eq!(
+            tokenize(&"1 < 2".to_string()),
+            vec![
+                Token::Number(Fraction::from(1)),
+                Token::Lt,
+                Token::Number(Fraction::from(2)),
+                Token::Eof
+            ]
+        );
+
+        assert_eq!(
+            tokenize(&"4 <= 4".to_string()),
+            vec![
+                Token::Number(Fraction::from(4)),
+                Token::Lte,
+                Token::Number(Fraction::from(4)),
                 Token::Eof
             ]
         );

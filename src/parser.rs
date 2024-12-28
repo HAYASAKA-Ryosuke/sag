@@ -142,6 +142,22 @@ pub enum ASTNode {
         left: Box<ASTNode>,
         right: Box<ASTNode>,
     },
+    Gte{
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
+    },
+    Gt {
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
+    },
+    Lte {
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
+    },
+    Lt {
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
+    },
     If {
         condition: Box<ASTNode>,
         then: Box<ASTNode>,
@@ -696,6 +712,62 @@ impl Parser {
         }
     }
 
+    fn parse_gte(&mut self, left: ASTNode) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::Gte) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+
+        let right = self.parse_expression(0);
+
+        ASTNode::Gte {
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+
+    fn parse_gt(&mut self, left: ASTNode) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::Gt) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+
+        let right = self.parse_expression(0);
+
+        ASTNode::Gt {
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+
+    fn parse_lte(&mut self, left: ASTNode) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::Lte) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+
+        let right = self.parse_expression(0);
+
+        ASTNode::Lte {
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+
+    fn parse_lt(&mut self, left: ASTNode) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::Lt) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+
+        let right = self.parse_expression(0);
+
+        ASTNode::Lt {
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+
     fn parse_if(&mut self) -> ASTNode {
         match self.get_current_token() {
             Some(Token::If) => self.consume_token(),
@@ -861,6 +933,22 @@ impl Parser {
             };
             if token == Token::Eq {
                 lhs = self.parse_eq(lhs);
+                continue;
+            }
+            if token == Token::Gte {
+                lhs = self.parse_gte(lhs);
+                continue;
+            }
+            if token == Token::Gt {
+                lhs = self.parse_gt(lhs);
+                continue;
+            }
+            if token == Token::Lte {
+                lhs = self.parse_lte(lhs);
+                continue;
+            }
+            if token == Token::Lt {
+                lhs = self.parse_lt(lhs);
                 continue;
             }
             if token == Token::RArrow {
@@ -1662,5 +1750,62 @@ mod tests {
                 value_type: ValueType::Number
             }
         );
+    }
+
+    #[test]
+    fn test_comparison_operations() {
+        let mut parser = Parser::new(vec![
+            Token::Number(Fraction::from(1)),
+            Token::Eq,
+            Token::Number(Fraction::from(1)),
+            Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Eq {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        });
+        let mut parser = Parser::new(vec![
+            Token::Number(Fraction::from(2)),
+            Token::Gt,
+            Token::Number(Fraction::from(1)),
+            Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Gt {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+        });
+
+        let mut parser = Parser::new(vec![
+            Token::Number(Fraction::from(3)),
+            Token::Gte,
+            Token::Number(Fraction::from(3)),
+            Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Gte {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
+        });
+
+        let mut parser = Parser::new(vec![
+            Token::Number(Fraction::from(1)),
+            Token::Lt,
+            Token::Number(Fraction::from(2)),
+            Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Lt {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2))))
+        });
+
+        let mut parser = Parser::new(vec![
+            Token::Number(Fraction::from(4)),
+            Token::Lte,
+            Token::Number(Fraction::from(4)),
+            Token::Eof
+        ]);
+        assert_eq!(parser.parse(), ASTNode::Lte {
+            left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4)))),
+            right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4))))
+        });
     }
 }
