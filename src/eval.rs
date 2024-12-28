@@ -1,7 +1,6 @@
 use crate::environment::{Env, EnvVariableType, FunctionInfo, ValueType};
 use crate::parser::{ASTNode, Value};
 use crate::tokenizer::Token;
-use fraction::Fraction;
 
 pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
     let mut values = vec![];
