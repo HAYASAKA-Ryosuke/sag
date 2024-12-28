@@ -42,14 +42,12 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             env: env.clone(),
         },
         ASTNode::Block(statements) => {
-            let mut value = Value::Void;
             for statement in statements {
-                value = eval(statement, env);
-                if let Value::Return(v) = value {
+                if let Value::Return(v) = eval(statement, env) {
                     return *v;
                 }
             }
-            value
+            Value::Void
         }
         ASTNode::Return(value) => {
             let result = eval(*value, env);
