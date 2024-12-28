@@ -42,15 +42,18 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             env: env.clone(),
         },
         ASTNode::Block(statements) => {
-            let mut value = Value::Number(Fraction::from(1));
+            let mut value = Value::Void;
             for statement in statements {
                 value = eval(statement, env);
+                if let Value::Return(v) = value {
+                    return *v;
+                }
             }
             value
         }
         ASTNode::Return(value) => {
             let result = eval(*value, env);
-            result
+            Value::Return(Box::new(result))
         }
         ASTNode::Eq { left, right } => {
             let left_value = eval(*left, env);
@@ -94,6 +97,13 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 Value::Function => ValueType::Function,
                 Value::Lambda { .. } => ValueType::Lambda,
                 Value::Void => ValueType::Void,
+                Value::Return(ref value) => {
+                    if let Value::Void = **value {
+                        ValueType::Void
+                    } else {
+                        value.value_type()
+                    }
+                },
                 Value::List(ref elements) => {
                     if elements.len() == 0 {
                         ValueType::List(Box::new(ValueType::Any))
@@ -122,7 +132,6 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             value
         }
         ASTNode::LambdaCall { lambda, arguments } => {
-            println!("LambdaCall: {:?}", arguments);
             let mut params_vec = vec![];
             let lambda = match *lambda {
                 ASTNode::Lambda { arguments, body } => (arguments, body),
@@ -229,12 +238,16 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                     );
                 }
 
-                let result = eval(function.body.unwrap(), &mut local_env);
 
+                let result = eval(function.body.unwrap(), &mut local_env);
                 env.update_global_env(&local_env);
 
                 env.leave_scope();
-                result
+                if let Value::Return(v) = result {
+                    *v
+                } else {
+                    result
+                }
             } else if env
                 .get(name.to_string(), Some(&ValueType::Lambda))
                 .is_some()
@@ -890,6 +903,23 @@ mod tests {
             else_: None,
             value_type: ValueType::Void
         };
-        assert_eq!(Value::Number(Fraction::from(1)), eval(ast, &mut env));
+        assert_eq!(Value::Void, eval(ast, &mut env));
+    }
+
+    #[test]
+    fn test_if_return() {
+        let mut env = Env::new();
+        let ast = ASTNode::If {
+            condition: Box::new(ASTNode::Eq {
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+            }),
+            then: Box::new(ASTNode::Block(vec![
+                ASTNode::Literal(Value::Number(Fraction::from(1)))
+            ])),
+            else_: None,
+            value_type: ValueType::Void
+        };
+        assert_eq!(Value::Void, eval(ast, &mut env));
     }
 }

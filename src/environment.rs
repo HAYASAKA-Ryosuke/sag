@@ -41,6 +41,7 @@ pub enum ValueType {
     List(Box<ValueType>),
     Function,
     Lambda,
+    Return
 }
 
 #[derive(Debug, Clone, PartialEq)]

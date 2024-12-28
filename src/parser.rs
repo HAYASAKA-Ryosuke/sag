@@ -12,6 +12,7 @@ pub enum Value {
     Void,
     List(Vec<Value>),
     Function,
+    Return(Box<Value>),
     Lambda {
         arguments: Vec<ASTNode>,
         body: Box<ASTNode>,
@@ -28,6 +29,13 @@ impl Value {
             Value::Void => ValueType::Void,
             Value::List(_) => ValueType::List(Box::new(ValueType::Any)),
             Value::Function => ValueType::Function,
+            Value::Return(value) => {
+                if let Value::Void = **value {
+                    ValueType::Void
+                } else {
+                    value.value_type()
+                }
+            },
             Value::Lambda { .. } => ValueType::Lambda,
         }
     }
@@ -66,6 +74,7 @@ impl fmt::Display for Value {
             Value::Void => write!(f, "Void"),
             Value::Function => write!(f, "Function"),
             Value::Lambda { .. } => write!(f, "Lambda"),
+            Value::Return(value) => write!(f, "{}", value),
             Value::List(list) => {
                 let mut result = String::new();
                 for (i, value) in list.iter().enumerate() {
