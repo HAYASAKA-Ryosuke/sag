@@ -27,7 +27,20 @@ impl Value {
             Value::String(_) => ValueType::String,
             Value::Bool(_) => ValueType::Bool,
             Value::Void => ValueType::Void,
-            Value::List(_) => ValueType::List(Box::new(ValueType::Any)),
+            Value::List(values) => {
+                if values.is_empty() {
+                    ValueType::List(Box::new(ValueType::Any))
+                } else {
+                    let mut value_type = values[0].value_type();
+                    for value in values.iter().skip(1) {
+                        if value.value_type() != value_type {
+                            value_type = ValueType::Any;
+                            break;
+                        }
+                    }
+                    ValueType::List(Box::new(value_type))
+                }
+            },
             Value::Function => ValueType::Function,
             Value::Return(value) => {
                 if let Value::Void = **value {
@@ -284,6 +297,19 @@ impl Parser {
                 Value::Number(_) => Ok(ValueType::Number),
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
+                Value::Void => Ok(ValueType::Void),
+                Value::List(values) => {
+                    let mut value_type = ValueType::Any;
+                    for value in values {
+                        let value_type_ = self.infer_type(&ASTNode::Literal(value.clone()))?;
+                        if value_type == ValueType::Any {
+                            value_type = value_type_;
+                        } else if value_type != value_type_ {
+                            return Err("type mismatch in list".to_string());
+                        }
+                    }
+                    Ok(value_type)
+                },
                 _ => Ok(ValueType::Any),
             },
             ASTNode::Lambda { .. } => Ok(ValueType::Lambda),
@@ -904,6 +930,7 @@ impl Parser {
         let mut list = vec![];
         while let Some(token) = self.get_current_token() {
             if token == Token::RBrancket {
+                self.consume_token();
                 break;
             }
             if token == Token::Comma {
