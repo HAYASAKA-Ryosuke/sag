@@ -13,6 +13,16 @@ pub enum Value {
     List(Vec<Value>),
     Function,
     Return(Box<Value>),
+    Struct {
+        name: String,
+        fields: Vec<Value>,
+        is_public: bool,
+    },
+    StructField {
+        name: String,
+        value_type: ValueType,
+        is_public: bool,
+    },
     Lambda {
         arguments: Vec<ASTNode>,
         body: Box<ASTNode>,
@@ -27,6 +37,8 @@ impl Value {
             Value::String(_) => ValueType::String,
             Value::Bool(_) => ValueType::Bool,
             Value::Void => ValueType::Void,
+            Value::StructField { value_type, .. } => value_type.clone(),
+            Value::Struct{ name, .. } => ValueType::Struct{name: name.clone()},
             Value::List(values) => {
                 if values.is_empty() {
                     ValueType::List(Box::new(ValueType::Any))
@@ -88,6 +100,19 @@ impl fmt::Display for Value {
             Value::Function => write!(f, "Function"),
             Value::Lambda { .. } => write!(f, "Lambda"),
             Value::Return(value) => write!(f, "{}", value),
+            Value::Struct { name, fields, .. } => {
+                let mut result = String::new();
+                result.push_str(&format!("{} {{", name));
+                for (i, field) in fields.iter().enumerate() {
+                    if i > 0 {
+                        result.push_str(", ");
+                    }
+                    result.push_str(&format!("{}", field));
+                }
+                result.push_str("}");
+                write!(f, "{}", result)
+            }
+            Value::StructField { name, value_type, .. } => write!(f, "{}: {:?}", name, value_type.clone()),
             Value::List(list) => {
                 let mut result = String::new();
                 for (i, value) in list.iter().enumerate() {
@@ -176,6 +201,16 @@ pub enum ASTNode {
         then: Box<ASTNode>,
         else_: Option<Box<ASTNode>>,
         value_type: ValueType,
+    },
+    Struct {
+        name: String,
+        fields: Vec<ASTNode>,
+        is_public: bool,
+    },
+    StructField {
+        name: String,
+        value_type: ValueType,
+        is_public: bool,
     },
 }
 
@@ -639,6 +674,7 @@ impl Parser {
             _ => panic!("token not found!"),
         };
         match token {
+            Token::Struct => self.parse_struct(),
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
             Token::Number(value) => self.parse_literal(Value::Number(value)),
@@ -731,6 +767,49 @@ impl Parser {
             }
             _ => panic!("undefined token: {:?}", token),
         }
+    }
+
+    fn parse_struct(&mut self) -> ASTNode {
+        self.consume_token();
+        let name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        self.consume_token();
+        self.extract_token(Token::LBrace);
+        let mut fields = vec![];
+        while let Some(token) = self.get_current_token() {
+            if token == Token::RBrace {
+                self.consume_token();
+                break;
+            }
+            if token == Token::Comma {
+                self.consume_token();
+                continue;
+            }
+            if token == Token::Eof {
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
+
+            if let Token::Identifier(name) = token {
+                self.consume_token();
+                self.extract_token(Token::Colon);
+                let value_type = match self.get_current_token() {
+                    Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
+                    _ => panic!("undefined type"),
+                };
+                fields.push(ASTNode::StructField {
+                    name,
+                    value_type,
+                    is_public: false,
+                });
+                self.consume_token();
+                continue;
+            }
+        }
+        ASTNode::Struct { name, fields, is_public: false }
     }
 
     fn parse_eq(&mut self, left: ASTNode) -> ASTNode {
@@ -1864,5 +1943,46 @@ mod tests {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4))))
         });
+    }
+
+    #[test]
+    fn test_struct() {
+        let tokens = vec![
+            Token::Struct,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Eof,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Comma,
+            Token::Eof,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::Struct {
+                name: "Point".into(),
+                is_public: false,
+                fields: vec![
+                    ASTNode::StructField {
+                        name: "x".into(),
+                        value_type: ValueType::Number,
+                        is_public: false
+                    },
+                    ASTNode::StructField {
+                        name: "y".into(),
+                        value_type: ValueType::Number,
+                        is_public: false
+                    }
+                ]
+            }
+        );
     }
 }

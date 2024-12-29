@@ -43,6 +43,8 @@ pub enum Token {
     Lt,
     Gte,
     Gt,
+    Struct,
+    Pub
 }
 
 impl Tokenizer {
@@ -228,6 +230,24 @@ fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_pub(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "pub".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_struct(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "struct".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_eq(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "==".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -344,6 +364,18 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_right_arrow(&mut tokenizer) {
             tokenizer.tokens.push(Token::RArrow);
             tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_pub(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Pub);
+            tokenizer.pos += 3;
+            continue;
+        }
+
+        if is_struct(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Struct);
+            tokenizer.pos += 6;
             continue;
         }
 
@@ -794,6 +826,52 @@ mod tests {
                 Token::Number(Fraction::from(4)),
                 Token::Lte,
                 Token::Number(Fraction::from(4)),
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_struct() {
+        assert_eq!(
+            tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()),
+            vec![
+                Token::Struct,
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Eof,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Comma,
+                Token::Eof,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+        assert_eq!(
+            tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()),
+            vec![
+                Token::Pub,
+                Token::Struct,
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Eof,
+                Token::Pub,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Comma,
+                Token::Eof,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Eof,
+                Token::RBrace,
                 Token::Eof
             ]
         );

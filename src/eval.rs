@@ -20,6 +20,28 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 _ => panic!("Unexpected prefix op: {:?}", op),
             }
         }
+        ASTNode::Struct {
+            name,
+            fields,
+            is_public
+        } => {
+            let mut struct_fields = vec![];
+            for field in fields {
+                match field {
+                    ASTNode::StructField { name, value_type, is_public } => {
+                        struct_fields.push(Value::StructField{name, value_type, is_public});
+                    }
+                    _ => panic!("Unexpected struct field: {:?}", field),
+                }
+            }
+            let result = Value::Struct {
+                name,
+                fields: struct_fields,
+                is_public
+            };
+            env.register_struct(result.clone());
+            result
+        }
         ASTNode::Function {
             name,
             arguments,
@@ -146,7 +168,8 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                         }
                         ValueType::List(Box::new(value_type))
                     }
-                }
+                },
+                _ => panic!("Unsupported value type"),
             };
             let result = env.set(
                 name.to_string(),
@@ -986,5 +1009,45 @@ mod tests {
         };
         assert_eq!(Value::Bool(false), eval(ast, &mut env));
 
+    }
+    #[test]
+    fn test_struct() {
+        let mut env = Env::new();
+        let ast = ASTNode::Struct {
+            name: "Point".into(),
+            is_public: true,
+            fields: vec![
+                ASTNode::StructField {
+                    name: "x".into(),
+                    value_type: ValueType::Number,
+                    is_public: true
+                },
+                ASTNode::StructField {
+                    name: "y".into(),
+                    value_type: ValueType::Number,
+                    is_public: false
+                }
+            ]
+        };
+        let result = eval(ast, &mut env);
+        assert_eq!(
+            result,
+            Value::Struct {
+                name: "Point".into(),
+                is_public: true,
+                fields: vec![
+                    Value::StructField {
+                        name: "x".into(),
+                        value_type: ValueType::Number,
+                        is_public: true
+                    },
+                    Value::StructField {
+                        name: "y".into(),
+                        value_type: ValueType::Number,
+                        is_public: false
+                    }
+                ]
+            }
+        );
     }
 }

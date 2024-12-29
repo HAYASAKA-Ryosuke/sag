@@ -8,6 +8,7 @@ pub struct Env {
     variable_map: HashMap<VariableKeyInfo, EnvVariableValueInfo>,
     scope_stack: Vec<String>,
     functions: HashMap<String, FunctionInfo>,
+    structs: HashMap<String, Value>,
     builtins: HashMap<String, FunctionInfo>,
 }
 
@@ -41,7 +42,8 @@ pub enum ValueType {
     List(Box<ValueType>),
     Function,
     Lambda,
-    Return
+    Return,
+    Struct{name: String},
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -57,8 +59,24 @@ impl Env {
             variable_map: HashMap::new(),
             scope_stack: vec!["global".to_string()],
             functions: HashMap::new(),
+            structs: HashMap::new(),
             builtins: HashMap::new(),
         }
+    }
+
+    pub fn register_struct(&mut self, struct_value: Value) {
+        let name = match struct_value {
+            Value::Struct { ref name, .. } => name.clone(),
+            _ => panic!("Invalid struct value"),
+        };
+        if self.structs.contains_key(&name) {
+            panic!("Struct {} already exists", name);
+        }
+        self.structs.insert(name.clone(), struct_value.clone());
+    }
+
+    pub fn get_struct(&self, name: String) -> Option<&Value> {
+        self.structs.get(&name)
     }
 
     pub fn register_builtin(&mut self, name: String, function: fn(Vec<Value>) -> Value) {
