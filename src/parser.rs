@@ -15,11 +15,14 @@ pub enum Value {
     Return(Box<Value>),
     Struct {
         name: String,
-        fields: Vec<Value>,
+        fields: HashMap<String, Value>,  // field_name: value
         is_public: bool,
     },
-    StructField {
+    StructInstance {
         name: String,
+        fields: HashMap<String, Value>,
+    },
+    StructField {
         value_type: ValueType,
         is_public: bool,
     },
@@ -37,6 +40,16 @@ impl Value {
             Value::String(_) => ValueType::String,
             Value::Bool(_) => ValueType::Bool,
             Value::Void => ValueType::Void,
+            Value::StructInstance { name, fields } => {
+                let mut field_types = HashMap::new();
+                for (field_name, field_value) in fields.iter() {
+                    field_types.insert(field_name.clone(), field_value.value_type());
+                }
+                ValueType::StructInstance {
+                    name: name.clone(),
+                    fields: field_types,
+                }
+            }
             Value::StructField { value_type, .. } => value_type.clone(),
             Value::Struct{ name, .. } => ValueType::Struct{name: name.clone()},
             Value::List(values) => {
@@ -100,6 +113,18 @@ impl fmt::Display for Value {
             Value::Function => write!(f, "Function"),
             Value::Lambda { .. } => write!(f, "Lambda"),
             Value::Return(value) => write!(f, "{}", value),
+            Value::StructInstance { name, fields } => {
+                let mut result = String::new();
+                result.push_str(&format!("{} {{\n", name));
+                for (i, field) in fields.iter().enumerate() {
+                    if i > 0 {
+                        result.push_str(",\n");
+                    }
+                    result.push_str(&format!("    {}: {}", field.0, field.1));
+                }
+                result.push_str("\n}");
+                write!(f, "{}", result)
+            }
             Value::Struct { name, fields, .. } => {
                 let mut result = String::new();
                 result.push_str(&format!("{} {{", name));
@@ -107,12 +132,12 @@ impl fmt::Display for Value {
                     if i > 0 {
                         result.push_str(", ");
                     }
-                    result.push_str(&format!("{}", field));
+                    result.push_str(&format!("{:?}", field));
                 }
                 result.push_str("}");
                 write!(f, "{}", result)
             }
-            Value::StructField { name, value_type, .. } => write!(f, "{}: {:?}", name, value_type.clone()),
+            Value::StructField { value_type, .. } => write!(f, "{:?}", value_type.clone()),
             Value::List(list) => {
                 let mut result = String::new();
                 for (i, value) in list.iter().enumerate() {
@@ -204,13 +229,16 @@ pub enum ASTNode {
     },
     Struct {
         name: String,
-        fields: Vec<ASTNode>,
+        fields: HashMap<String, ASTNode>,  // field_name: StructField
         is_public: bool,
     },
     StructField {
-        name: String,
         value_type: ValueType,
         is_public: bool,
+    },
+    StructInstance {
+        name: String,
+        fields: HashMap<String, ASTNode>,
     },
 }
 
@@ -674,7 +702,8 @@ impl Parser {
             _ => panic!("token not found!"),
         };
         match token {
-            Token::Struct => self.parse_struct(),
+            Token::PrivateStruct => self.parse_struct(false),
+            Token::PublicStruct => self.parse_struct(false),
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
             Token::Number(value) => self.parse_literal(Value::Number(value)),
@@ -715,6 +744,29 @@ impl Parser {
                 let scope = self.get_current_scope().to_string();
                 let variable_info = self.find_variables(scope, name.clone());
                 match self.get_current_token() {
+                    Some(Token::LBrace) => {
+                        // 構造体のインスタンス化
+                        self.consume_token();
+                        let mut fields = HashMap::new();
+                        while let Some(token) = self.get_current_token() {
+                            if token == Token::RBrace {
+                                self.consume_token();
+                                break;
+                            }
+                            if token == Token::Comma {
+                                self.consume_token();
+                                continue;
+                            }
+                            if let Token::Identifier(field_name) = token {
+                                self.consume_token();
+                                self.extract_token(Token::Colon);
+                                let value = self.parse_expression(0);
+                                fields.insert(field_name, value);
+                                continue;
+                            }
+                        }
+                        ASTNode::StructInstance { name, fields }
+                    }
                     Some(Token::LParen) => {
                         // 関数呼び出し
                         self.consume_token();
@@ -769,15 +821,19 @@ impl Parser {
         }
     }
 
-    fn parse_struct(&mut self) -> ASTNode {
+    fn parse_struct(&mut self, is_public: bool) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token::Identifier(name)) => name,
             _ => panic!("unexpected token"),
         };
+        if name[0..1] != name[0..1].to_uppercase() {
+            panic!("struct name must start with a capital letter");
+        }
         self.consume_token();
         self.extract_token(Token::LBrace);
-        let mut fields = vec![];
+        let mut fields = HashMap::new();
+        let mut field_is_public = false;
         while let Some(token) = self.get_current_token() {
             if token == Token::RBrace {
                 self.consume_token();
@@ -792,6 +848,11 @@ impl Parser {
                 self.line += 1;
                 continue;
             }
+            if token == Token::Pub {
+                field_is_public = true;
+                self.consume_token();
+                continue;
+            }
 
             if let Token::Identifier(name) = token {
                 self.consume_token();
@@ -800,16 +861,16 @@ impl Parser {
                     Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
                     _ => panic!("undefined type"),
                 };
-                fields.push(ASTNode::StructField {
-                    name,
+                fields.insert(name, ASTNode::StructField {
                     value_type,
-                    is_public: false,
+                    is_public: field_is_public,
                 });
                 self.consume_token();
+                field_is_public = false;
                 continue;
             }
         }
-        ASTNode::Struct { name, fields, is_public: false }
+        ASTNode::Struct { name, fields, is_public }
     }
 
     fn parse_eq(&mut self, left: ASTNode) -> ASTNode {
@@ -1948,7 +2009,7 @@ mod tests {
     #[test]
     fn test_struct() {
         let tokens = vec![
-            Token::Struct,
+            Token::PrivateStruct,
             Token::Identifier("Point".into()),
             Token::LBrace,
             Token::Eof,
@@ -1970,19 +2031,47 @@ mod tests {
             ASTNode::Struct {
                 name: "Point".into(),
                 is_public: false,
-                fields: vec![
-                    ASTNode::StructField {
-                        name: "x".into(),
+                fields: HashMap::from_iter(vec![
+                    ("x".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
                         is_public: false
-                    },
-                    ASTNode::StructField {
-                        name: "y".into(),
+                    }),
+                    ("y".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
                         is_public: false
-                    }
-                ]
+                    })
+                ])
             }
         );
+    }
+
+    #[test]
+    fn test_struct_instance() {
+        let tokens = vec![
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Number(Fraction::from(1)),
+            Token::Comma,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Number(Fraction::from(2)),
+            Token::RBrace,
+            Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        assert_eq!(
+            parser.parse(),
+            ASTNode::StructInstance {
+                name: "Point".into(),
+                fields: HashMap::from_iter(vec![
+                    ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                    ("y".into(), ASTNode::Literal(Value::Number(Fraction::from(2)))
+                    )
+                ])
+            }
+        );
+
     }
 }

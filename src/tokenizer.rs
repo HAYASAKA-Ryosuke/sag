@@ -43,8 +43,9 @@ pub enum Token {
     Lt,
     Gte,
     Gt,
-    Struct,
-    Pub
+    PublicStruct,
+    PrivateStruct,
+    Pub,
 }
 
 impl Tokenizer {
@@ -230,8 +231,26 @@ fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_public_struct(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "pub struct".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_pub(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "pub".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_private_struct(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "struct".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -367,15 +386,22 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
-        if is_pub(&mut tokenizer) {
-            tokenizer.tokens.push(Token::Pub);
-            tokenizer.pos += 3;
+        if is_public_struct(&mut tokenizer) {
+            tokenizer.tokens.push(Token::PublicStruct);
+            tokenizer.pos += 10;
             continue;
         }
 
         if is_struct(&mut tokenizer) {
-            tokenizer.tokens.push(Token::Struct);
+            tokenizer.tokens.push(Token::PrivateStruct);
             tokenizer.pos += 6;
+            continue;
+        }
+
+
+        if is_pub(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Pub);
+            tokenizer.pos += 3;
             continue;
         }
 
@@ -836,7 +862,7 @@ mod tests {
         assert_eq!(
             tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()),
             vec![
-                Token::Struct,
+                Token::PrivateStruct,
                 Token::Identifier("Point".into()),
                 Token::LBrace,
                 Token::Eof,
@@ -856,8 +882,7 @@ mod tests {
         assert_eq!(
             tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()),
             vec![
-                Token::Pub,
-                Token::Struct,
+                Token::PublicStruct,
                 Token::Identifier("Point".into()),
                 Token::LBrace,
                 Token::Eof,
@@ -871,6 +896,48 @@ mod tests {
                 Token::Colon,
                 Token::Identifier("number".into()),
                 Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+    #[test]
+    fn test_struct_instance() {
+        assert_eq!(
+            tokenize(&"Point { x: 1, y: 2 }".to_string()),
+            vec![
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(1)),
+                Token::Comma,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(2)),
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_assign_struct() {
+        assert_eq!(
+            tokenize(&"val point = Point { x: 1, y: 2 }".to_string()),
+            vec![
+                Token::Immutable,
+                Token::Identifier("point".into()),
+                Token::Equal,
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(1)),
+                Token::Comma,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(2)),
                 Token::RBrace,
                 Token::Eof
             ]

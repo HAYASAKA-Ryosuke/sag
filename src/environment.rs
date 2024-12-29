@@ -44,6 +44,7 @@ pub enum ValueType {
     Lambda,
     Return,
     Struct{name: String},
+    StructInstance{name: String, fields: HashMap<String, ValueType>},
 }
 
 #[derive(Debug, Clone, PartialEq)]

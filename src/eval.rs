@@ -1,6 +1,7 @@
 use crate::environment::{Env, EnvVariableType, FunctionInfo, ValueType};
 use crate::parser::{ASTNode, Value};
 use crate::tokenizer::Token;
+use std::collections::HashMap;
 
 pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
     let mut values = vec![];
@@ -25,13 +26,17 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             fields,
             is_public
         } => {
-            let mut struct_fields = vec![];
-            for field in fields {
-                match field {
-                    ASTNode::StructField { name, value_type, is_public } => {
-                        struct_fields.push(Value::StructField{name, value_type, is_public});
-                    }
-                    _ => panic!("Unexpected struct field: {:?}", field),
+            let mut struct_fields = HashMap::new();
+            // fields field_name: StructField
+            for (field_name, struct_field) in fields {
+                match struct_field {
+                    ASTNode::StructField { value_type, is_public } => {
+                        struct_fields.insert(field_name, Value::StructField {
+                            value_type,
+                            is_public
+                        });
+                    },
+                    _ => panic!("Unexpected struct field: {:?}", struct_field),
                 }
             }
             let result = Value::Struct {
@@ -40,6 +45,20 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 is_public
             };
             env.register_struct(result.clone());
+            result
+        }
+        ASTNode::StructInstance {
+            name,
+            fields,
+        } => {
+            let mut struct_fields = HashMap::new();
+            for (field_name, field_value) in fields {
+                struct_fields.insert(field_name, eval(field_value, env));
+            }
+            let result = Value::StructInstance {
+                name,
+                fields: struct_fields,
+            };
             result
         }
         ASTNode::Function {
@@ -169,7 +188,27 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                         ValueType::List(Box::new(value_type))
                     }
                 },
-                _ => panic!("Unsupported value type"),
+                Value::StructInstance { ref name, fields: ref instance_fields } => {
+                    match env.get_struct(name.to_string()) {
+                        Some(Value::Struct { name: _, fields, is_public: _ }) => {
+                            for (field_name, value_type) in instance_fields {
+                                if !fields.contains_key(&field_name.to_string()) {
+                                    panic!("Struct field not found: {:?}", field_name);
+                                }
+                                if fields.get(&field_name.to_string()).unwrap().value_type() != value_type.value_type() {
+                                    panic!("Struct field type mismatch: {:?}", field_name);
+                                }
+                            }
+                        },
+                        _ => panic!("Unexpected value type"),
+                    };
+                    let mut field_types = HashMap::new();
+                    for (field_name, field_value) in instance_fields {
+                        field_types.insert(field_name.clone(), field_value.value_type());
+                    }
+                    ValueType::StructInstance { name: name.to_string(), fields: field_types }
+                },
+                _ => panic!("Unsupported value type, {:?}", value),
             };
             let result = env.set(
                 name.to_string(),
@@ -1016,18 +1055,15 @@ mod tests {
         let ast = ASTNode::Struct {
             name: "Point".into(),
             is_public: true,
-            fields: vec![
-                ASTNode::StructField {
-                    name: "x".into(),
+            fields: HashMap::from_iter(vec![
+                ("x".into(), ASTNode::StructField {
                     value_type: ValueType::Number,
-                    is_public: true
-                },
-                ASTNode::StructField {
-                    name: "y".into(),
+                    is_public: true }),
+                ("y".into(), ASTNode::StructField {
                     value_type: ValueType::Number,
                     is_public: false
-                }
-            ]
+                })
+            ])
         };
         let result = eval(ast, &mut env);
         assert_eq!(
@@ -1035,21 +1071,86 @@ mod tests {
             Value::Struct {
                 name: "Point".into(),
                 is_public: true,
-                fields: vec![
-                    Value::StructField {
-                        name: "x".into(),
+                fields: HashMap::from_iter(vec![
+                    ("x".into(), Value::StructField {
                         value_type: ValueType::Number,
                         is_public: true
-                    },
-                    Value::StructField {
-                        name: "y".into(),
+                    }),
+                    ("y".into(), Value::StructField {
                         value_type: ValueType::Number,
                         is_public: false
-                    }
-                ]
+                    })
+                ])
             }
         );
         assert_eq!(env.get_struct("Point".to_string()).is_some(), true);
         assert_eq!(env.get_struct("DummuStruct".to_string()).is_some(), false);
+    }
+
+    #[test]
+    fn test_assign_struct() {
+        let mut env = Env::new();
+        let ast = vec![
+            ASTNode::Struct {
+                name: "Point".into(),
+                fields: HashMap::from_iter(vec![
+                    ("y".into(), ASTNode::StructField {
+                        value_type: ValueType::String,
+                        is_public: false
+                    }),
+                    ("x".into(), ASTNode::StructField {
+                        value_type: ValueType::Number,
+                        is_public: false
+                    })
+                ]),
+                is_public: false
+            },
+            ASTNode::Assign {
+                name: "point".into(),
+                value: Box::new(ASTNode::StructInstance {
+                    name: "Point".into(),
+                    fields: HashMap::from_iter(vec![
+                        ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                        ("y".into(), ASTNode::Literal(Value::String("hello".into())))
+                    ])
+                }),
+                variable_type: EnvVariableType::Immutable,
+                value_type: ValueType::StructInstance {
+                    name: "Point".into(),
+                    fields: HashMap::from_iter(vec![
+                        ("x".into(), ValueType::Number),
+                        ("y".into(), ValueType::String)
+                    ])
+                },
+                is_new: true
+            }
+        ];
+        let result = evals(ast, &mut env);
+        assert_eq!(
+            result,
+            vec![
+                Value::Struct {
+                    name: "Point".into(),
+                    is_public: false,
+                    fields: HashMap::from_iter(vec![
+                        ("y".into(), Value::StructField {
+                            value_type: ValueType::String,
+                            is_public: false
+                        }),
+                        ("x".into(), Value::StructField {
+                            value_type: ValueType::Number,
+                            is_public: false
+                        })
+                    ])
+                },
+                Value::StructInstance {
+                    name: "Point".into(),
+                    fields: HashMap::from_iter(vec![
+                        ("x".into(), Value::Number(Fraction::from(1))),
+                        ("y".into(), Value::String("hello".into()))
+                    ])
+                }
+            ]
+        );
     }
 }
