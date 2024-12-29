@@ -78,7 +78,7 @@ impl Env {
     pub fn get_struct(&self, name: String) -> Option<&Value> {
         self.structs.get(&name)
     }
-
+    
     pub fn register_builtin(&mut self, name: String, function: fn(Vec<Value>) -> Value) {
         let function_info = FunctionInfo {
             arguments: vec![],

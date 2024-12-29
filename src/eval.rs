@@ -1049,5 +1049,7 @@ mod tests {
                 ]
             }
         );
+        assert_eq!(env.get_struct("Point".to_string()).is_some(), true);
+        assert_eq!(env.get_struct("DummuStruct".to_string()).is_some(), false);
     }
 }
