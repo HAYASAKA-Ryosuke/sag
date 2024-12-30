@@ -46,6 +46,7 @@ pub enum Token {
     PublicStruct,
     PrivateStruct,
     Pub,
+    Dot,
 }
 
 impl Tokenizer {
@@ -118,6 +119,14 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
             || c == ','
             || c == '('
             || c == ')'
+            || c == '{'
+            || c == '}'
+            || c == '='
+            || c == '+'
+            || c == '-'
+            || c == '*'
+            || c == '/'
+            || c == '.'
             || c == '|'
         {
             break;
@@ -480,6 +489,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             ')' => tokenizer.tokens.push(Token::RParen),
             '[' => tokenizer.tokens.push(Token::LBrancket),
             ']' => tokenizer.tokens.push(Token::RBrancket),
+            '.' => tokenizer.tokens.push(Token::Dot),
             '\\' => tokenizer.tokens.push(Token::BackSlash),
             '{' => {
                 tokenizer.nesting_count += 1;
@@ -939,6 +949,19 @@ mod tests {
                 Token::Colon,
                 Token::Number(Fraction::from(2)),
                 Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_struct_field_access() {
+        assert_eq!(
+            tokenize(&"point.x".to_string()),
+            vec![
+                Token::Identifier("point".into()),
+                Token::Dot,
+                Token::Identifier("x".into()),
                 Token::Eof
             ]
         );

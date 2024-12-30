@@ -43,7 +43,8 @@ pub enum ValueType {
     Function,
     Lambda,
     Return,
-    Struct{name: String},
+    Struct{name: String, fields: HashMap<String, ValueType>, is_public: bool},
+    StructField{value_type: Box<ValueType>, is_public: bool},
     StructInstance{name: String, fields: HashMap<String, ValueType>},
 }
 

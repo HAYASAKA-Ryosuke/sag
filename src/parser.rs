@@ -51,7 +51,16 @@ impl Value {
                 }
             }
             Value::StructField { value_type, .. } => value_type.clone(),
-            Value::Struct{ name, .. } => ValueType::Struct{name: name.clone()},
+            Value::Struct{ name, fields, is_public } => {
+                let field_types = fields.iter().map(|(name, field)| {
+                    if let Value::StructField { value_type, is_public } = field {
+                        (name.clone(), value_type.clone())
+                    } else {
+                        panic!("invalid struct field")
+                    }
+                }).collect::<HashMap<_,_>>();
+                ValueType::Struct{name: name.clone(), fields: field_types.clone(), is_public: is_public.clone()}
+            },
             Value::List(values) => {
                 if values.is_empty() {
                     ValueType::List(Box::new(ValueType::Any))
@@ -236,6 +245,10 @@ pub enum ASTNode {
         value_type: ValueType,
         is_public: bool,
     },
+    StructFieldAccess {
+        instance: Box<ASTNode>,  // StructInstance, variable
+        field_name: String,
+    },
     StructInstance {
         name: String,
         fields: HashMap<String, ASTNode>,
@@ -248,6 +261,7 @@ pub struct Parser {
     line: usize,
     scopes: Vec<String>,
     variables: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
+    structs: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
 }
 
 impl Parser {
@@ -259,6 +273,7 @@ impl Parser {
             line: 0,
             scopes: vec!["global".into()],
             variables: HashMap::new(),
+            structs: HashMap::new(),
         }
     }
 
@@ -273,6 +288,36 @@ impl Parser {
         self.scopes.last().unwrap().to_string()
     }
 
+    fn register_struct(&mut self, scope: String, struct_value: ASTNode) {
+        if let ASTNode::Struct { name, fields, ref is_public } = &struct_value {
+            let field_types = fields.iter().map(|(name, field)| {
+                if let ASTNode::StructField { value_type, is_public } = field {
+                    (name.clone(), ValueType::StructField { value_type: Box::new(value_type.clone()), is_public: is_public.clone() })
+                } else {
+                    panic!("invalid struct field")
+                }
+            }).collect();
+            let insert_value = (ValueType::Struct { name: name.clone(), fields: field_types, is_public: is_public.clone() }, EnvVariableType::Immutable);
+            self.structs.insert(
+                (scope.to_string(), name.to_string()),
+                insert_value,
+            );
+        }
+    }
+
+    fn get_struct(&mut self, scope: String, name: String) -> Option<ValueType> {
+        for checked_scope in vec![scope.to_string(), "global".to_string()] {
+            match self.structs.get(&(checked_scope.to_string(), name.to_string())) {
+                Some((ref value_type, _)) => match value_type.clone() {
+                    ValueType::Struct { name, fields, is_public } => return Some(ValueType::Struct { name: name.clone(), fields: fields.clone(), is_public: is_public.clone() }),
+                    _ => return None,
+                },
+                None => {}
+            };
+        }
+        None
+    }
+
     fn register_variables(
         &mut self,
         scope: String,
@@ -281,7 +326,7 @@ impl Parser {
         variable_type: &EnvVariableType,
     ) {
         self.variables.insert(
-            (scope, name.to_string()),
+            (scope.clone(), name.to_string()),
             (value_type.clone(), variable_type.clone()),
         );
     }
@@ -301,6 +346,9 @@ impl Parser {
                     &ValueType::String => return Some((ValueType::String, value.1.clone())),
                     &ValueType::Bool => return Some((ValueType::Bool, value.1.clone())),
                     &ValueType::Function => return Some((ValueType::Function, value.1.clone())),
+                    &ValueType::StructInstance{ref name, ref fields} => {
+                        return Some((ValueType::StructInstance{name: name.to_string(), fields: fields.clone()}, value.1.clone()))
+                    },
                     _ => return None,
                 },
                 None => {}
@@ -361,6 +409,16 @@ impl Parser {
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
                 Value::Void => Ok(ValueType::Void),
+                Value::Struct { name, fields, is_public } => {
+                    let field_types = fields.iter().map(|(name, field)| {
+                        if let Value::StructField { value_type, is_public } = field {
+                            (name.clone(), value_type.clone())
+                        } else {
+                            panic!("invalid struct field")
+                        }
+                    }).collect::<HashMap<_,_>>();
+                    Ok(ValueType::Struct { name: name.clone(), fields: field_types.clone(), is_public: is_public.clone() })
+                },
                 Value::List(values) => {
                     let mut value_type = ValueType::Any;
                     for value in values {
@@ -379,6 +437,17 @@ impl Parser {
             ASTNode::PrefixOp { op: _, expr } => {
                 let value_type = self.infer_type(&expr)?;
                 Ok(value_type)
+            }
+
+            ASTNode::StructInstance { name, fields } => {
+                let mut field_types = HashMap::new();
+                for (field_name, field_value) in fields.iter() {
+                    field_types.insert(field_name.clone(), self.infer_type(field_value)?);
+                }
+                Ok(ValueType::StructInstance {
+                    name: name.clone(),
+                    fields: field_types,
+                })
             }
             ASTNode::BinaryOp { left, op, right } => {
                 let left_type = self.infer_type(&left)?;
@@ -650,7 +719,7 @@ impl Parser {
                 } else {
                     EnvVariableType::Immutable
                 };
-                self.register_variables(scope, &name, &value_type, &variable_type);
+                self.register_variables(scope.clone(), &name, &value_type, &variable_type);
                 ASTNode::Assign {
                     name,
                     value: Box::new(value),
@@ -703,7 +772,7 @@ impl Parser {
         };
         match token {
             Token::PrivateStruct => self.parse_struct(false),
-            Token::PublicStruct => self.parse_struct(false),
+            Token::PublicStruct => self.parse_struct(true),
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
             Token::Number(value) => self.parse_literal(Value::Number(value)),
@@ -806,6 +875,25 @@ impl Parser {
                             };
                         ASTNode::Variable { name, value_type }
                     }
+                    Some(Token::Dot) => {
+                        // 構造体のフィールドアクセス
+                        self.consume_token();
+                        let field_name = match self.get_current_token() {
+                            Some(Token::Identifier(name)) => name,
+                            _ => panic!("unexpected token"),
+                        };
+                        self.consume_token();
+                        let scope = self.get_current_scope().clone();
+                        match self.find_variables(scope.clone(), name.clone()) {
+                            Some((ValueType::StructInstance { name: instance_name, ref fields }, _)) => {
+                                ASTNode::StructFieldAccess {
+                                    instance: Box::new(ASTNode::Variable { name: name.clone(), value_type: Some(ValueType::StructInstance {name: instance_name, fields: fields.clone()}) }),
+                                    field_name,
+                                }
+                            }
+                            _ => panic!("undefined struct: {:?}", name),
+                        }
+                    }
                     _ => {
                         // 代入
                         let value_type = if variable_info.is_some() {
@@ -870,7 +958,10 @@ impl Parser {
                 continue;
             }
         }
-        ASTNode::Struct { name, fields, is_public }
+        let result = ASTNode::Struct { name, fields, is_public };
+        let scope = self.get_current_scope().clone();
+        self.register_struct(scope, result.clone());
+        result
     }
 
     fn parse_eq(&mut self, left: ASTNode) -> ASTNode {
@@ -2072,6 +2163,92 @@ mod tests {
                 ])
             }
         );
+    }
 
+    #[test]
+    fn test_struct_field_access() {
+        let tokens = vec![
+            Token::PublicStruct,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Eof,
+            Token::Pub,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Comma,
+            Token::Eof,
+            Token::Pub,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+            Token::Immutable,
+            Token::Identifier("point".into()),
+            Token::Equal,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Number(Fraction::from(1)),
+            Token::Comma,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Number(Fraction::from(2)),
+            Token::RBrace,
+            Token::Eof,
+            Token::Identifier("point".into()),
+            Token::Dot,
+            Token::Identifier("x".into()),
+            Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        assert_eq!(
+            parser.parse_lines(),
+            vec![
+                ASTNode::Struct {
+                    name: "Point".into(),
+                    is_public: true,
+                    fields: HashMap::from_iter(vec![
+                        ("x".into(), ASTNode::StructField {
+                            value_type: ValueType::Number,
+                            is_public: true
+                        }),
+                        ("y".into(), ASTNode::StructField {
+                            value_type: ValueType::Number,
+                            is_public: true
+                        })
+                    ])
+                },
+                ASTNode::Assign {
+                    name: "point".into(),
+                    variable_type: EnvVariableType::Immutable,
+                    is_new: true,
+                    value_type: ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                        ("x".into(), ValueType::Number),
+                        ("y".into(), ValueType::Number)
+                    ])},
+                    value: Box::new(ASTNode::StructInstance {
+                        name: "Point".into(),
+                        fields: HashMap::from_iter(vec![
+                            ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                            ("y".into(), ASTNode::Literal(Value::Number(Fraction::from(2)))),
+                        ]),
+                    }),
+                },
+                ASTNode::StructFieldAccess {
+                    instance: Box::new(ASTNode::Variable {
+                        name: "point".into(),
+                        value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                            ("x".into(), ValueType::Number),
+                            ("y".into(), ValueType::Number)
+                        ])})
+                    }),
+                    field_name: "x".into()
+                }
+            ]
+        );
     }
 }
