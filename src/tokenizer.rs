@@ -43,6 +43,10 @@ pub enum Token {
     Lt,
     Gte,
     Gt,
+    PublicStruct,
+    PrivateStruct,
+    Pub,
+    Dot,
 }
 
 impl Tokenizer {
@@ -115,6 +119,14 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
             || c == ','
             || c == '('
             || c == ')'
+            || c == '{'
+            || c == '}'
+            || c == '='
+            || c == '+'
+            || c == '-'
+            || c == '*'
+            || c == '/'
+            || c == '.'
             || c == '|'
         {
             break;
@@ -221,6 +233,42 @@ fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
 
 fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "=>".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_public_struct(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "pub struct".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_pub(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "pub".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_private_struct(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "struct".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_struct(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "struct".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -347,6 +395,25 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_public_struct(&mut tokenizer) {
+            tokenizer.tokens.push(Token::PublicStruct);
+            tokenizer.pos += 10;
+            continue;
+        }
+
+        if is_struct(&mut tokenizer) {
+            tokenizer.tokens.push(Token::PrivateStruct);
+            tokenizer.pos += 6;
+            continue;
+        }
+
+
+        if is_pub(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Pub);
+            tokenizer.pos += 3;
+            continue;
+        }
+
         if is_right_rocket(&mut tokenizer) {
             tokenizer.tokens.push(Token::RRocket);
             tokenizer.pos += 2;
@@ -422,6 +489,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             ')' => tokenizer.tokens.push(Token::RParen),
             '[' => tokenizer.tokens.push(Token::LBrancket),
             ']' => tokenizer.tokens.push(Token::RBrancket),
+            '.' => tokenizer.tokens.push(Token::Dot),
             '\\' => tokenizer.tokens.push(Token::BackSlash),
             '{' => {
                 tokenizer.nesting_count += 1;
@@ -794,6 +862,106 @@ mod tests {
                 Token::Number(Fraction::from(4)),
                 Token::Lte,
                 Token::Number(Fraction::from(4)),
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_struct() {
+        assert_eq!(
+            tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()),
+            vec![
+                Token::PrivateStruct,
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Eof,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Comma,
+                Token::Eof,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+        assert_eq!(
+            tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()),
+            vec![
+                Token::PublicStruct,
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Eof,
+                Token::Pub,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Comma,
+                Token::Eof,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Identifier("number".into()),
+                Token::Eof,
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+    #[test]
+    fn test_struct_instance() {
+        assert_eq!(
+            tokenize(&"Point { x: 1, y: 2 }".to_string()),
+            vec![
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(1)),
+                Token::Comma,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(2)),
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_assign_struct() {
+        assert_eq!(
+            tokenize(&"val point = Point { x: 1, y: 2 }".to_string()),
+            vec![
+                Token::Immutable,
+                Token::Identifier("point".into()),
+                Token::Equal,
+                Token::Identifier("Point".into()),
+                Token::LBrace,
+                Token::Identifier("x".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(1)),
+                Token::Comma,
+                Token::Identifier("y".into()),
+                Token::Colon,
+                Token::Number(Fraction::from(2)),
+                Token::RBrace,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_struct_field_access() {
+        assert_eq!(
+            tokenize(&"point.x".to_string()),
+            vec![
+                Token::Identifier("point".into()),
+                Token::Dot,
+                Token::Identifier("x".into()),
                 Token::Eof
             ]
         );
