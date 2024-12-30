@@ -249,6 +249,11 @@ pub enum ASTNode {
         instance: Box<ASTNode>,  // StructInstance, variable
         field_name: String,
     },
+    StructFieldAssign {
+        instance: Box<ASTNode>,  // StructInstance, variable
+        field_name: String,
+        value: Box<ASTNode>,
+    },
     StructInstance {
         name: String,
         fields: HashMap<String, ASTNode>,
@@ -877,21 +882,22 @@ impl Parser {
                     }
                     Some(Token::Dot) => {
                         // 構造体のフィールドアクセス
-                        self.consume_token();
-                        let field_name = match self.get_current_token() {
-                            Some(Token::Identifier(name)) => name,
-                            _ => panic!("unexpected token"),
-                        };
-                        self.consume_token();
-                        let scope = self.get_current_scope().clone();
-                        match self.find_variables(scope.clone(), name.clone()) {
-                            Some((ValueType::StructInstance { name: instance_name, ref fields }, _)) => {
-                                ASTNode::StructFieldAccess {
-                                    instance: Box::new(ASTNode::Variable { name: name.clone(), value_type: Some(ValueType::StructInstance {name: instance_name, fields: fields.clone()}) }),
-                                    field_name,
-                                }
+                        let struct_instance_access = self.parse_struct_instance_access(name.clone());
+                        // 代入
+                        if let Some(Token::Equal) = self.get_current_token() {
+                            self.consume_token();
+                            let value = self.parse_expression(0);
+                            let field_name = match struct_instance_access.clone() {
+                                ASTNode::StructFieldAccess { field_name, .. } => field_name,
+                                _ => panic!("unexpected token"),
+                            };
+                            ASTNode::StructFieldAssign {
+                                instance: Box::new(struct_instance_access),
+                                field_name: field_name.clone(),
+                                value: Box::new(value),
                             }
-                            _ => panic!("undefined struct: {:?}", name),
+                        } else {
+                            struct_instance_access
                         }
                     }
                     _ => {
@@ -906,6 +912,25 @@ impl Parser {
                 }
             }
             _ => panic!("undefined token: {:?}", token),
+        }
+    }
+
+    fn parse_struct_instance_access(&mut self, name: String) -> ASTNode {
+        self.consume_token();
+        let field_name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        self.consume_token();
+        let scope = self.get_current_scope().clone();
+        match self.find_variables(scope.clone(), name.clone()) {
+            Some((ValueType::StructInstance { name: instance_name, ref fields }, _)) => {
+                ASTNode::StructFieldAccess {
+                    instance: Box::new(ASTNode::Variable { name: name.clone(), value_type: Some(ValueType::StructInstance {name: instance_name, fields: fields.clone()}) }),
+                    field_name,
+                }
+            }
+            _ => panic!("undefined struct: {:?}", name),
         }
     }
 
@@ -2202,7 +2227,12 @@ mod tests {
             Token::Identifier("point".into()),
             Token::Dot,
             Token::Identifier("x".into()),
-            Token::Eof
+            Token::Eof,
+            Token::Identifier("point".into()),
+            Token::Dot,
+            Token::Identifier("x".into()),
+            Token::Equal,
+            Token::Number(Fraction::from(3)),
         ];
         let mut parser = Parser::new(tokens);
         assert_eq!(
@@ -2246,6 +2276,20 @@ mod tests {
                             ("y".into(), ValueType::Number)
                         ])})
                     }),
+                    field_name: "x".into()
+                },
+                ASTNode::StructFieldAssign {
+                    instance: Box::new(ASTNode::StructFieldAccess {
+                        instance: Box::new(ASTNode::Variable {
+                            name: "point".into(),
+                            value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                                ("x".into(), ValueType::Number),
+                                ("y".into(), ValueType::Number)
+                            ])})
+                        }),
+                        field_name: "x".into()
+                    }),
+                    value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
                     field_name: "x".into()
                 }
             ]

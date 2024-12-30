@@ -55,11 +55,55 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             for (field_name, field_value) in fields {
                 struct_fields.insert(field_name, eval(field_value, env));
             }
-            let result = Value::StructInstance {
+            Value::StructInstance {
                 name,
                 fields: struct_fields,
-            };
-            result
+            }
+        }
+        ASTNode::StructFieldAssign { instance, field_name: updated_field_name, value: updated_value } => {
+            match *instance {
+                ASTNode::StructFieldAccess { instance, field_name: _  } => {
+                    match *instance {
+                        ASTNode::Variable { name: variable_name, value_type } => {
+                            match value_type {
+                                Some(ValueType::StructInstance { name, fields }) => {
+                                    let obj = env.get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }));
+                                    if obj.is_none() {
+                                        panic!("Variable not found: {:?}", variable_name);
+                                    }
+                                    let mut struct_fields = HashMap::new();
+                                    match obj.unwrap().value.clone() {
+                                        Value::StructInstance { name: _, fields: obj_fields } => {
+                                            for (field_name, field_value) in obj_fields {
+                                                if field_name == updated_field_name {
+                                                    struct_fields.insert(field_name, eval(*updated_value.clone(), env));
+                                                } else {
+                                                    struct_fields.insert(field_name, field_value);
+                                                }
+                                            }
+                                            let env_updated_result = env.set(variable_name.to_string(), Value::StructInstance {
+                                                name: variable_name.to_string(),
+                                                fields: struct_fields.clone(),
+                                            }, EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false);
+                                            if env_updated_result.is_err() {
+                                                panic!("{}", env_updated_result.unwrap_err());
+                                            }
+                                            Value::StructInstance {
+                                                name: variable_name.to_string(),
+                                                fields: struct_fields,
+                                            }
+                                        },
+                                        _ => panic!("Unexpected value type"),
+                                    }
+                                },
+                                _ => panic!("Unexpected value type"),
+                            }
+                        },
+                        _ => panic!("Unexpected value type"),
+                    }
+                },
+                _ => panic!("Unexpected value type"),
+            }
         }
         ASTNode::StructFieldAccess { instance, field_name } => {
             let struct_obj = match *instance {
@@ -1198,7 +1242,7 @@ mod tests {
             },
             ASTNode::Assign {
                 name: "point".into(),
-                variable_type: EnvVariableType::Immutable,
+                variable_type: EnvVariableType::Mutable,
                 is_new: true,
                 value_type: ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
                     ("x".into(), ValueType::Number),
@@ -1221,9 +1265,34 @@ mod tests {
                     ])})
                 }),
                 field_name: "x".into()
-            }];
+            },
+            ASTNode::StructFieldAssign {
+                instance: Box::new(ASTNode::StructFieldAccess {
+                    instance: Box::new(ASTNode::Variable {
+                        name: "point".into(),
+                        value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                            ("x".into(), ValueType::Number),
+                            ("y".into(), ValueType::Number)
+                        ])})
+                    }),
+                    field_name: "x".into()
+                }),
+                value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
+                field_name: "x".into()
+            },
+            ASTNode::StructFieldAccess {
+                instance: Box::new(ASTNode::Variable {
+                    name: "point".into(),
+                    value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                        ("x".into(), ValueType::Number),
+                        ("y".into(), ValueType::Number)
+                    ])})
+                }),
+                field_name: "x".into()
+            },
+        ];
         let mut env = Env::new();
         let result = evals(asts, &mut env);
-        assert_eq!(result[2], Value::Number(Fraction::from(1)));
+        assert_eq!(result[4], Value::Number(Fraction::from(3)));
     }
 }
