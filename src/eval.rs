@@ -60,7 +60,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 fields: struct_fields,
             }
         }
-        ASTNode::StructFieldAssign { instance, field_name: updated_field_name, value: updated_value } => {
+        ASTNode::StructFieldAssign { instance, field_name: updated_field_name, value: updated_value_ast } => {
             match *instance {
                 ASTNode::StructFieldAccess { instance, field_name: _  } => {
                     match *instance {
@@ -76,7 +76,11 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                                         Value::StructInstance { name: _, fields: obj_fields } => {
                                             for (field_name, field_value) in obj_fields {
                                                 if field_name == updated_field_name {
-                                                    struct_fields.insert(field_name, eval(*updated_value.clone(), env));
+                                                    let updated_value = eval(*updated_value_ast.clone(), env);
+                                                    if field_value.value_type() != updated_value.value_type() {
+                                                        panic!("Struct field type mismatch: {}.{}:{:?} = {:?}", variable_name, field_name, field_value.value_type(), updated_value.value_type());
+                                                    }
+                                                    struct_fields.insert(field_name, updated_value);
                                                 } else {
                                                     struct_fields.insert(field_name, field_value);
                                                 }
