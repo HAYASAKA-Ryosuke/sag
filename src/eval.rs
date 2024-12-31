@@ -1299,4 +1299,57 @@ mod tests {
         let result = evals(asts, &mut env);
         assert_eq!(result[4], Value::Number(Fraction::from(3)));
     }
+
+    #[test]
+    #[should_panic(expected = "Struct field type mismatch: point.x:Number = String")]
+    fn test_struct_other_type_assign() {
+        let asts = vec![
+            ASTNode::Struct {
+                name: "Point".into(),
+                is_public: true,
+                fields: HashMap::from_iter(vec![
+                    ("x".into(), ASTNode::StructField {
+                        value_type: ValueType::Number,
+                        is_public: true
+                    }),
+                    ("y".into(), ASTNode::StructField {
+                        value_type: ValueType::Number,
+                        is_public: true
+                    })
+                ])
+            },
+            ASTNode::Assign {
+                name: "point".into(),
+                variable_type: EnvVariableType::Mutable,
+                is_new: true,
+                value_type: ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                    ("x".into(), ValueType::Number),
+                    ("y".into(), ValueType::Number)
+                ])},
+                value: Box::new(ASTNode::StructInstance {
+                    name: "Point".into(),
+                    fields: HashMap::from_iter(vec![
+                        ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                        ("y".into(), ASTNode::Literal(Value::Number(Fraction::from(2)))),
+                    ]),
+                }),
+            },
+            ASTNode::StructFieldAssign {
+                instance: Box::new(ASTNode::StructFieldAccess {
+                    instance: Box::new(ASTNode::Variable {
+                        name: "point".into(),
+                        value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
+                            ("x".into(), ValueType::Number),
+                            ("y".into(), ValueType::Number)
+                        ])})
+                    }),
+                    field_name: "x".into()
+                }),
+                value: Box::new(ASTNode::Literal(Value::String("hello".into()))),
+                field_name: "x".into()
+            },
+        ];
+        let mut env = Env::new();
+        evals(asts, &mut env);
+    }
 }
