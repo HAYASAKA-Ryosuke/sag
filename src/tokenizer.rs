@@ -47,6 +47,7 @@ pub enum Token {
     PrivateStruct,
     Pub,
     Dot,
+    Impl,
 }
 
 impl Tokenizer {
@@ -258,7 +259,7 @@ fn is_pub(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
-fn is_private_struct(tokenizer: &mut Tokenizer) -> bool {
+fn is_struct(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "struct".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
@@ -267,8 +268,8 @@ fn is_private_struct(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
-fn is_struct(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "struct".chars().enumerate() {
+fn is_impl(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "impl".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -407,6 +408,11 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_impl(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Impl);
+            tokenizer.pos += 4;
+            continue;
+        }
 
         if is_pub(&mut tokenizer) {
             tokenizer.tokens.push(Token::Pub);
@@ -965,5 +971,13 @@ mod tests {
                 Token::Eof
             ]
         );
+    }
+
+    #[test]
+    fn test_impl() {
+        assert_eq!(
+            tokenize(&"impl Point {\n fun x = (self: Point) {\n self.x\n }\n }".to_string()),
+            vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("x".into()), Token::Equal, Token::LParen, Token::Identifier("self".into()), Token::Colon, Token::Identifier("Point".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof],
+        )
     }
 }

@@ -258,6 +258,10 @@ pub enum ASTNode {
         name: String,
         fields: HashMap<String, ASTNode>,
     },
+    Impl {
+        base_struct: Box<ValueType>,
+        methods: Vec<ASTNode>,
+    },
 }
 
 pub struct Parser {
@@ -639,7 +643,6 @@ impl Parser {
         };
         self.enter_scope(name.to_string());
         self.pos += 1;
-        self.extract_token(Token::Equal);
         self.extract_token(Token::LParen);
 
         let arguments = self.parse_function_arguments();
@@ -660,6 +663,7 @@ impl Parser {
             "number" => ValueType::Number,
             "string" => ValueType::String,
             "bool" => ValueType::Bool,
+            "void" => ValueType::Void,
             _ => panic!("undefined type"),
         }
     }
@@ -778,6 +782,7 @@ impl Parser {
         match token {
             Token::PrivateStruct => self.parse_struct(false),
             Token::PublicStruct => self.parse_struct(true),
+            Token::Impl => self.parse_impl(),
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
             Token::Number(value) => self.parse_literal(Value::Number(value)),
@@ -912,6 +917,48 @@ impl Parser {
                 }
             }
             _ => panic!("undefined token: {:?}", token),
+        }
+    }
+
+    fn parse_impl(&mut self) -> ASTNode {
+        self.consume_token();
+        let scope = self.get_current_scope().clone();
+        let struct_name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        let base_struct = self.get_struct(scope.clone(),struct_name.to_string()).expect("undefined struct");
+        self.consume_token();
+        println!("struct {:?}", base_struct);
+        self.extract_token(Token::LBrace);
+        println!("token {:?}", self.get_current_token());
+        let mut methods = Vec::new();
+        while let Some(token) = self.get_current_token() {
+            println!("token: {:?}", token);
+            if token == Token::RBrace {
+                self.consume_token();
+                break;
+            }
+            if token == Token::Eof {
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
+            if token == Token::Comma {
+                self.consume_token();
+                continue;
+            }
+            if token == Token::Function {
+                println!("function {:?}", self.get_current_token());
+                let function = self.parse_function();
+                methods.push(function);
+                continue;
+            }
+        }
+        println!("{:?}", methods);
+        ASTNode::Impl {
+            base_struct: Box::new(base_struct),
+            methods,
         }
     }
 
@@ -1218,22 +1265,29 @@ impl Parser {
         }
         self.consume_token();
 
-        while let Some(token) = self.get_current_token() {
-            if token == Token::RBrace {
+        loop {
+            let token = self.get_current_token();
+            if token == Some(Token::RBrace) {
                 self.consume_token();
                 break;
             }
-            match self.get_current_token() {
-                Some(Token::Eof) => {
-                    self.pos = 0;
-                    self.line += 1;
-                    continue;
+            if token == Some(Token::Eof) {
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
+            if token == None {
+                if self.line >= self.tokens.len() {
+                    break;
                 }
-                _ => {}
-            };
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
             let statement = self.parse_expression(0);
             statements.push(statement);
         }
+
         ASTNode::Block(statements)
     }
 
@@ -1408,7 +1462,6 @@ mod tests {
         let mut parser = Parser::new(vec![
             Token::Function,
             Token::Identifier("foo".into()),
-            Token::Equal,
             Token::LParen,
             Token::Identifier("x".into()),
             Token::Colon,
@@ -1595,7 +1648,6 @@ mod tests {
         let mut parser = Parser::new(vec![
             Token::Function,
             Token::Identifier("no_args".into()),
-            Token::Equal,
             Token::LParen,
             Token::RParen, // 引数なし
             // 戻り値の型指定なし → void
@@ -2294,5 +2346,70 @@ mod tests {
                 }
             ]
         );
+    }
+
+    #[test]
+    fn test_impl() {
+        let tokens = vec![
+            Token::PrivateStruct,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Eof,
+            Token::Pub,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Comma,
+            Token::Eof,
+            Token::Pub,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof,
+            Token::Impl,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Eof,
+            Token::Function,
+            Token::Identifier("new".into()),
+            Token::LParen,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::Comma,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Identifier("number".into()),
+            Token::RParen,
+            Token::Colon,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Return,
+            Token::Identifier("Point".into()),
+            Token::LBrace,
+            Token::Identifier("x".into()),
+            Token::Colon,
+            Token::Identifier("x".into()),
+            Token::Comma,
+            Token::Identifier("y".into()),
+            Token::Colon,
+            Token::Identifier("y".into()),
+            Token::RBrace,
+            Token::RBrace,
+            Token::Eof,
+            Token::Identifier("Point".into()),
+            Token::Dot,
+            Token::Identifier("new".into()),
+            Token::LParen,
+            Token::Number(Fraction::from(1)),
+            Token::Comma,
+            Token::Number(Fraction::from(2)),
+            Token::RParen,
+            Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        assert_eq!(parser.parse_lines(), vec![]);
     }
 }

@@ -46,7 +46,7 @@ mod tests {
         let input = r#"
 val mut z = 3
 
-fun f1 = (x: number, y: number): number {
+fun f1(x: number, y: number): number {
     z = 2
     val mut d = 3
     z = d = 4
@@ -64,22 +64,22 @@ fun f1 = (x: number, y: number): number {
         let input = r#"
 val mut z = 3
 
-fun f1 = (x: number, y: number): number {
+fun f1(x: number, y: number): number {
     z = 2
     val mut d = 3
     z = d = 4
     return x + y + z
 }
 
-fun f2 = (x: number, y: number): number {
+fun f2(x: number, y: number): number {
     return x + y + z
 }
 
-fun f3 = (): number {
+fun f3(): number {
     return 1
 }
 
-fun f4 = (): number {
+fun f4(): number {
     return 2 + 3 / 4
 }
 

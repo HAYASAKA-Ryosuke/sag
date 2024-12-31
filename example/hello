@@ -1,26 +1,9 @@
 
 val mut z = 3
 
-fun f1 = (x: number, y: number): number {
+fun f1(x: number, y: number) {
   z = 2
   val mut d = 3
   z = d = 4
-  return x + y + z
+  print(z)
 }
-
-fun f2 = (x: number, y: number): number {
-  return x + y + z
-}
-
-fun f3 = (): number {
-  return 1
-}
-
-fun f4 = (): number {
-  return 2 + 3 / 4
-}
-
-args(2, 0) -> f1
-args(2, 0) -> f2
-args() -> f3
-args() -> f4
