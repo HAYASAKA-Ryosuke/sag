@@ -6,8 +6,7 @@ fun f1(x: number, y: number): number {
   return x + y + z
 }
 
-val res = f1(1, 2)
-print(res)
+print(f1(3, 3))
 |1, 2| -> f1 -> print
 
 

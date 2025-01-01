@@ -555,7 +555,6 @@ impl Parser {
     }
 
     fn parse_function_call_front(&mut self, name: String, arguments: ASTNode) -> ASTNode {
-        self.consume_token();
 
         let function_call = ASTNode::FunctionCall {
             name,
