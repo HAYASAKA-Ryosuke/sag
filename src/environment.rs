@@ -20,6 +20,13 @@ pub struct FunctionInfo {
     pub builtin: Option<fn(Vec<Value>) -> Value>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct MethodInfo {
+    pub arguments: Vec<ASTNode>,
+    pub return_type: ValueType,
+    pub body: Option<ASTNode>,
+}
+
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct VariableKeyInfo {
     name: String,
@@ -46,6 +53,7 @@ pub enum ValueType {
     Struct{name: String, fields: HashMap<String, ValueType>, is_public: bool},
     StructField{value_type: Box<ValueType>, is_public: bool},
     StructInstance{name: String, fields: HashMap<String, ValueType>},
+    Impl{base_struct: Box<ValueType>, methods: HashMap<String, MethodInfo>},
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,6 +87,25 @@ impl Env {
 
     pub fn get_struct(&self, name: String) -> Option<&Value> {
         self.structs.get(&name)
+    }
+
+    pub fn register_impl(&mut self, impl_value: Value) {
+        match impl_value {
+            Value::Impl { base_struct, methods } => {
+                if let ValueType::Struct { name, .. } = base_struct {
+                    if let Some(Value::Struct { methods: ref mut struct_methods, .. }) = self.structs.get_mut(&name) {
+                        for (method_name, method_info) in methods {
+                            struct_methods.insert(method_name, method_info);
+                        }
+                    } else {
+                        panic!("Struct '{}' not found for Impl", name);
+                    }
+                } else {
+                    panic!("Invalid base_struct in Impl");
+                }
+            }
+            _ => panic!("Invalid impl value"),
+        }
     }
     
     pub fn register_builtin(&mut self, name: String, function: fn(Vec<Value>) -> Value) {
