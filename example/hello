@@ -1,9 +1,36 @@
 
 val mut z = 3
 
-fun f1(x: number, y: number) {
+fun f1(x: number, y: number): number {
   z = 2
-  val mut d = 3
-  z = d = 4
-  print(z)
+  return x + y + z
 }
+
+val res = f1(1, 2)
+print(res)
+|1, 2| -> f1 -> print
+
+
+struct Point {
+  x: number,
+  y: number
+}
+
+impl Point {
+  fun move(dx: number, dy: number) {
+      self.x = self.x + dx
+      self.y = self.y + dy
+  }
+}
+
+impl Point {
+  fun display() {
+      print("hello")
+  }
+}
+
+val x = 8
+val y = 3
+val mut point = Point{x: x, y: y}
+point.move(5, 2)
+point.display()

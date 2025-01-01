@@ -859,7 +859,6 @@ impl Parser {
                 self.pos += 1;
                 let scope = self.get_current_scope().to_string();
                 let variable_info = self.find_variables(scope, name.clone());
-                println!("name: {:?}, {:?}", name, self.get_current_token());
                 match self.get_current_token() {
                     Some(Token::LBrace) => {
                         // 構造体のインスタンス化
