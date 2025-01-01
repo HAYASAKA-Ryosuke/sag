@@ -1324,6 +1324,7 @@ mod tests {
             Value::Struct {
                 name: "Point".into(),
                 is_public: true,
+                methods: HashMap::new(),
                 fields: HashMap::from_iter(vec![
                     ("x".into(), Value::StructField {
                         value_type: ValueType::Number,
@@ -1394,7 +1395,8 @@ mod tests {
                             value_type: ValueType::Number,
                             is_public: false
                         })
-                    ])
+                    ]),
+                    methods: HashMap::new()
                 },
                 Value::StructInstance {
                     name: "Point".into(),

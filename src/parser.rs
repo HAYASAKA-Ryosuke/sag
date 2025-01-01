@@ -2467,66 +2467,71 @@ mod tests {
 
     #[test]
     fn test_impl() {
-        let tokens = vec![
-            Token::PrivateStruct,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Eof,
-            Token::Pub,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Comma,
-            Token::Eof,
-            Token::Pub,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-            Token::Impl,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Eof,
-            Token::Function,
-            Token::Identifier("new".into()),
-            Token::LParen,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Comma,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::RParen,
-            Token::Colon,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Return,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("x".into()),
-            Token::Comma,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Identifier("y".into()),
-            Token::RBrace,
-            Token::RBrace,
-            Token::Eof,
-            Token::Identifier("Point".into()),
-            Token::Dot,
-            Token::Identifier("new".into()),
-            Token::LParen,
-            Token::Number(Fraction::from(1)),
-            Token::Comma,
-            Token::Number(Fraction::from(2)),
-            Token::RParen,
-            Token::Eof
-        ];
+        let tokens = vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("move".into()), Token::LParen, Token::Identifier("dx".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Equal, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Plus, Token::Identifier("dx".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof];
         let mut parser = Parser::new(tokens);
-        assert_eq!(parser.parse_lines(), vec![]);
+        let base_struct = ASTNode::Struct {
+            name: "Point".into(),
+            fields: HashMap::from_iter(vec![
+                ("x".into(), ASTNode::StructField {
+                    value_type: ValueType::Number,
+                    is_public: false
+                }),
+            ]),
+            is_public: false
+        };
+        parser.register_struct("global".into(), base_struct);
+        let base_struct_type = ValueType::Struct {
+            name: "Point".into(),
+            is_public: false,
+            fields: HashMap::from_iter(vec![
+                ("x".into(), ValueType::StructField {
+                    value_type: Box::new(ValueType::Number),
+                    is_public: false
+                })
+            ])
+        };
+        assert_eq!(parser.parse_lines(), vec![ASTNode::Impl {
+            base_struct: Box::new(base_struct_type.clone()),
+            methods: vec![ASTNode::Method {
+                name: "move".into(),
+                arguments: vec![
+                    ASTNode::Variable {
+                        name: "self".into(),
+                        value_type: None
+                    },
+                    ASTNode::Variable {
+                        name: "dx".into(),
+                        value_type: Some(ValueType::Number)
+                    }
+                ],
+                body: Box::new(ASTNode::Block(vec![
+                          ASTNode::StructFieldAssign {
+                              instance: Box::new(ASTNode::StructFieldAccess {
+                                  instance: Box::new(ASTNode::Variable {
+                                      name: "self".into(),
+                                      value_type: Some(base_struct_type.clone())
+                                  }),
+                                  field_name: "x".into()
+                              }),
+                              field_name: "x".into(),
+                              value: Box::new(ASTNode::BinaryOp {
+                                  left: Box::new(ASTNode::StructFieldAccess {
+                                      instance: Box::new(ASTNode::Variable {
+                                          name: "self".into(),
+                                          value_type: Some(base_struct_type.clone())
+                                      }),
+                                      field_name: "x".into()
+                                  }),
+                                  op: Token::Plus,
+                                  right: Box::new(ASTNode::Variable {
+                                      name: "dx".into(),
+                                      value_type: Some(ValueType::Number)
+                                  })
+                              })
+                          }
+                ])),
+                return_type: ValueType::Void
+            }]
+        }]);
     }
 }
