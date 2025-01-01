@@ -191,7 +191,6 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                                     match obj.unwrap().value.clone() {
                                         Value::StructInstance { .. } => {
                                             let instance_value = obj.unwrap().value.clone();
-                                            println!("instance value: {:?}", instance_value);
                                             let updated_value = match instance_value {
                                                 Value::StructInstance { name, fields } => {
                                                     let mut updated_fields = fields.clone();
