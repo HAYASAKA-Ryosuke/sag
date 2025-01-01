@@ -20,7 +20,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         println!("{:?}", tokens);
         let mut parser = Parser::new(tokens.to_vec());
         let ast_node = parser.parse();
-        println!("{:?}", ast_node);
+        println!("ast: {:?}", ast_node);
         let result = eval(ast_node, &mut env);
         println!("---------");
         println!("res: {:?}", result);

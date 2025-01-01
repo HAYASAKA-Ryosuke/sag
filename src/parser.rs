@@ -1,4 +1,4 @@
-use crate::environment::{Env, EnvVariableType, ValueType};
+use crate::environment::{Env, EnvVariableType, ValueType, MethodInfo};
 use crate::tokenizer::Token;
 use fraction::Fraction;
 use std::collections::HashMap;
@@ -16,6 +16,7 @@ pub enum Value {
     Struct {
         name: String,
         fields: HashMap<String, Value>,  // field_name: value
+        methods: HashMap<String, MethodInfo>,
         is_public: bool,
     },
     StructInstance {
@@ -25,6 +26,10 @@ pub enum Value {
     StructField {
         value_type: ValueType,
         is_public: bool,
+    },
+    Impl {
+        base_struct: ValueType,
+        methods: HashMap<String, MethodInfo>,
     },
     Lambda {
         arguments: Vec<ASTNode>,
@@ -40,6 +45,9 @@ impl Value {
             Value::String(_) => ValueType::String,
             Value::Bool(_) => ValueType::Bool,
             Value::Void => ValueType::Void,
+            Value::Impl { base_struct, methods } => {
+                ValueType::Impl { base_struct: Box::new(base_struct.clone()), methods: methods.clone() }
+            },
             Value::StructInstance { name, fields } => {
                 let mut field_types = HashMap::new();
                 for (field_name, field_value) in fields.iter() {
@@ -51,9 +59,9 @@ impl Value {
                 }
             }
             Value::StructField { value_type, .. } => value_type.clone(),
-            Value::Struct{ name, fields, is_public } => {
+            Value::Struct{ name, fields, is_public, methods: _ } => {
                 let field_types = fields.iter().map(|(name, field)| {
-                    if let Value::StructField { value_type, is_public } = field {
+                    if let Value::StructField { value_type, is_public: _ } = field {
                         (name.clone(), value_type.clone())
                     } else {
                         panic!("invalid struct field")
@@ -122,6 +130,16 @@ impl fmt::Display for Value {
             Value::Function => write!(f, "Function"),
             Value::Lambda { .. } => write!(f, "Lambda"),
             Value::Return(value) => write!(f, "{}", value),
+            Value::Impl { base_struct, methods } => {
+                let mut result = String::new();
+                result.push_str(&format!("Impl {{\n"));
+                result.push_str(&format!("    base_struct: {:?},\n", base_struct));
+                for method in methods {
+                    result.push_str(&format!("    method: {:?},\n", method));
+                }
+                result.push_str("}");
+                write!(f, "{}", result)
+            }
             Value::StructInstance { name, fields } => {
                 let mut result = String::new();
                 result.push_str(&format!("{} {{\n", name));
@@ -196,6 +214,17 @@ pub enum ASTNode {
         body: Box<ASTNode>,
         return_type: ValueType,
     },
+    Method {
+        name: String,
+        arguments: Vec<ASTNode>,
+        body: Box<ASTNode>,
+        return_type: ValueType,
+    },
+    MethodCall {
+        method_name: String,
+        caller: String,
+        arguments: Box<ASTNode>
+    },
     FunctionCall {
         name: String,
         arguments: Box<ASTNode>,
@@ -258,6 +287,10 @@ pub enum ASTNode {
         name: String,
         fields: HashMap<String, ASTNode>,
     },
+    Impl {
+        base_struct: Box<ValueType>,
+        methods: Vec<ASTNode>,
+    },
 }
 
 pub struct Parser {
@@ -267,6 +300,7 @@ pub struct Parser {
     scopes: Vec<String>,
     variables: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
     structs: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
+    current_struct: Option<String>,
 }
 
 impl Parser {
@@ -279,6 +313,7 @@ impl Parser {
             scopes: vec!["global".into()],
             variables: HashMap::new(),
             structs: HashMap::new(),
+            current_struct: None,
         }
     }
 
@@ -414,9 +449,9 @@ impl Parser {
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
                 Value::Void => Ok(ValueType::Void),
-                Value::Struct { name, fields, is_public } => {
+                Value::Struct { name, fields, is_public, methods: _ } => {
                     let field_types = fields.iter().map(|(name, field)| {
-                        if let Value::StructField { value_type, is_public } = field {
+                        if let Value::StructField { value_type, is_public: _ } = field {
                             (name.clone(), value_type.clone())
                         } else {
                             panic!("invalid struct field")
@@ -520,7 +555,6 @@ impl Parser {
     }
 
     fn parse_function_call_front(&mut self, name: String, arguments: ASTNode) -> ASTNode {
-        self.consume_token();
 
         let function_call = ASTNode::FunctionCall {
             name,
@@ -639,7 +673,6 @@ impl Parser {
         };
         self.enter_scope(name.to_string());
         self.pos += 1;
-        self.extract_token(Token::Equal);
         self.extract_token(Token::LParen);
 
         let arguments = self.parse_function_arguments();
@@ -656,11 +689,17 @@ impl Parser {
         }
     }
     fn string_to_value_type(&mut self, type_name: String) -> ValueType {
+        let scope = self.get_current_scope();
+        if let Some(struct_value) = self.get_struct(scope, type_name.clone()) {
+            return struct_value;
+        }
+
         match type_name.as_str() {
             "number" => ValueType::Number,
             "string" => ValueType::String,
             "bool" => ValueType::Bool,
-            _ => panic!("undefined type"),
+            "void" => ValueType::Void,
+            _ => panic!("undefined type: {:?}", type_name),
         }
     }
     fn parse_function_arguments(&mut self) -> Vec<ASTNode> {
@@ -724,6 +763,7 @@ impl Parser {
                 } else {
                     EnvVariableType::Immutable
                 };
+
                 self.register_variables(scope.clone(), &name, &value_type, &variable_type);
                 ASTNode::Assign {
                     name,
@@ -778,6 +818,7 @@ impl Parser {
         match token {
             Token::PrivateStruct => self.parse_struct(false),
             Token::PublicStruct => self.parse_struct(true),
+            Token::Impl => self.parse_impl(),
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
             Token::Number(value) => self.parse_literal(Value::Number(value)),
@@ -844,6 +885,7 @@ impl Parser {
                     Some(Token::LParen) => {
                         // 関数呼び出し
                         self.consume_token();
+                        println!("name: {:?}", name);
                         let arguments = self.parse_function_call_arguments_paren();
                         let function_call = self.parse_function_call_front(name, arguments);
                         function_call
@@ -881,6 +923,19 @@ impl Parser {
                         ASTNode::Variable { name, value_type }
                     }
                     Some(Token::Dot) => {
+                        self.pos += 2;
+                        if Some(Token::LParen) == self.get_current_token() {
+                            self.pos -= 1;
+                            let method_name = match self.get_current_token() {
+                                Some(Token::Identifier(method_name)) => method_name,
+                                _ => panic!("missing method name: {:?}", self.get_current_token())
+                            };
+                            self.pos += 1;
+                            let arguments = self.parse_function_call_arguments_paren();
+                            return self.parse_method_call(name.to_string(), method_name.to_string(), arguments);
+                        }
+                        self.pos -= 2;
+                        
                         // 構造体のフィールドアクセス
                         let struct_instance_access = self.parse_struct_instance_access(name.clone());
                         // 代入
@@ -915,6 +970,86 @@ impl Parser {
         }
     }
 
+    fn parse_impl(&mut self) -> ASTNode {
+        self.consume_token();
+        let scope = self.get_current_scope().clone();
+        let struct_name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        let base_struct = self.get_struct(scope.clone(),struct_name.to_string()).expect("undefined struct");
+        self.current_struct = Some(struct_name.clone());
+        self.consume_token();
+        self.extract_token(Token::LBrace);
+        let mut methods = Vec::new();
+        while let Some(token) = self.get_current_token() {
+            println!("token: {:?}", token);
+            if token == Token::RBrace {
+                self.consume_token();
+                break;
+            }
+            if token == Token::Eof {
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
+            if token == Token::Comma {
+                self.consume_token();
+                continue;
+            }
+            if token == Token::Function {
+                let method = self.parse_method();
+                methods.push(method);
+                continue;
+            }
+        }
+        self.current_struct = None;
+        ASTNode::Impl {
+            base_struct: Box::new(base_struct),
+            methods,
+        }
+    }
+
+    fn parse_method(&mut self) -> ASTNode {
+        self.consume_token();
+        let name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        self.enter_scope(name.to_string());
+        self.consume_token();
+        self.extract_token(Token::LParen);
+        let self_type = ValueType::StructInstance {
+            name: self.get_current_scope(),
+            fields: HashMap::new(), // 仮のフィールド
+        };
+        let scope = self.get_current_scope();
+        self.register_variables(
+            scope.clone(),
+            &"self".to_string(),
+            &self_type,
+            &EnvVariableType::Immutable,
+        );
+        let mut arguments = self.parse_function_arguments();
+        arguments.insert(
+            0,
+            ASTNode::Variable {
+                name: "self".to_string(),
+                value_type: None,
+            },
+        );
+
+        let return_type = self.parse_return_type();
+        let body = self.parse_block();
+        self.leave_scope();
+        ASTNode::Method {
+            name,
+            arguments,
+            body: Box::new(body),
+            return_type,
+        }
+    }
+
     fn parse_struct_instance_access(&mut self, name: String) -> ASTNode {
         self.consume_token();
         let field_name = match self.get_current_token() {
@@ -923,6 +1058,24 @@ impl Parser {
         };
         self.consume_token();
         let scope = self.get_current_scope().clone();
+        if name == "self" {
+            if self.current_struct.is_none() {
+                panic!("undefined struct for self");
+            }
+            let current_struct = self.current_struct.clone().unwrap();
+            let struct_type = self
+                .get_struct(scope.clone(), current_struct.to_string())
+                .expect("undefined struct for self");
+    
+            return ASTNode::StructFieldAccess {
+                instance: Box::new(ASTNode::Variable {
+                    name: "self".to_string(),
+                    value_type: Some(struct_type.clone()),
+                }),
+                field_name,
+            };
+        }
+
         match self.find_variables(scope.clone(), name.clone()) {
             Some((ValueType::StructInstance { name: instance_name, ref fields }, _)) => {
                 ASTNode::StructFieldAccess {
@@ -931,6 +1084,15 @@ impl Parser {
                 }
             }
             _ => panic!("undefined struct: {:?}", name),
+        }
+    }
+
+    fn parse_method_call(&mut self, caller: String, method_name: String, arguments: ASTNode) -> ASTNode {
+        self.consume_token();
+        ASTNode::MethodCall {
+            method_name,
+            caller,
+            arguments: Box::new(arguments),
         }
     }
 
@@ -1218,22 +1380,29 @@ impl Parser {
         }
         self.consume_token();
 
-        while let Some(token) = self.get_current_token() {
-            if token == Token::RBrace {
+        loop {
+            let token = self.get_current_token();
+            if token == Some(Token::RBrace) {
                 self.consume_token();
                 break;
             }
-            match self.get_current_token() {
-                Some(Token::Eof) => {
-                    self.pos = 0;
-                    self.line += 1;
-                    continue;
+            if token == Some(Token::Eof) {
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
+            if token == None {
+                if self.line >= self.tokens.len() {
+                    break;
                 }
-                _ => {}
-            };
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
             let statement = self.parse_expression(0);
             statements.push(statement);
         }
+
         ASTNode::Block(statements)
     }
 
@@ -1408,7 +1577,6 @@ mod tests {
         let mut parser = Parser::new(vec![
             Token::Function,
             Token::Identifier("foo".into()),
-            Token::Equal,
             Token::LParen,
             Token::Identifier("x".into()),
             Token::Colon,
@@ -1595,7 +1763,6 @@ mod tests {
         let mut parser = Parser::new(vec![
             Token::Function,
             Token::Identifier("no_args".into()),
-            Token::Equal,
             Token::LParen,
             Token::RParen, // 引数なし
             // 戻り値の型指定なし → void
@@ -2294,5 +2461,75 @@ mod tests {
                 }
             ]
         );
+    }
+
+    #[test]
+    fn test_impl() {
+        let tokens = vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("move".into()), Token::LParen, Token::Identifier("dx".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Equal, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Plus, Token::Identifier("dx".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof];
+        let mut parser = Parser::new(tokens);
+        let base_struct = ASTNode::Struct {
+            name: "Point".into(),
+            fields: HashMap::from_iter(vec![
+                ("x".into(), ASTNode::StructField {
+                    value_type: ValueType::Number,
+                    is_public: false
+                }),
+            ]),
+            is_public: false
+        };
+        parser.register_struct("global".into(), base_struct);
+        let base_struct_type = ValueType::Struct {
+            name: "Point".into(),
+            is_public: false,
+            fields: HashMap::from_iter(vec![
+                ("x".into(), ValueType::StructField {
+                    value_type: Box::new(ValueType::Number),
+                    is_public: false
+                })
+            ])
+        };
+        assert_eq!(parser.parse_lines(), vec![ASTNode::Impl {
+            base_struct: Box::new(base_struct_type.clone()),
+            methods: vec![ASTNode::Method {
+                name: "move".into(),
+                arguments: vec![
+                    ASTNode::Variable {
+                        name: "self".into(),
+                        value_type: None
+                    },
+                    ASTNode::Variable {
+                        name: "dx".into(),
+                        value_type: Some(ValueType::Number)
+                    }
+                ],
+                body: Box::new(ASTNode::Block(vec![
+                          ASTNode::StructFieldAssign {
+                              instance: Box::new(ASTNode::StructFieldAccess {
+                                  instance: Box::new(ASTNode::Variable {
+                                      name: "self".into(),
+                                      value_type: Some(base_struct_type.clone())
+                                  }),
+                                  field_name: "x".into()
+                              }),
+                              field_name: "x".into(),
+                              value: Box::new(ASTNode::BinaryOp {
+                                  left: Box::new(ASTNode::StructFieldAccess {
+                                      instance: Box::new(ASTNode::Variable {
+                                          name: "self".into(),
+                                          value_type: Some(base_struct_type.clone())
+                                      }),
+                                      field_name: "x".into()
+                                  }),
+                                  op: Token::Plus,
+                                  right: Box::new(ASTNode::Variable {
+                                      name: "dx".into(),
+                                      value_type: Some(ValueType::Number)
+                                  })
+                              })
+                          }
+                ])),
+                return_type: ValueType::Void
+            }]
+        }]);
     }
 }

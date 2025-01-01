@@ -1,26 +1,35 @@
 
 val mut z = 3
 
-fun f1 = (x: number, y: number): number {
+fun f1(x: number, y: number): number {
   z = 2
-  val mut d = 3
-  z = d = 4
   return x + y + z
 }
 
-fun f2 = (x: number, y: number): number {
-  return x + y + z
+print(f1(3, 3))
+|1, 2| -> f1 -> print
+
+
+struct Point {
+  x: number,
+  y: number
 }
 
-fun f3 = (): number {
-  return 1
+impl Point {
+  fun move(dx: number, dy: number) {
+      self.x = self.x + dx
+      self.y = self.y + dy
+  }
 }
 
-fun f4 = (): number {
-  return 2 + 3 / 4
+impl Point {
+  fun display() {
+      print("hello")
+  }
 }
 
-args(2, 0) -> f1
-args(2, 0) -> f2
-args() -> f3
-args() -> f4
+val x = 8
+val y = 3
+val mut point = Point{x: x, y: y}
+point.move(5, 2)
+point.display()
