@@ -324,7 +324,7 @@ impl Parser {
         self.scopes.pop();
     }
 
-    fn get_current_scope(&mut self) -> String {
+    fn get_current_scope(&self) -> String {
         self.scopes.last().unwrap().to_string()
     }
 
@@ -372,7 +372,7 @@ impl Parser {
     }
 
     fn find_variables(
-        &mut self,
+        &self,
         scope: String,
         name: String,
     ) -> Option<(ValueType, EnvVariableType)> {
@@ -501,6 +501,17 @@ impl Parser {
                     _ => Err(
                         format!("type mismatch: {:?} {:?} {:?}", left_type, op, right_type).into(),
                     ),
+                }
+            },
+            ASTNode::Variable { name, value_type } => {
+                if let Some(value_type) = value_type {
+                    Ok(value_type.clone())
+                } else {
+                    let scope = self.get_current_scope();
+                    match self.find_variables(scope, name.clone()) {
+                        Some((value_type, _)) => Ok(value_type.clone()),
+                        None => Err(format!("undefined variable: {:?}", name).into()),
+                    }
                 }
             }
             _ => Ok(ValueType::Any),
@@ -885,7 +896,6 @@ impl Parser {
                     Some(Token::LParen) => {
                         // 関数呼び出し
                         self.consume_token();
-                        println!("name: {:?}", name);
                         let arguments = self.parse_function_call_arguments_paren();
                         let function_call = self.parse_function_call_front(name, arguments);
                         function_call
@@ -983,7 +993,6 @@ impl Parser {
         self.extract_token(Token::LBrace);
         let mut methods = Vec::new();
         while let Some(token) = self.get_current_token() {
-            println!("token: {:?}", token);
             if token == Token::RBrace {
                 self.consume_token();
                 break;
