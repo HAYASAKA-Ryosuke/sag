@@ -89,8 +89,8 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             match env.get(caller.clone(), None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
                     let local_env = env.clone();
-                    let struct_info = match value {
-                        Value::StructInstance { name: struct_name, ..} => {
+                    let struct_info = match value_type {
+                        ValueType::StructInstance { name: struct_name, ..} => {
                             local_env.get_struct(struct_name.to_string())
                         },
                         _ => panic!("missing struct: {}", value)
