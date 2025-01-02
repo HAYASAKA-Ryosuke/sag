@@ -665,6 +665,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             match (left_val.clone(), right_val.clone(), op.clone()) {
                 (Value::String(l), Value::String(r), Token::Plus) => Value::String(l + &r),
                 (Value::Number(l), Value::Number(r), Token::Plus) => Value::Number(l + r),
+                (Value::Number(l), Value::Number(r), Token::Minus) => Value::Number(l - r),
                 (Value::Number(l), Value::Number(r), Token::Mul) => Value::Number(l * r),
                 (Value::Number(l), Value::Number(r), Token::Div) => Value::Number(l / r),
                 _ => panic!("Unsupported operation: {:?} {:?} {:?}", left_val.clone(), op, right_val.clone()),
