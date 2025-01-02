@@ -1,14 +1,11 @@
-
 val mut z = 3
-
 fun f1(x: number, y: number): number {
-  z = 2
-  return x + y + z
+    z = 2
+    return x + y + z
 }
 
-print(f1(3, 3))
+print(f1(1, 2))
 |1, 2| -> f1 -> print
-
 
 struct Point {
   x: number,
@@ -31,5 +28,30 @@ impl Point {
 val x = 8
 val y = 3
 val mut point = Point{x: x, y: y}
-point.move(5, 2)
+point.x = 1
+point -> print
 point.display()
+
+if x == 8 {
+    print("hello2")
+    2
+} else {
+    print("hello")
+    1
+}
+
+1 - 1
+1 + 1
+1 / 1
+1 * 1
+
+fun fibo(n: number): number {
+    return if n < 2 {
+        return n
+    } else {
+        return fibo(n - 1) + fibo(n - 2)
+    }
+}
+
+
+print(fibo(7))
