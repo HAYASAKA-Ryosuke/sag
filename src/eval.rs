@@ -585,7 +585,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                 let result = eval(function.body.unwrap(), &mut local_env);
                 env.update_global_env(&local_env);
 
-                env.leave_scope();
+                local_env.leave_scope();
                 if let Value::Return(v) = result {
                     *v
                 } else {
