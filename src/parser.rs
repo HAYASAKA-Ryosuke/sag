@@ -300,6 +300,7 @@ pub struct Parser {
     scopes: Vec<String>,
     variables: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
     structs: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
+    functions: HashMap<(String, String), ValueType>, // key: (scope, name, arguments), value: (body, return_type)
     current_struct: Option<String>,
 }
 
@@ -313,6 +314,7 @@ impl Parser {
             scopes: vec!["global".into()],
             variables: HashMap::new(),
             structs: HashMap::new(),
+            functions: HashMap::new(),
             current_struct: None,
         }
     }
@@ -356,6 +358,19 @@ impl Parser {
             };
         }
         None
+    }
+
+    fn register_functions(
+        &mut self,
+        scope: String,
+        name: &String,
+        arguments: &Vec<ASTNode>,  // arugmentsも多重定義を許容するときに使う
+        return_type: &ValueType,
+    ) {
+        self.functions.insert(
+            (scope.clone(), name.to_string()),
+            return_type.clone(),
+        );
     }
 
     fn register_variables(
@@ -488,6 +503,14 @@ impl Parser {
                     name: name.clone(),
                     fields: field_types,
                 })
+            }
+            ASTNode::FunctionCall { name, arguments: _ } => {
+                let function = self.functions.get(&(self.get_current_scope(), name.clone()));
+                if function.is_none() {
+                    return Err(format!("undefined function: {:?}", name));
+                }
+                let value_type = function.unwrap();
+                Ok(value_type.clone())
             }
             ASTNode::BinaryOp { left, op, right } => {
                 let left_type = self.infer_type(&left)?;
@@ -688,6 +711,12 @@ impl Parser {
 
         let arguments = self.parse_function_arguments();
         let return_type = self.parse_return_type();
+        self.register_functions(
+            self.get_current_scope(),
+            &name,
+            &arguments,
+            &return_type,
+        );
         let body = self.parse_block();
 
         self.leave_scope();
@@ -1237,13 +1266,11 @@ impl Parser {
         };
         let condition = self.parse_expression(0);
         let then = self.parse_expression(0);
-        match then {
-            ASTNode::Block(_) => {
-                self.pos = 0;
-                self.line += 1;
-            }
-            _ => {}
-        };
+        if self.get_current_token() == Some(Token::Eof) {
+            self.pos = 0;
+            self.line += 1;
+        }
+
         let else_ = match self.get_current_token() {
             Some(Token::Else) => {
                 self.consume_token();
