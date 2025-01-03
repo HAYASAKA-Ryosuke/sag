@@ -1,7 +1,13 @@
-use crate::environment::{Env, EnvVariableType, FunctionInfo, ValueType, MethodInfo, EnvVariableValueInfo};
+pub mod prefix_op;
+pub mod struct_node;
+pub mod function_node;
+pub mod comparison_op;
+pub mod if_node;
+pub mod assign_node;
+
+use crate::environment::{Env, EnvVariableType, ValueType};
 use crate::parser::{ASTNode, Value};
 use crate::tokenizer::Token;
-use std::collections::HashMap;
 
 pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
     let mut values = vec![];
@@ -15,303 +21,35 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
     match ast {
         ASTNode::Literal(value) => value.clone(),
         ASTNode::PrefixOp { op, expr } => {
-            let value = eval(*expr, env);
-            match (op.clone(), value) {
-                (Token::Minus, Value::Number(v)) => Value::Number(-v),
-                _ => panic!("Unexpected prefix op: {:?}", op),
-            }
+            prefix_op::prefix_op(op, expr, env)
         }
         ASTNode::Struct {
             name,
             fields,
             is_public
         } => {
-            let mut struct_fields = HashMap::new();
-            // fields field_name: StructField
-            for (field_name, struct_field) in fields {
-                match struct_field {
-                    ASTNode::StructField { value_type, is_public } => {
-                        struct_fields.insert(field_name, Value::StructField {
-                            value_type,
-                            is_public
-                        });
-                    },
-                    _ => panic!("Unexpected struct field: {:?}", struct_field),
-                }
-            }
-            let result = Value::Struct {
-                name,
-                fields: struct_fields,
-                methods: HashMap::new(),
-                is_public
-            };
-            env.register_struct(result.clone());
-            result
+            struct_node::struct_node(name, fields, is_public, env)
         }
         ASTNode::Impl {
             base_struct,
             methods,
         } => {
-            let mut impl_methods = HashMap::new();
-            for method in methods {
-                match method {
-                    ASTNode::Method {
-                        name,
-                        arguments,
-                        body,
-                        return_type,
-                    } => {
-                        let method_info = MethodInfo {
-                            arguments,
-                            body: Some(*body),
-                            return_type,
-                        };
-                        impl_methods.insert(name, method_info);
-                    },
-                    _ => panic!("Unexpected method: {:?}", method),
-                }
-            }
-            let result = Value::Impl {
-                base_struct: *base_struct,
-                methods: impl_methods,
-            };
-            env.register_impl(result.clone());
-            result
+            struct_node::impl_node(base_struct, methods, env)
         }
         ASTNode::MethodCall { method_name, caller, arguments } => {
-            let mut args_vec = vec![];
-            match *arguments {
-               ASTNode::FunctionCallArgs(arguments) => {
-                   args_vec = arguments
-               }
-               _ => {}
-            }
-            match env.get(caller.clone(), None) {
-                Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
-                    let local_env = env.clone();
-                    let struct_info = match value_type {
-                        ValueType::StructInstance { name: struct_name, ..} => {
-                            local_env.get_struct(struct_name.to_string())
-                        },
-                        _ => panic!("missing struct: {}", value)
-                    };
-                    let methods = match struct_info {
-                        Some(Value::Struct{methods, ..}) => methods,
-                        _ => panic!("failed get methods")
-                    };
-
-                    match methods.get(&method_name) {
-                        Some(MethodInfo{arguments: define_arguments, return_type, body}) => {
-
-                            // self分加味
-                            if (args_vec.len() + 1) != define_arguments.len() {
-                                panic!("does not match arguments length");
-                            }
-                            let mut local_env = env.clone();
-                            local_env.enter_scope(value.to_string());
-                            let _ = local_env.set(
-                                "self".to_string(),
-                                match struct_info {
-                                    Some(Value::Struct{name, fields, methods, is_public}) => {
-                                        value.clone()
-                                    },
-                                    _ => panic!("failed struct")
-                                },
-                                EnvVariableType::Mutable,
-                                match struct_info {
-                                    Some(Value::Struct{name, fields, methods, is_public}) => {
-                                        let mut field_types = HashMap::new();
-                                        for (field_name, field_value) in fields {
-                                            field_types.insert(field_name.to_string(), field_value.value_type());
-                                        }
-                                        ValueType::Struct{name: name.to_string(), fields: field_types, is_public: is_public.clone()}
-                                    },
-                                    _ => panic!("failed struct")
-                                },
-                                true
-                            );
-                            let mut i = 0;
-                            for define_arg in define_arguments {
-                                if let ASTNode::Variable {name, value_type} = define_arg {
-                                    if name == "self" {
-                                        continue
-                                    }
-                                    let arg_value = eval(args_vec[i].clone(), &mut local_env.clone());
-                                    let _ = local_env.set(name.to_string(), arg_value, EnvVariableType::Immutable, value_type.clone().unwrap_or(ValueType::Any), true);
-                                    i += 1;
-                                }
-                            }
-                            let result = eval(body.clone().unwrap(), &mut local_env);
-                            if let Some(self_value) = local_env.get("self".to_string(), None) {
-                                if let Value::StructInstance { name, fields } = self_value.value.clone() {
-                                    local_env.set(
-                                        caller.to_string(),
-                                        self_value.value.clone(),
-                                        variable_type.clone(),
-                                        value_type.clone(),
-                                        false,
-                                    ).expect("Failed to update self in global environment");
-                                }
-                            }
-                            env.update_global_env(&local_env);
-                            env.leave_scope();
-                            result
-                        },
-                        _ => panic!("call failed method: {}", method_name)
-                    }
-                },
-                None => panic!("missing struct: {}", caller)
-            }
+            struct_node::method_call_node(method_name, caller, arguments, env)
         }
         ASTNode::StructInstance {
             name,
             fields,
         } => {
-            let mut struct_fields = HashMap::new();
-            for (field_name, field_value) in fields {
-                struct_fields.insert(field_name, eval(field_value, env));
-            }
-            Value::StructInstance {
-                name,
-                fields: struct_fields,
-            }
+            struct_node::struct_instance_node(name, fields, env)
         }
         ASTNode::StructFieldAssign { instance, field_name: updated_field_name, value: updated_value_ast } => {
-            match *instance {
-                ASTNode::StructFieldAccess { instance, field_name: _  } => {
-                    match *instance {
-                        ASTNode::Variable { name: variable_name, value_type } => {
-                            match value_type {
-                                Some(ValueType::Struct{name, fields, ..}) if variable_name == "self" => {
-                                    let obj = env.get(variable_name.to_string(), None);
-                                    if obj.is_none() {
-                                        panic!("Variable not found: {:?}", variable_name);
-                                    }
-                                    let mut struct_fields = HashMap::new();
-                                    match obj.unwrap().value.clone() {
-                                        Value::StructInstance { .. } => {
-                                            let instance_value = obj.unwrap().value.clone();
-                                            let updated_value = match instance_value {
-                                                Value::StructInstance { name, fields } => {
-                                                    let mut updated_fields = fields.clone();
-                                                    let updated_value = eval(*updated_value_ast.clone(), env);
-                                                    *updated_fields.entry(updated_field_name.to_string()).or_insert(updated_value.clone()) = updated_value.clone();
-                                                    Value::StructInstance{name, fields: updated_fields}
-                                                },
-                                                _ => panic!("missing struct instance value: {:?}", instance_value)
-                                            };
-                                            env.set(variable_name.to_string(), updated_value.clone(), EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false).expect("update variable");
-                                            updated_value
-                                        },
-                                        Value::Struct { name: _, fields: obj_fields, methods: obj_methods, .. } => {
-                                            for (field_name, field_value) in obj_fields {
-                                                if field_name == updated_field_name {
-                                                    let updated_value = eval(*updated_value_ast.clone(), env);
-                                                    if field_value.value_type() != updated_value.value_type() {
-                                                        panic!("Struct field type mismatch: {}.{}:{:?} = {:?}", variable_name, field_name, field_value.value_type(), updated_value.value_type());
-                                                    }
-                                                    struct_fields.insert(field_name, updated_value);
-                                                } else {
-                                                    struct_fields.insert(field_name, field_value);
-                                                }
-                                            }
-                                            let env_updated_result = env.set(variable_name.to_string(), Value::StructInstance {
-                                                name: variable_name.to_string(),
-                                                fields: struct_fields.clone(),
-                                            }, EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false);
-                                            if env_updated_result.is_err() {
-                                                panic!("{}", env_updated_result.unwrap_err());
-                                            }
-                                            Value::StructInstance {
-                                                name: variable_name.to_string(),
-                                                fields: struct_fields,
-                                            }
-                                        },
-                                        _ => panic!("Unexpected value type: {:?}", obj),
-                                    }
-                                }
-                                Some(ValueType::StructInstance { name, fields }) => {
-                                    let obj = env.get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }));
-                                    if obj.is_none() {
-                                        panic!("Variable not found: {:?}", variable_name);
-                                    }
-                                    let mut struct_fields = HashMap::new();
-                                    match obj.unwrap().value.clone() {
-                                        Value::StructInstance { name: _, fields: obj_fields } => {
-                                            for (field_name, field_value) in obj_fields {
-                                                if field_name == updated_field_name {
-                                                    let updated_value = eval(*updated_value_ast.clone(), env);
-                                                    if field_value.value_type() != updated_value.value_type() {
-                                                        panic!("Struct field type mismatch: {}.{}:{:?} = {:?}", variable_name, field_name, field_value.value_type(), updated_value.value_type());
-                                                    }
-                                                    struct_fields.insert(field_name, updated_value);
-                                                } else {
-                                                    struct_fields.insert(field_name, field_value);
-                                                }
-                                            }
-                                            let env_updated_result = env.set(variable_name.to_string(), Value::StructInstance {
-                                                name: variable_name.to_string(),
-                                                fields: struct_fields.clone(),
-                                            }, EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false);
-                                            if env_updated_result.is_err() {
-                                                panic!("{}", env_updated_result.unwrap_err());
-                                            }
-                                            Value::StructInstance {
-                                                name: variable_name.to_string(),
-                                                fields: struct_fields,
-                                            }
-                                        },
-                                        _ => panic!("Unexpected value type"),
-                                    }
-                                },
-                                _ => panic!("Unexpected value type"),
-                            }
-                        },
-                        _ => panic!("Unexpected value type"),
-                    }
-                },
-                _ => panic!("Unexpected value type"),
-            }
+            struct_node::struct_field_assign_node(instance, updated_field_name, updated_value_ast, env)
         }
         ASTNode::StructFieldAccess { instance, field_name } => {
-            let struct_obj = match *instance {
-                ASTNode::Variable { name: variable_name, value_type } => {
-                    match value_type {
-                        Some(ValueType::Struct { name, fields, is_public }) if variable_name == "self" => {
-                            let obj = env.get(variable_name.to_string(), None);
-                            if obj.is_none() {
-                                panic!("Variable not found: {:?}", variable_name);
-                            }
-                            obj.unwrap().value.clone()
-                        },
-                        Some(ValueType::StructInstance { name, fields }) => {
-                            let obj = env.get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields }));
-                            if obj.is_none() {
-                                panic!("Variable not found: {:?}", variable_name);
-                            }
-                            obj.unwrap().value.clone()
-                        },
-                        _ => panic!("Unexpected value type"),
-                    }
-                },
-                _ => panic!("Unexpected value type"),
-            };
-            match struct_obj {
-                Value::Struct {name: obj_name, fields, ..} => {
-                    // selfのケース
-                    if !fields.contains_key(&field_name) {
-                        panic!("Field not found: {:?}", field_name);
-                    }
-                    fields.get(&field_name).unwrap().clone()
-                }
-                Value::StructInstance { name: _, fields } => {
-                    if !fields.contains_key(&field_name) {
-                        panic!("Field not found: {:?}", field_name);
-                    }
-                    fields.get(&field_name).unwrap().clone()
-                },
-                _ => panic!("Unexpected value: {:?}", struct_obj),
-            }
+            struct_node::struct_field_access_node(instance, field_name, env)
         }
         ASTNode::Function {
             name,
@@ -319,14 +57,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             body,
             return_type,
         } => {
-            let function_info = FunctionInfo {
-                arguments,
-                body: Some(*body),
-                return_type,
-                builtin: None,
-            };
-            env.register_function(name, function_info);
-            Value::Function
+            function_node::function_node(name, arguments, body, return_type, env)
         }
         ASTNode::Lambda { arguments, body } => Value::Lambda {
             arguments,
@@ -334,56 +65,25 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             env: env.clone(),
         },
         ASTNode::Block(statements) => {
-            for statement in statements {
-                if let Value::Return(v) = eval(statement, env) {
-                    return *v;
-                }
-            }
-            Value::Void
+            function_node::block_node(statements, env)
         }
         ASTNode::Return(value) => {
-            let result = eval(*value, env);
-            Value::Return(Box::new(result))
+            Value::Return(Box::new(eval(*value, env)))
         }
         ASTNode::Eq { left, right } => {
-            let left_value = eval(*left, env);
-            let right_value = eval(*right, env);
-            match (left_value, right_value) {
-                (Value::Number(l), Value::Number(r)) => Value::Bool(l == r),
-                _ => panic!("Unsupported operation"),
-            }
+            comparison_op::comparison_op_node(Token::Eq, left, right, env)
         }
         ASTNode::Gte { left, right } => {
-            let left_value = eval(*left, env);
-            let right_value = eval(*right, env);
-            match (left_value, right_value) {
-                (Value::Number(l), Value::Number(r)) => Value::Bool(l >= r),
-                _ => panic!("Unsupported operation"),
-            }
+            comparison_op::comparison_op_node(Token::Gte, left, right, env)
         }
         ASTNode::Gt { left, right } => {
-            let left_value = eval(*left, env);
-            let right_value = eval(*right, env);
-            match (left_value, right_value) {
-                (Value::Number(l), Value::Number(r)) => Value::Bool(l > r),
-                _ => panic!("Unsupported operation"),
-            }
+            comparison_op::comparison_op_node(Token::Gt, left, right, env)
         }
         ASTNode::Lte { left, right } => {
-            let left_value = eval(*left, env);
-            let right_value = eval(*right, env);
-            match (left_value, right_value) {
-                (Value::Number(l), Value::Number(r)) => Value::Bool(l <= r),
-                _ => panic!("Unsupported operation"),
-            }
+            comparison_op::comparison_op_node(Token::Lte, left, right, env)
         }
         ASTNode::Lt { left, right } => {
-            let left_value = eval(*left, env);
-            let right_value = eval(*right, env);
-            match (left_value, right_value) {
-                (Value::Number(l), Value::Number(r)) => Value::Bool(l < r),
-                _ => panic!("Unsupported operation"),
-            }
+            comparison_op::comparison_op_node(Token::Lt, left, right, env)
         }
         ASTNode::If {
             condition,
@@ -391,18 +91,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             else_,
             value_type: _,
         } => {
-            let condition = eval(*condition, env);
-            match condition {
-                Value::Bool(true) => eval(*then, env),
-                Value::Bool(false) => {
-                    if let Some(else_) = else_{
-                        eval(*else_, env)
-                    } else {
-                        Value::Void
-                    }
-                }
-                _ => panic!("Unexpected value type"),
-            }
+            if_node::if_node(condition, then, else_, env)
         }
         ASTNode::Assign {
             name,
@@ -411,68 +100,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             value_type: _,
             is_new,
         } => {
-            let value = eval(*value, env);
-            let value_type = match value {
-                Value::Number(_) => ValueType::Number,
-                Value::String(_) => ValueType::String,
-                Value::Bool(_) => ValueType::Bool,
-                Value::Function => ValueType::Function,
-                Value::Lambda { .. } => ValueType::Lambda,
-                Value::Void => ValueType::Void,
-                Value::Return(ref value) => {
-                    if let Value::Void = **value {
-                        ValueType::Void
-                    } else {
-                        value.value_type()
-                    }
-                },
-                Value::List(ref elements) => {
-                    if elements.len() == 0 {
-                        ValueType::List(Box::new(ValueType::Any))
-                    } else {
-                        let first_element = elements.first().unwrap();
-                        let value_type = first_element.value_type();
-                        for e in elements {
-                            if e.value_type() != value_type {
-                                panic!("List value type mismatch");
-                            }
-                        }
-                        ValueType::List(Box::new(value_type))
-                    }
-                },
-                Value::StructInstance { ref name, fields: ref instance_fields } => {
-                    match env.get_struct(name.to_string()) {
-                        Some(Value::Struct { name: _, fields, is_public: _, methods }) => {
-                            for (field_name, value_type) in instance_fields {
-                                if !fields.contains_key(&field_name.to_string()) {
-                                    panic!("Struct field not found: {:?}", field_name);
-                                }
-                                if fields.get(&field_name.to_string()).unwrap().value_type() != value_type.value_type() {
-                                    panic!("Struct field type mismatch: {:?}", field_name);
-                                }
-                            }
-                        },
-                        _ => panic!("Unexpected value type"),
-                    };
-                    let mut field_types = HashMap::new();
-                    for (field_name, field_value) in instance_fields {
-                        field_types.insert(field_name.clone(), field_value.value_type());
-                    }
-                    ValueType::StructInstance { name: name.to_string(), fields: field_types }
-                },
-                _ => panic!("Unsupported value type, {:?}", value),
-            };
-            let result = env.set(
-                name.to_string(),
-                value.clone(),
-                variable_type,
-                value_type,
-                is_new,
-            );
-            if result.is_err() {
-                panic!("{}", result.unwrap_err());
-            }
-            value
+            assign_node::assign_node(name, value, variable_type, is_new, env)
         }
         ASTNode::LambdaCall { lambda, arguments } => {
             let mut params_vec = vec![];
@@ -677,12 +305,15 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use super::*;
     use crate::tokenizer::tokenize;
     use crate::parser::Parser;
     use crate::environment::EnvVariableType;
     use crate::builtin::register_builtins;
     use fraction::Fraction;
+    use crate::tokenizer::Token;
+    use crate::environment::ValueType;
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
