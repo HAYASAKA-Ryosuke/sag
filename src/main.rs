@@ -1,13 +1,13 @@
 mod builtin;
 mod environment;
-mod eval;
+mod evals;
 mod parser;
 mod tokenizer;
 mod wasm;
 
 use crate::builtin::register_builtins;
 use crate::environment::Env;
-use crate::eval::{eval, evals};
+use crate::evals::{eval, evals};
 use crate::parser::Parser;
 use crate::tokenizer::tokenize;
 use std::env;

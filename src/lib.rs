@@ -1,8 +1,8 @@
 mod builtin;
 mod environment;
-mod eval;
 mod parser;
 mod tokenizer;
 mod wasm;
+mod evals;
 
 pub use wasm::evaluate;

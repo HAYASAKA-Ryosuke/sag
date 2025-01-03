@@ -1,6 +1,6 @@
 use crate::builtin::register_builtins;
 use crate::environment::Env;
-use crate::eval::evals;
+use crate::evals::evals;
 use crate::parser::Parser;
 use crate::parser::Value;
 use crate::tokenizer::tokenize;
