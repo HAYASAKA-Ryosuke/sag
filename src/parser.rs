@@ -1264,7 +1264,10 @@ impl Parser {
             Some(Token::If) => self.consume_token(),
             _ => panic!("unexpected token"),
         };
-        let condition = self.parse_expression(0);
+        let condition = match self.get_current_token() {
+            Some(Token::LParen) => self.parse_expression(0),
+            _ => panic!("unexpected token missing ("),
+        };
         let then = self.parse_expression(0);
         if self.get_current_token() == Some(Token::Eof) {
             self.pos = 0;
@@ -2037,9 +2040,11 @@ mod tests {
     fn test_if() {
         let mut parser = Parser::new(vec![
             Token::If,
+            Token::LParen,
             Token::Identifier("x".into()),
             Token::Eq,
             Token::Number(Fraction::from(1)),
+            Token::RParen,
             Token::LBrace,
             Token::Eof,
             Token::Number(Fraction::from(1)),
@@ -2071,9 +2076,11 @@ mod tests {
     fn test_partial_return_if() {
         let mut parser = Parser::new(vec![
             Token::If,
+            Token::LParen,
             Token::Identifier("x".into()),
             Token::Eq,
             Token::Number(Fraction::from(1)),
+            Token::RParen,
             Token::LBrace,
             Token::Eof,
             Token::Return,
@@ -2105,9 +2112,11 @@ mod tests {
     fn test_non_return_if() {
         let mut parser = Parser::new(vec![
             Token::If,
+            Token::LParen,
             Token::Identifier("x".into()),
             Token::Eq,
             Token::Number(Fraction::from(1)),
+            Token::RParen,
             Token::LBrace,
             Token::Eof,
             Token::Number(Fraction::from(1)),
@@ -2135,9 +2144,11 @@ mod tests {
     fn test_else() {
         let tokens = vec![
             Token::If,
+            Token::LParen,
             Token::Identifier("x".into()),
             Token::Eq,
             Token::Number(Fraction::from(1)),
+            Token::RParen,
             Token::LBrace,
             Token::Eof,
             Token::Return,
@@ -2180,9 +2191,11 @@ mod tests {
     fn test_else_if() {
         let tokens = vec![
            Token::If,
+           Token::LParen,
            Token::Identifier("x".into()),
            Token::Eq,
            Token::Number(Fraction::from(1)),
+           Token::RParen,
            Token::LBrace,
            Token::Eof,
            Token::Return,
@@ -2192,9 +2205,11 @@ mod tests {
            Token::Eof,
            Token::Else,
            Token::If,
+           Token::LParen,
            Token::Identifier("x".into()),
            Token::Eq,
            Token::Number(Fraction::from(2)),
+           Token::RParen,
            Token::LBrace,
            Token::Eof,
            Token::Return,
@@ -2204,9 +2219,11 @@ mod tests {
            Token::Eof,
            Token::Else,
            Token::If,
+           Token::LParen,
            Token::Identifier("x".into()),
            Token::Eq,
            Token::Number(Fraction::from(3)),
+           Token::RParen,
            Token::LBrace,
            Token::Eof,
            Token::Return,
