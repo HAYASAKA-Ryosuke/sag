@@ -116,5 +116,10 @@ pub enum ASTNode {
         methods: Vec<ASTNode>,
     },
     CommentBlock(String),
+    For {
+        variable: String,
+        iterable: Box<ASTNode>,
+        body: Box<ASTNode>,
+    },
 }
 

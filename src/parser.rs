@@ -590,6 +590,7 @@ impl Parser {
             Token::Pipe => self.parse_function_call_arguments(),
             Token::BackSlash => self.parse_lambda(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
+            Token::For => self.parse_for(),
             Token::If => {
                 let ast_if = self.parse_if();
                 match ast_if {
@@ -980,6 +981,26 @@ impl Parser {
         ASTNode::Lt {
             left: Box::new(left),
             right: Box::new(right),
+        }
+    }
+
+    fn parse_for(&mut self) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::For) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+        let variable = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        self.consume_token();
+        self.extract_token(Token::In);
+        let iterable = self.parse_expression(0);
+        let body = self.parse_expression(0);
+        ASTNode::For {
+            variable,
+            iterable: Box::new(iterable),
+            body: Box::new(body),
         }
     }
 
@@ -2309,5 +2330,46 @@ mod tests {
                 return_type: ValueType::Void
             }]
         }]);
+    }
+
+    #[test]
+    fn test_for() {
+        let tokens = vec![
+            Token::For,
+            Token::Identifier("i".into()),
+            Token::In,
+            Token::LBrancket,
+            Token::Number(Fraction::from(1)),
+            Token::Comma,
+            Token::Number(Fraction::from(2)),
+            Token::Comma,
+            Token::Number(Fraction::from(3)),
+            Token::RBrancket,
+            Token::LBrace,
+            Token::Eof,
+            Token::Identifier("print".into()),
+            Token::LParen,
+            Token::Identifier("i".into()),
+            Token::RParen,
+            Token::Eof,
+            Token::RBrace,
+            Token::Eof
+        ];
+        let mut parser = Parser::new(tokens);
+        assert_eq!(parser.parse(), ASTNode::For {
+            variable: "i".into(),
+            iterable: Box::new(ASTNode::Literal(Value::List(vec![
+                Value::Number(Fraction::from(1)),
+                Value::Number(Fraction::from(2)),
+                Value::Number(Fraction::from(3))
+            ]))),
+            body: Box::new(ASTNode::Block(vec![ASTNode::FunctionCall {
+                name: "print".into(),
+                arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Variable {
+                    name: "i".into(),
+                    value_type: None
+                }]))
+            }]))
+        });
     }
 }

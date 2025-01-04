@@ -43,4 +43,6 @@ pub enum Token {
     Impl,
     CommentBlock(String),
     CommentLine(String),
+    For,
+    In,
 }

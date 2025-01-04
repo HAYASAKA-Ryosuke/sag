@@ -7,6 +7,7 @@ pub mod assign_node;
 pub mod lambda_node;
 pub mod variable_node;
 pub mod binary_op;
+pub mod for_node;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -88,6 +89,13 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         }
         ASTNode::Lt { left, right } => {
             comparison_op::comparison_op_node(Token::Lt, left, right, env)
+        }
+        ASTNode::For {
+            variable,
+            iterable,
+            body,
+        } => {
+            for_node::for_node(variable, iterable, body, env)
         }
         ASTNode::If {
             condition,
@@ -1173,5 +1181,26 @@ point.clear()
         Value::Void,
         Value::Void,
     ]);
+    }
+
+    #[test]
+    fn test_for() {
+        let input = r#"
+        val mut sum = 0
+        for i in [0, 1, 2, 3] {
+            sum = sum + i
+        }
+        sum
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let asts = Parser::new(tokens.to_vec()).parse_lines();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let result = evals(asts, &mut env);
+        assert_eq!(result, vec![
+            Value::Number(Fraction::from(0)),
+            Value::Void,
+            Value::Number(Fraction::from(6)),
+        ]);
     }
 }

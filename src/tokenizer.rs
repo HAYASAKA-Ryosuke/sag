@@ -277,7 +277,7 @@ fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_public_struct(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "pub struct".chars().enumerate() {
+    for (i, c) in "pub struct ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -286,7 +286,7 @@ fn is_public_struct(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_pub(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "pub".chars().enumerate() {
+    for (i, c) in "pub ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -295,7 +295,7 @@ fn is_pub(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_struct(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "struct".chars().enumerate() {
+    for (i, c) in "struct ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -304,7 +304,25 @@ fn is_struct(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_impl(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "impl".chars().enumerate() {
+    for (i, c) in "impl ".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_for(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "for ".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_in(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "in ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -469,6 +487,18 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_pub(&mut tokenizer) {
             tokenizer.tokens.push(Token::Pub);
             tokenizer.pos += 3;
+            continue;
+        }
+
+        if is_for(&mut tokenizer) {
+            tokenizer.tokens.push(Token::For);
+            tokenizer.pos += 3;
+            continue;
+        }
+
+        if is_in(&mut tokenizer) {
+            tokenizer.tokens.push(Token::In);
+            tokenizer.pos += 2;
             continue;
         }
 
@@ -1069,6 +1099,26 @@ mod tests {
         assert_eq!(
             tokenize(&"x[]".to_string()),
             vec![Token::Identifier("x".into()), Token::LBrancket, Token::RBrancket, Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_for() {
+        assert_eq!(
+            tokenize(&"for x in [1, 2, 3]".to_string()),
+            vec![
+                Token::For,
+                Token::Identifier("x".into()),
+                Token::In,
+                Token::LBrancket,
+                Token::Number(Fraction::from(1)),
+                Token::Comma,
+                Token::Number(Fraction::from(2)),
+                Token::Comma,
+                Token::Number(Fraction::from(3)),
+                Token::RBrancket,
+                Token::Eof
+            ]
         );
     }
 }
