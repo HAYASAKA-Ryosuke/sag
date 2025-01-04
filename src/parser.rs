@@ -83,6 +83,17 @@ impl Parser {
             (scope.clone(), name.to_string()),
             return_type.clone(),
         );
+        println!("register function: {:?}", self.functions);
+    }
+
+    fn get_function(&self, scope: String, name: String) -> Option<ValueType> {
+        for checked_scope in vec![scope.to_string(), "global".to_string()] {
+            match self.functions.get(&(checked_scope.to_string(), name.to_string())) {
+                Some(value) => return Some(value.clone()),
+                None => {}
+            };
+        }
+        None
     }
 
     fn register_variables(
@@ -217,7 +228,7 @@ impl Parser {
                 })
             }
             ASTNode::FunctionCall { name, arguments: _ } => {
-                let function = self.functions.get(&(self.get_current_scope(), name.clone()));
+                let function = self.get_function(self.get_current_scope(), name.clone());
                 if function.is_none() {
                     return Err(format!("undefined function: {:?}", name));
                 }
@@ -417,6 +428,7 @@ impl Parser {
             Some(Token::Identifier(name)) => name,
             _ => panic!("undefined function name"),
         };
+        let function_scope = self.get_current_scope();
         self.enter_scope(name.to_string());
         self.pos += 1;
         self.extract_token(Token::LParen);
@@ -424,7 +436,7 @@ impl Parser {
         let arguments = self.parse_function_arguments();
         let return_type = self.parse_return_type();
         self.register_functions(
-            self.get_current_scope(),
+            function_scope,
             &name,
             &arguments,
             &return_type,
