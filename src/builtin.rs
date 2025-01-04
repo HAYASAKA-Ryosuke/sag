@@ -1,9 +1,11 @@
+use std::sync::{Arc, Mutex};
 use crate::environment::Env;
 use crate::value::Value;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn register_builtins(env: &mut Env) {
-    env.register_builtin("print".to_string(), |args: Vec<Value>| {
+pub fn register_builtins(env: Arc<Mutex<Env>>) {
+    let env_clone = Arc::clone(&env);
+    env_clone.lock().unwrap().register_builtin("print".to_string(), |args: Vec<Value>| {
         for arg in args {
             print!("{} ", arg);
         }
@@ -11,7 +13,8 @@ pub fn register_builtins(env: &mut Env) {
         Value::Void
     });
 
-    env.register_builtin("len".to_string(), |args: Vec<Value>| {
+    let env_clone = Arc::clone(&env);
+    env_clone.lock().unwrap().register_builtin("len".to_string(), |args: Vec<Value>| {
         if args.len() != 1 {
             panic!("len function takes exactly one argument");
         }
@@ -24,10 +27,11 @@ pub fn register_builtins(env: &mut Env) {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn register_builtins(env: &mut Env) {
+pub fn register_builtins(env: Arc<Mutex<Env>>) {
     use crate::wasm::CONSOLE_OUTPUT;
 
-    env.register_builtin("print".to_string(), |args: Vec<Value>| {
+    let env_clone = Arc::clone(&env);
+    env_clone.lock().unwrap().register_builtin("print".to_string(), |args: Vec<Value>| {
         let output = args
             .iter()
             .map(|arg| format!("{}", arg))
@@ -45,7 +49,8 @@ pub fn register_builtins(env: &mut Env) {
         Value::Void
     });
 
-    env.register_builtin("len".to_string(), |args: Vec<Value>| {
+    let env_clone = Arc::clone(&env);
+    env_clone.lock().unwrap().register_builtin("len".to_string(), |args: Vec<Value>| {
         if args.len() != 1 {
             panic!("len function takes exactly one argument");
         }

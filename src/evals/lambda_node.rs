@@ -1,9 +1,10 @@
+use std::sync::{Arc, Mutex};
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, EnvVariableType, ValueType};
 use crate::evals::eval;
 
-pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, env: &mut Env) -> Value {
+pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
     let mut params_vec = vec![];
     let lambda = match *lambda {
         ASTNode::Lambda { arguments, body } => (arguments, body),
@@ -32,15 +33,15 @@ pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, env: &mut
         panic!("does not match arguments length");
     }
 
-    let mut local_env = env.clone();
+    let local_env = env.clone();
 
-    local_env.enter_scope("lambda".to_string());
+    local_env.lock().unwrap().enter_scope("lambda".to_string());
 
     for (param, arg) in params_vec.iter().zip(&args_vec) {
-        let arg_value = eval(arg.clone(), env);
+        let arg_value = eval(arg.clone(), env.clone());
         let name = param.0.to_string();
         let value_type = param.1.clone();
-        let _ = local_env.set(
+        let _ = local_env.lock().unwrap().set(
             name,
             arg_value,
             EnvVariableType::Immutable,
@@ -49,10 +50,10 @@ pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, env: &mut
         );
     }
 
-    let result = eval(*lambda.1, &mut local_env);
+    let result = eval(*lambda.1, local_env.clone());
 
-    env.update_global_env(&local_env);
+    env.lock().unwrap().update_global_env(&local_env.lock().unwrap());
 
-    env.leave_scope();
+    local_env.lock().unwrap().leave_scope();
     result
 }

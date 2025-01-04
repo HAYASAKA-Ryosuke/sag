@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, ValueType, EnvVariableType};
 use crate::evals::eval;
 
-pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariableType, is_new: bool, env: &mut Env) -> Value {
-    let value = eval(*value, env);
+pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariableType, is_new: bool, env: Arc<Mutex<Env>>) -> Value {
+    let value = eval(*value, env.clone());
     let value_type = match value {
         Value::Number(_) => ValueType::Number,
         Value::String(_) => ValueType::String,
@@ -35,7 +36,7 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
             }
         },
         Value::StructInstance { ref name, fields: ref instance_fields } => {
-            match env.get_struct(name.to_string()) {
+            match env.lock().unwrap().get_struct(name.to_string()) {
                 Some(Value::Struct { name: _, fields, is_public: _, methods }) => {
                     for (field_name, value_type) in instance_fields {
                         if !fields.contains_key(&field_name.to_string()) {
@@ -56,7 +57,7 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
         },
         _ => panic!("Unsupported value type, {:?}", value),
     };
-    let result = env.set(
+    let result = env.lock().unwrap().set(
         name.to_string(),
         value.clone(),
         variable_type,

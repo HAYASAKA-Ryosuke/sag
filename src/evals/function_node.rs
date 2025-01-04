@@ -1,37 +1,37 @@
+use std::sync::{Arc, Mutex};
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, ValueType, FunctionInfo, EnvVariableType};
 use crate::evals::eval;
 
-
-pub fn function_node(name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType, env: &mut Env) -> Value {
+pub fn function_node(name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType, env: Arc<Mutex<Env>>) -> Value {
     let function_info = FunctionInfo {
         arguments,
         body: Some(*body),
         return_type,
         builtin: None,
     };
-    env.register_function(name, function_info);
+    env.lock().unwrap().register_function(name, function_info);
     Value::Function
 }
 
-pub fn block_node(statements: Vec<ASTNode>, env: &mut Env) -> Value {
+pub fn block_node(statements: Vec<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
     for statement in statements {
-        if let Value::Return(v) = eval(statement, env) {
+        if let Value::Return(v) = eval(statement, env.clone()) {
             return *v;
         }
     }
     Value::Void
 }
 
-pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) -> Value {
-    if env.get_function(name.to_string()).is_some()
-        || env.get_builtin(name.to_string()).is_some()
+pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+    if env.lock().unwrap().get_function(name.to_string()).is_some()
+        || env.lock().unwrap().get_builtin(name.to_string()).is_some()
     {
-        let function = match env.get_function(name.to_string()) {
+        let function = match env.lock().unwrap().get_function(name.to_string()) {
             Some(function) => function.clone(),
             None => {
-                let builtin = env.get_builtin(name.to_string());
+                let builtin = env.lock().unwrap().get_builtin(name.to_string());
                 if builtin.is_some() {
                     builtin.unwrap().clone()
                 } else {
@@ -53,7 +53,7 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) 
         };
 
         if let Some(func) = function.builtin {
-            let result = func(args_vec.iter().map(|arg| eval(arg.clone(), env)).collect());
+            let result = func(args_vec.iter().map(|arg| eval(arg.clone(), env.clone())).collect());
             return result;
         };
 
@@ -61,15 +61,15 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) 
             panic!("does not match arguments length");
         }
 
-        let mut local_env = env.clone();
+        let local_env = env.clone();
 
-        local_env.enter_scope(name.to_string());
+        local_env.lock().unwrap().enter_scope(name.to_string());
 
         for (param, arg) in params_vec.iter().zip(&args_vec) {
-            let arg_value = eval(arg.clone(), env);
+            let arg_value = eval(arg.clone(), env.clone());
             let name = param.0.to_string();
             let value_type = param.1.clone();
-            let _ = local_env.set(
+            let _ = local_env.lock().unwrap().set(
                 name,
                 arg_value,
                 EnvVariableType::Immutable,
@@ -78,21 +78,29 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) 
             );
         }
 
+        let result = eval(function.body.unwrap(), local_env.clone());
+        env.lock().unwrap().update_global_env(&local_env.lock().unwrap());
 
-        let result = eval(function.body.unwrap(), &mut local_env);
-        env.update_global_env(&local_env);
-
-        local_env.leave_scope();
+        local_env.lock().unwrap().leave_scope();
         if let Value::Return(v) = result {
             *v
         } else {
             result
         }
     } else if env
+        .lock()
+        .unwrap()
         .get(name.to_string(), Some(&ValueType::Lambda))
         .is_some()
     {
-        let lambda = match env.get(name.to_string(), None).unwrap().value.clone() {
+        let lambda = match env
+            .lock()
+            .unwrap()
+            .get(name.to_string(), None)
+            .unwrap()
+            .value
+            .clone()
+        {
             Value::Lambda {
                 arguments,
                 body,
@@ -118,15 +126,15 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) 
             panic!("does not match arguments length");
         }
 
-        let mut local_env = env.clone();
+        let local_env = env.clone();
 
-        local_env.enter_scope(name.to_string());
+        local_env.lock().unwrap().enter_scope(name.to_string());
 
         for (param, arg) in params_vec.iter().zip(&args_vec) {
-            let arg_value = eval(arg.clone(), env);
+            let arg_value = eval(arg.clone(), env.clone());
             let name = param.0.to_string();
             let value_type = param.1.clone();
-            let _ = local_env.set(
+            let _ = local_env.lock().unwrap().set(
                 name,
                 arg_value,
                 EnvVariableType::Immutable,
@@ -135,11 +143,11 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) 
             );
         }
 
-        let result = eval(*lambda.1, &mut local_env);
+        let result = eval(*lambda.1, local_env.clone());
 
-        env.update_global_env(&local_env);
+        env.lock().unwrap().update_global_env(&local_env.lock().unwrap());
 
-        env.leave_scope();
+        env.lock().unwrap().leave_scope();
         result
     } else {
         panic!("Function is missing: {:?}", name)
