@@ -1,4 +1,5 @@
-use crate::parser::{ASTNode, Value};
+use crate::ast::ASTNode;
+use crate::value::Value;
 use crate::environment::Env;
 use crate::evals::eval;
 

@@ -1,5 +1,6 @@
-use crate::parser::{ASTNode, Value};
-use crate::tokenizer::Token;
+use crate::ast::ASTNode;
+use crate::value::Value;
+use crate::token::Token;
 use crate::environment::Env;
 use crate::evals::eval;
 

@@ -9,8 +9,9 @@ pub mod variable_node;
 pub mod binary_op;
 
 use crate::environment::Env;
-use crate::parser::{ASTNode, Value};
-use crate::tokenizer::Token;
+use crate::ast::ASTNode;
+use crate::value::Value;
+use crate::token::Token;
 
 pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
     let mut values = vec![];
@@ -133,7 +134,7 @@ mod tests {
     use crate::environment::{MethodInfo, EnvVariableType};
     use crate::builtin::register_builtins;
     use fraction::Fraction;
-    use crate::tokenizer::Token;
+    use crate::token::Token;
     use crate::environment::ValueType;
 
     #[test]

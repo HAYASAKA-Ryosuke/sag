@@ -1,6 +1,7 @@
-use crate::parser::{ASTNode, Value};
+use crate::ast::ASTNode;
+use crate::value::Value;
 use crate::environment::Env;
-use crate::tokenizer::Token;
+use crate::token::Token;
 use crate::evals::eval;
 
 pub fn binary_op(op: Token, left: Box<ASTNode>, right: Box<ASTNode>, env: &mut Env) -> Value {

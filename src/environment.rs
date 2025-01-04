@@ -1,5 +1,6 @@
-use crate::parser::{ASTNode, Value};
 use std::collections::HashMap;
+use crate::ast::ASTNode;
+use crate::value::Value;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

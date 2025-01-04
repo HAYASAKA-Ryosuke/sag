@@ -2,7 +2,7 @@ use crate::builtin::register_builtins;
 use crate::environment::Env;
 use crate::evals::evals;
 use crate::parser::Parser;
-use crate::parser::Value;
+use crate::value::Value;
 use crate::tokenizer::tokenize;
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;

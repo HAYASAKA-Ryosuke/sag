@@ -1,3 +1,4 @@
+use crate::token::Token;
 use fraction::Fraction;
 
 struct Tokenizer {
@@ -5,49 +6,6 @@ struct Tokenizer {
     chars: Vec<char>,
     pos: usize,
     nesting_count: usize,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
-    Immutable,
-    Mutable,
-    Colon,
-    Identifier(String),
-    String(String),
-    Number(Fraction),
-    Void,
-    Equal,
-    Plus,
-    Minus,
-    Mul,
-    Div,
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
-    Eof,
-    Function,
-    BackSlash,
-    Pipe,
-    Return,
-    Comma,
-    RArrow,
-    Match,
-    LBrancket,
-    RBrancket,
-    RRocket,
-    If,
-    Else,
-    Eq,
-    Lte,
-    Lt,
-    Gte,
-    Gt,
-    PublicStruct,
-    PrivateStruct,
-    Pub,
-    Dot,
-    Impl,
 }
 
 impl Tokenizer {
