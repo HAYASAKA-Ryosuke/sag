@@ -1258,6 +1258,7 @@ impl Parser {
         match token {
             Token::Plus | Token::Minus => Some((1, 2)),
             Token::Mul | Token::Div => Some((3, 4)),
+            Token::Mod => Some((5, 6)),
             _ => None,
         }
     }
@@ -1294,6 +1295,8 @@ mod tests {
             Token::Number(Fraction::from(2)),
             Token::Mul,
             Token::Number(Fraction::from(3)),
+            Token::Mod,
+            Token::Number(Fraction::from(3)),
             Token::Eof,
         ]);
         assert_eq!(
@@ -1307,7 +1310,11 @@ mod tests {
                 right: Box::new(ASTNode::BinaryOp {
                     left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
                     op: Token::Mul,
-                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
+                    right: Box::new(ASTNode::BinaryOp{
+                        left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
+                        op: Token::Mod,
+                        right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
+                    })
                 })
             }
         );

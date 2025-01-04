@@ -14,6 +14,7 @@ pub fn binary_op(op: Token, left: Box<ASTNode>, right: Box<ASTNode>, env: &mut E
         (Value::Number(l), Value::Number(r), Token::Minus) => Value::Number(l - r),
         (Value::Number(l), Value::Number(r), Token::Mul) => Value::Number(l * r),
         (Value::Number(l), Value::Number(r), Token::Div) => Value::Number(l / r),
+        (Value::Number(l), Value::Number(r), Token::Mod) => Value::Number(l % r),
         _ => panic!("Unsupported operation: {:?} {:?} {:?}", left_val.clone(), op, right_val.clone()),
     }
 }

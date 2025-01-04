@@ -14,6 +14,7 @@ pub enum Token {
     Minus,
     Mul,
     Div,
+    Mod,
     LParen,
     RParen,
     LBrace,
