@@ -29,77 +29,87 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: Rc<RefCell
     if env.borrow().get_function(name.to_string()).is_some()
         || env.borrow().get_builtin(name.to_string()).is_some()
     {
-        let function = match env.borrow().get_function(name.to_string()) {
-            Some(function) => function.clone(),
-            None => {
-                let builtin = env.borrow().get_builtin(name.to_string());
-                if builtin.is_some() {
-                    builtin.unwrap().clone()
-                } else {
-                    panic!("Function is missing: {:?}", name)
-                }
+        let function = {
+            let env_borrow = env.borrow();
+            if let Some(function) = env_borrow.get_function(name.to_string()) {
+                function.clone()
+            } else {
+                env_borrow
+                    .get_builtin(name.to_string())
+                    .expect("Function is missing")
+                    .clone()
             }
         };
-        let mut params_vec = vec![];
-        for arg in &function.arguments {
-            params_vec.push(match arg {
-                ASTNode::Variable { name, value_type } => (name, value_type),
-                _ => panic!("illigal param: {:?}", function.arguments),
-            });
-        }
+
+        let params_vec: Vec<_> = function
+            .arguments
+            .iter()
+            .map(|arg| match arg {
+                ASTNode::Variable { name, value_type } => (name.clone(), value_type.clone()),
+                _ => panic!("Illegal param: {:?}", function.arguments),
+            })
+            .collect();
 
         let args_vec = match *arguments {
             ASTNode::FunctionCallArgs(arguments) => arguments,
-            _ => panic!("illigal arguments: {:?}", arguments),
+            _ => panic!("Illegal arguments: {:?}", arguments),
         };
 
         if let Some(func) = function.builtin {
-            let result = func(args_vec.iter().map(|arg| eval(arg.clone(), env.clone())).collect());
-            return result;
-        };
-
-        if args_vec.len() != function.arguments.len() {
-            panic!("does not match arguments length");
+            return func(
+                args_vec
+                    .iter()
+                    .map(|arg| eval(arg.clone(), env.clone()))
+                    .collect(),
+            );
         }
 
-        let local_env = env.clone();
+        if args_vec.len() != function.arguments.len() {
+            panic!("Arguments length mismatch");
+        }
 
-        local_env.borrow_mut().enter_scope(name.to_string());
+        {
+            let mut env_mut = env.borrow_mut();
+            env_mut.enter_scope(name.to_string());
+        }
 
         for (param, arg) in params_vec.iter().zip(&args_vec) {
             let arg_value = eval(arg.clone(), env.clone());
             let name = param.0.to_string();
             let value_type = param.1.clone();
-            let _ = local_env.borrow_mut().set(
-                name,
-                arg_value,
-                EnvVariableType::Immutable,
-                value_type.unwrap_or(ValueType::Any),
-                true,
-            );
+            {
+                let mut env_mut = env.borrow_mut();
+                env_mut.set(
+                    name,
+                    arg_value,
+                    EnvVariableType::Immutable,
+                    value_type.unwrap_or(ValueType::Any),
+                    true,
+                );
+            }
         }
 
-        let result = eval(function.body.unwrap(), local_env.clone());
-        env.borrow_mut().update_global_env(&local_env.borrow_mut());
+        let result = {
+            let body = function.body.expect("Function body is missing");
+            eval(body, env.clone())
+        };
 
-        local_env.borrow_mut().leave_scope();
+        {
+            let mut env_mut = env.borrow_mut();
+            env_mut.leave_scope();
+        }
+
         if let Value::Return(v) = result {
             *v
         } else {
             result
         }
-    } else if env
+    } else if let Some(lambda_value) = env
         .borrow()
         .get(name.to_string(), Some(&ValueType::Lambda))
-        .is_some()
+        .map(|v| v.value.clone())
     {
-        let lambda = match env
-            .borrow()
-            .get(name.to_string(), None)
-            .unwrap()
-            .value
-            .clone()
-        {
+        let lambda = match lambda_value {
             Value::Lambda {
                 arguments,
                 body,
@@ -108,45 +118,55 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: Rc<RefCell
             _ => panic!("Unexpected value type"),
         };
 
-        let mut params_vec = vec![];
-        for arg in &lambda.0 {
-            params_vec.push(match arg {
-                ASTNode::Variable { name, value_type } => (name, value_type),
-                _ => panic!("illigal param: {:?}", lambda.0),
-            });
-        }
+        let params_vec: Vec<_> = lambda
+            .0
+            .iter()
+            .map(|arg| match arg {
+                ASTNode::Variable { name, value_type } => (name.clone(), value_type.clone()),
+                _ => panic!("Illegal param: {:?}", lambda.0),
+            })
+            .collect();
 
         let args_vec = match *arguments {
             ASTNode::FunctionCallArgs(arguments) => arguments,
-            _ => panic!("illigal arguments: {:?}", arguments),
+            _ => panic!("Illegal arguments: {:?}", arguments),
         };
 
         if args_vec.len() != lambda.0.len() {
-            panic!("does not match arguments length");
+            panic!("Arguments length mismatch");
         }
 
-        let local_env = env.clone();
-
-        local_env.borrow_mut().enter_scope(name.to_string());
+        {
+            let mut env_mut = env.borrow_mut();
+            env_mut.enter_scope(name.to_string());
+        }
 
         for (param, arg) in params_vec.iter().zip(&args_vec) {
             let arg_value = eval(arg.clone(), env.clone());
             let name = param.0.to_string();
             let value_type = param.1.clone();
-            let _ = local_env.borrow_mut().set(
-                name,
-                arg_value,
-                EnvVariableType::Immutable,
-                value_type.unwrap_or(ValueType::Any),
-                true,
-            );
+            {
+                let mut env_mut = env.borrow_mut();
+                env_mut.set(
+                    name,
+                    arg_value,
+                    EnvVariableType::Immutable,
+                    value_type.unwrap_or(ValueType::Any),
+                    true,
+                );
+            }
         }
 
-        let result = eval(*lambda.1, local_env.clone());
+        let result = {
+            let body = *lambda.1;
+            eval(body, env.clone())
+        };
 
-        env.borrow_mut().update_global_env(&local_env.borrow_mut());
+        {
+            let mut env_mut = env.borrow_mut();
+            env_mut.leave_scope();
+        }
 
-        env.borrow_mut().leave_scope();
         result
     } else {
         panic!("Function is missing: {:?}", name)
