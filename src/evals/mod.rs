@@ -4,8 +4,11 @@ pub mod function_node;
 pub mod comparison_op;
 pub mod if_node;
 pub mod assign_node;
+pub mod lambda_node;
+pub mod variable_node;
+pub mod binary_op;
 
-use crate::environment::{Env, EnvVariableType, ValueType};
+use crate::environment::Env;
 use crate::parser::{ASTNode, Value};
 use crate::tokenizer::Token;
 
@@ -103,201 +106,19 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             assign_node::assign_node(name, value, variable_type, is_new, env)
         }
         ASTNode::LambdaCall { lambda, arguments } => {
-            let mut params_vec = vec![];
-            let lambda = match *lambda {
-                ASTNode::Lambda { arguments, body } => (arguments, body),
-                _ => panic!("Unexpected value type"),
-            };
-            for arg in &lambda.0 {
-                params_vec.push(match arg {
-                    ASTNode::Variable { name, value_type } => (name, value_type),
-                    _ => panic!("illigal param: {:?}", lambda.0),
-                });
-            }
-
-            let mut args_vec = vec![];
-
-            for arg in arguments {
-                match arg {
-                    ASTNode::FunctionCallArgs(arguments) => {
-                        args_vec = arguments;
-                    }
-                    _ => {
-                        args_vec.push(arg);
-                    }
-                }
-            }
-            if args_vec.len() != lambda.0.len() {
-                panic!("does not match arguments length");
-            }
-
-            let mut local_env = env.clone();
-
-            local_env.enter_scope("lambda".to_string());
-
-            for (param, arg) in params_vec.iter().zip(&args_vec) {
-                let arg_value = eval(arg.clone(), env);
-                let name = param.0.to_string();
-                let value_type = param.1.clone();
-                let _ = local_env.set(
-                    name,
-                    arg_value,
-                    EnvVariableType::Immutable,
-                    value_type.unwrap_or(ValueType::Any),
-                    true,
-                );
-            }
-
-            let result = eval(*lambda.1, &mut local_env);
-
-            env.update_global_env(&local_env);
-
-            env.leave_scope();
-            result
+            lambda_node::lambda_call_node(lambda, arguments, env)
         }
         ASTNode::FunctionCall { name, arguments } => {
-            if env.get_function(name.to_string()).is_some()
-                || env.get_builtin(name.to_string()).is_some()
-            {
-                let function = match env.get_function(name.to_string()) {
-                    Some(function) => function.clone(),
-                    None => {
-                        let builtin = env.get_builtin(name.to_string());
-                        if builtin.is_some() {
-                            builtin.unwrap().clone()
-                        } else {
-                            panic!("Function is missing: {:?}", name)
-                        }
-                    }
-                };
-                let mut params_vec = vec![];
-                for arg in &function.arguments {
-                    params_vec.push(match arg {
-                        ASTNode::Variable { name, value_type } => (name, value_type),
-                        _ => panic!("illigal param: {:?}", function.arguments),
-                    });
-                }
-
-                let args_vec = match *arguments {
-                    ASTNode::FunctionCallArgs(arguments) => arguments,
-                    _ => panic!("illigal arguments: {:?}", arguments),
-                };
-
-                if let Some(func) = function.builtin {
-                    let result = func(args_vec.iter().map(|arg| eval(arg.clone(), env)).collect());
-                    return result;
-                };
-
-                if args_vec.len() != function.arguments.len() {
-                    panic!("does not match arguments length");
-                }
-
-                let mut local_env = env.clone();
-
-                local_env.enter_scope(name.to_string());
-
-                for (param, arg) in params_vec.iter().zip(&args_vec) {
-                    let arg_value = eval(arg.clone(), env);
-                    let name = param.0.to_string();
-                    let value_type = param.1.clone();
-                    let _ = local_env.set(
-                        name,
-                        arg_value,
-                        EnvVariableType::Immutable,
-                        value_type.unwrap_or(ValueType::Any),
-                        true,
-                    );
-                }
-
-
-                let result = eval(function.body.unwrap(), &mut local_env);
-                env.update_global_env(&local_env);
-
-                local_env.leave_scope();
-                if let Value::Return(v) = result {
-                    *v
-                } else {
-                    result
-                }
-            } else if env
-                .get(name.to_string(), Some(&ValueType::Lambda))
-                .is_some()
-            {
-                let lambda = match env.get(name.to_string(), None).unwrap().value.clone() {
-                    Value::Lambda {
-                        arguments,
-                        body,
-                        env: lambda_env,
-                    } => (arguments, body, lambda_env),
-                    _ => panic!("Unexpected value type"),
-                };
-
-                let mut params_vec = vec![];
-                for arg in &lambda.0 {
-                    params_vec.push(match arg {
-                        ASTNode::Variable { name, value_type } => (name, value_type),
-                        _ => panic!("illigal param: {:?}", lambda.0),
-                    });
-                }
-
-                let args_vec = match *arguments {
-                    ASTNode::FunctionCallArgs(arguments) => arguments,
-                    _ => panic!("illigal arguments: {:?}", arguments),
-                };
-
-                if args_vec.len() != lambda.0.len() {
-                    panic!("does not match arguments length");
-                }
-
-                let mut local_env = env.clone();
-
-                local_env.enter_scope(name.to_string());
-
-                for (param, arg) in params_vec.iter().zip(&args_vec) {
-                    let arg_value = eval(arg.clone(), env);
-                    let name = param.0.to_string();
-                    let value_type = param.1.clone();
-                    let _ = local_env.set(
-                        name,
-                        arg_value,
-                        EnvVariableType::Immutable,
-                        value_type.unwrap_or(ValueType::Any),
-                        true,
-                    );
-                }
-
-                let result = eval(*lambda.1, &mut local_env);
-
-                env.update_global_env(&local_env);
-
-                env.leave_scope();
-                result
-            } else {
-                panic!("Function is missing: {:?}", name)
-            }
+            function_node::function_call_node(name, arguments, env)
         }
         ASTNode::Variable {
             name,
             value_type: _,
         } => {
-            let value = env.get(name.to_string(), None);
-            if value.is_none() {
-                panic!("Variable not found: {:?}", name);
-            }
-            value.unwrap().value.clone()
+            variable_node::variable_node(name, env)
         }
         ASTNode::BinaryOp { left, op, right } => {
-            let left_val = eval(*left, env);
-            let right_val = eval(*right, env);
-
-            match (left_val.clone(), right_val.clone(), op.clone()) {
-                (Value::String(l), Value::String(r), Token::Plus) => Value::String(l + &r),
-                (Value::Number(l), Value::Number(r), Token::Plus) => Value::Number(l + r),
-                (Value::Number(l), Value::Number(r), Token::Minus) => Value::Number(l - r),
-                (Value::Number(l), Value::Number(r), Token::Mul) => Value::Number(l * r),
-                (Value::Number(l), Value::Number(r), Token::Div) => Value::Number(l / r),
-                _ => panic!("Unsupported operation: {:?} {:?} {:?}", left_val.clone(), op, right_val.clone()),
-            }
+            binary_op::binary_op(op, left, right, env)
         }
         _ => panic!("Unsupported ast node: {:?}", ast),
     }
@@ -309,7 +130,7 @@ mod tests {
     use super::*;
     use crate::tokenizer::tokenize;
     use crate::parser::Parser;
-    use crate::environment::EnvVariableType;
+    use crate::environment::{MethodInfo, EnvVariableType};
     use crate::builtin::register_builtins;
     use fraction::Fraction;
     use crate::tokenizer::Token;
