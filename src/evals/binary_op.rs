@@ -1,11 +1,12 @@
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::Env;
 use crate::token::Token;
 use crate::evals::eval;
 
-pub fn binary_op(op: Token, left: Box<ASTNode>, right: Box<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+pub fn binary_op(op: Token, left: Box<ASTNode>, right: Box<ASTNode>, env: Rc<RefCell<Env>>) -> Value {
     let left_val = eval(*left, env.clone());
     let right_val = eval(*right, env.clone());
 

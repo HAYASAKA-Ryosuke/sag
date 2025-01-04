@@ -1,11 +1,12 @@
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::token::Token;
 use crate::environment::Env;
 use crate::evals::eval;
 
-pub fn comparison_op_node(op: Token, left: Box<ASTNode>, right: Box<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+pub fn comparison_op_node(op: Token, left: Box<ASTNode>, right: Box<ASTNode>, env: Rc<RefCell<Env>>) -> Value {
     let left_value = eval(*left, env.clone());
     let right_value = eval(*right, env);
     match (left_value, right_value, op) {

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use wasm_bindgen::prelude::*;
@@ -7,11 +8,11 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Env {
-    variable_map: Arc<Mutex<HashMap<VariableKeyInfo, EnvVariableValueInfo>>>,
-    scope_stack: Arc<Mutex<Vec<String>>>,
-    functions: Arc<Mutex<HashMap<String, FunctionInfo>>>,
-    structs: Arc<Mutex<HashMap<String, Value>>>,
-    builtins: Arc<Mutex<HashMap<String, FunctionInfo>>>,
+    variable_map: Rc<RefCell<HashMap<VariableKeyInfo, EnvVariableValueInfo>>>,
+    scope_stack: Rc<RefCell<Vec<String>>>,
+    functions: Rc<RefCell<HashMap<String, FunctionInfo>>>,
+    structs: Rc<RefCell<HashMap<String, Value>>>,
+    builtins: Rc<RefCell<HashMap<String, FunctionInfo>>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -68,11 +69,11 @@ pub struct EnvVariableValueInfo {
 impl Env {
     pub fn new() -> Self {
         Self {
-            variable_map: Arc::new(Mutex::new(HashMap::new())),
-            scope_stack: Arc::new(Mutex::new(vec!["global".to_string()])),
-            functions: Arc::new(Mutex::new(HashMap::new())),
-            structs: Arc::new(Mutex::new(HashMap::new())),
-            builtins: Arc::new(Mutex::new(HashMap::new())),
+            variable_map: Rc::new(RefCell::new(HashMap::new())),
+            scope_stack: Rc::new(RefCell::new(vec!["global".to_string()])),
+            functions: Rc::new(RefCell::new(HashMap::new())),
+            structs: Rc::new(RefCell::new(HashMap::new())),
+            builtins: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 
@@ -81,7 +82,7 @@ impl Env {
             Value::Struct { ref name, .. } => name.clone(),
             _ => panic!("Invalid struct value"),
         };
-        let mut structs = self.structs.lock().unwrap();
+        let mut structs = self.structs.borrow_mut();
         if structs.contains_key(&name) {
             panic!("Struct {} already exists", name);
         }
@@ -89,7 +90,7 @@ impl Env {
     }
 
     pub fn get_struct(&self, name: String) -> Option<Value> {
-        let structs = self.structs.lock().unwrap();
+        let structs = self.structs.borrow();
         structs.get(&name).cloned()
     }
 
@@ -97,7 +98,7 @@ impl Env {
         match impl_value {
             Value::Impl { base_struct, methods } => {
                 if let ValueType::Struct { name, .. } = base_struct {
-                    let mut structs = self.structs.lock().unwrap();
+                    let mut structs = self.structs.borrow_mut();
                     if let Some(Value::Struct { methods: ref mut struct_methods, .. }) = structs.get_mut(&name) {
                         for (method_name, method_info) in methods {
                             struct_methods.insert(method_name, method_info);
@@ -120,21 +121,21 @@ impl Env {
             body: None,
             builtin: Some(function),
         };
-        let mut builtins = self.builtins.lock().unwrap();
+        let mut builtins = self.builtins.borrow_mut();
         builtins.insert(name, function_info);
     }
 
     pub fn get_builtin(&self, name: String) -> Option<FunctionInfo> {
-        let builtins = self.builtins.lock().unwrap();
+        let builtins = self.builtins.borrow();
         builtins.get(&name).cloned()
     }
 
     pub fn enter_scope(&self, scope: String) {
-        let mut scope_stack = self.scope_stack.lock().unwrap();
+        let mut scope_stack = self.scope_stack.borrow_mut();
         scope_stack.push(scope);
     }
     pub fn leave_scope(&self) {
-        let mut scope_stack = self.scope_stack.lock().unwrap();
+        let mut scope_stack = self.scope_stack.borrow_mut();
         if scope_stack.len() == 1 && scope_stack[0] == "global".to_string() {
             return;
         }
@@ -143,18 +144,18 @@ impl Env {
     }
 
     pub fn register_function(&self, name: String, function: FunctionInfo) {
-        let mut functions = self.functions.lock().unwrap();
+        let mut functions = self.functions.borrow_mut();
         functions.insert(name, function);
     }
 
     pub fn get_function(&self, name: String) -> Option<FunctionInfo> {
-        let functions = self.functions.lock().unwrap();
+        let functions = self.functions.borrow();
         functions.get(&name).cloned()
     }
 
     pub fn update_global_env(&self, local_env: &Self) {
-        let mut variable_map = self.variable_map.lock().unwrap();
-        let local_variable_map = local_env.variable_map.lock().unwrap();
+        let mut variable_map = self.variable_map.borrow_mut();
+        let local_variable_map = local_env.variable_map.borrow();
         for (local_key, local_value) in &*local_variable_map {
             if local_key.scope == "global" && variable_map.contains_key(local_key) {
                 variable_map
@@ -172,14 +173,14 @@ impl Env {
         is_new: bool,
     ) -> Result<(), String> {
         let latest_scope = {
-            let scope_stack = self.scope_stack.lock().unwrap();
+            let scope_stack = self.scope_stack.borrow();
             match scope_stack.last() {
                 Some(scope) => scope.clone(),
                 None => return Err("Missing scope".into()),
             }
         };
 
-        let mut variable_map = self.variable_map.lock().unwrap();
+        let mut variable_map = self.variable_map.borrow_mut();
 
         // 新規の場合はそのまま書き込み
         if is_new {
@@ -253,7 +254,7 @@ impl Env {
     }
 
     fn get_with_scope(&self, name: String, scope: String) -> Option<EnvVariableValueInfo> {
-        let variable_map = self.variable_map.lock().unwrap();
+        let variable_map = self.variable_map.borrow();
         if let Some(variable_key_info) = variable_map.get(&VariableKeyInfo {
             name: name.to_string(),
             scope: scope.clone(),
@@ -268,8 +269,8 @@ impl Env {
         name: String,
         value_type: Option<&ValueType>,
     ) -> Option<EnvVariableValueInfo> {
-        let variable_map = self.variable_map.lock().unwrap();
-        let scope_stack = self.scope_stack.lock().unwrap();
+        let variable_map = self.variable_map.borrow();
+        let scope_stack = self.scope_stack.borrow();
         for scope in scope_stack.iter().rev() {
             if let Some(variable_key_info) = variable_map.get(&VariableKeyInfo {
                 name: name.to_string(),

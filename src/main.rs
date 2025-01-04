@@ -45,6 +45,11 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn change_rc() {
+    // Implement the logic to change the RC value
+    println!("RC value changed");
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
@@ -58,4 +63,5 @@ fn main() {
             eprintln!("Error: {}", e);
         }
     }
+    change_rc();
 }

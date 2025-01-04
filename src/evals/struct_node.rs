@@ -1,11 +1,12 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, ValueType, MethodInfo, EnvVariableValueInfo, EnvVariableType};
 use crate::evals::eval;
 
-pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, is_public: bool, env: Arc<Mutex<Env>>) -> Value {
+pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, is_public: bool, env: Rc<RefCell<Env>>) -> Value {
     let mut struct_fields = HashMap::new();
     // fields field_name: StructField
     for (field_name, struct_field) in fields {
@@ -25,11 +26,11 @@ pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, is_public: bo
         methods: HashMap::new(),
         is_public
     };
-    env.lock().unwrap().register_struct(result.clone());
+    env.borrow_mut().register_struct(result.clone());
     result
 }
 
-pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, env: Rc<RefCell<Env>>) -> Value {
     let mut impl_methods = HashMap::new();
     for method in methods {
         match method {
@@ -53,11 +54,11 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, env: Arc<Mu
         base_struct: *base_struct,
         methods: impl_methods,
     };
-    env.lock().unwrap().register_impl(result.clone());
+    env.borrow_mut().register_impl(result.clone());
     result
 }
 
-pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTNode>, env: Rc<RefCell<Env>>) -> Value {
             let mut args_vec = vec![];
             match *arguments {
                ASTNode::FunctionCallArgs(arguments) => {
@@ -65,12 +66,12 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                }
                _ => {}
             }
-            match env.lock().unwrap().get(caller.clone(), None) {
+            match env.borrow().get(caller.clone(), None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
                     let local_env = env.clone();
                     let struct_info = match value_type {
                         ValueType::StructInstance { name: struct_name, ..} => {
-                            local_env.lock().unwrap().get_struct(struct_name.to_string())
+                            local_env.borrow().get_struct(struct_name.to_string())
                         },
                         _ => panic!("missing struct: {}", value)
                     };
@@ -87,8 +88,8 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                 panic!("does not match arguments length");
                             }
                             let mut local_env = env.clone();
-                            local_env.lock().unwrap().enter_scope(value.to_string());
-                            let _ = local_env.lock().unwrap().set(
+                            local_env.borrow().enter_scope(value.to_string());
+                            let _ = local_env.borrow().set(
                                 "self".to_string(),
                                 match struct_info {
                                     Some(Value::Struct{..}) => {
@@ -116,14 +117,14 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                         continue
                                     }
                                     let arg_value = eval(args_vec[i].clone(), local_env.clone());
-                                    let _ = local_env.lock().unwrap().set(name.to_string(), arg_value, EnvVariableType::Immutable, value_type.clone().unwrap_or(ValueType::Any), true);
+                                    let _ = local_env.borrow().set(name.to_string(), arg_value, EnvVariableType::Immutable, value_type.clone().unwrap_or(ValueType::Any), true);
                                     i += 1;
                                 }
                             }
                             let result = eval(body.clone().unwrap(), local_env.clone());
-                            if let Some(self_value) = local_env.lock().unwrap().get("self".to_string(), None) {
+                            if let Some(self_value) = local_env.borrow().get("self".to_string(), None) {
                                 if let Value::StructInstance { .. } = self_value.value.clone() {
-                                    local_env.lock().unwrap().set(
+                                    local_env.borrow().set(
                                         caller.to_string(),
                                         self_value.value.clone(),
                                         variable_type.clone(),
@@ -132,8 +133,8 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                     ).expect("Failed to update self in global environment");
                                 }
                             }
-                            env.lock().unwrap().update_global_env(&local_env.lock().unwrap());
-                            env.lock().unwrap().leave_scope();
+                            env.borrow().update_global_env(&local_env.borrow());
+                            env.borrow().leave_scope();
                             result
                         },
                         _ => panic!("call failed method: {}", method_name)
@@ -143,7 +144,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
             }
 }
 
-pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, env: Rc<RefCell<Env>>) -> Value {
     let mut struct_fields = HashMap::new();
     for (field_name, field_value) in fields {
         struct_fields.insert(field_name, eval(field_value, env.clone()));
@@ -154,14 +155,14 @@ pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, env:
     }
 }
 
-pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: String, updated_value_ast: Box<ASTNode>, env: Arc<Mutex<Env>>) -> Value {
+pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: String, updated_value_ast: Box<ASTNode>, env: Rc<RefCell<Env>>) -> Value {
     match *instance {
         ASTNode::StructFieldAccess { instance, field_name: _  } => {
             match *instance {
                 ASTNode::Variable { name: variable_name, value_type } => {
                     match value_type {
                         Some(ValueType::Struct{name, fields, ..}) if variable_name == "self" => {
-                            let obj = env.lock().unwrap().get(variable_name.to_string(), None);
+                            let obj = env.borrow().get(variable_name.to_string(), None);
                             if obj.is_none() {
                                 panic!("Variable not found: {:?}", variable_name);
                             }
@@ -178,7 +179,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                         },
                                         _ => panic!("missing struct instance value: {:?}", instance_value)
                                     };
-                                    env.lock().unwrap().set(variable_name.to_string(), updated_value.clone(), EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false).expect("update variable");
+                                    env.borrow().set(variable_name.to_string(), updated_value.clone(), EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false).expect("update variable");
                                     updated_value
                                 },
                                 Value::Struct { name: _, fields: obj_fields, .. } => {
@@ -193,7 +194,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                             struct_fields.insert(field_name, field_value);
                                         }
                                     }
-                                    let env_updated_result = env.lock().unwrap().set(variable_name.to_string(), Value::StructInstance {
+                                    let env_updated_result = env.borrow().set(variable_name.to_string(), Value::StructInstance {
                                         name: variable_name.to_string(),
                                         fields: struct_fields.clone(),
                                     }, EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false);
@@ -209,7 +210,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                             }
                         }
                         Some(ValueType::StructInstance { name, fields }) => {
-                            let obj = env.lock().unwrap().get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }));
+                            let obj = env.borrow().get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }));
                             if obj.is_none() {
                                 panic!("Variable not found: {:?}", variable_name);
                             }
@@ -227,7 +228,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                             struct_fields.insert(field_name, field_value);
                                         }
                                     }
-                                    let env_updated_result = env.lock().unwrap().set(variable_name.to_string(), Value::StructInstance {
+                                    let env_updated_result = env.borrow().set(variable_name.to_string(), Value::StructInstance {
                                         name: variable_name.to_string(),
                                         fields: struct_fields.clone(),
                                     }, EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false);
@@ -252,19 +253,19 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
     }
 }
 
-pub fn struct_field_access_node(instance: Box<ASTNode>, field_name: String, env: Arc<Mutex<Env>>) -> Value {
+pub fn struct_field_access_node(instance: Box<ASTNode>, field_name: String, env: Rc<RefCell<Env>>) -> Value {
     let struct_obj = match *instance {
         ASTNode::Variable { name: variable_name, value_type } => {
             match value_type {
                 Some(ValueType::Struct { .. }) if variable_name == "self" => {
-                    let obj = env.lock().unwrap().get(variable_name.to_string(), None);
+                    let obj = env.borrow().get(variable_name.to_string(), None);
                     if obj.is_none() {
                         panic!("Variable not found: {:?}", variable_name);
                     }
                     obj.unwrap().value.clone()
                 },
                 Some(ValueType::StructInstance { name, fields }) => {
-                    let obj = env.lock().unwrap().get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields }));
+                    let obj = env.borrow().get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields }));
                     if obj.is_none() {
                         panic!("Variable not found: {:?}", variable_name);
                     }

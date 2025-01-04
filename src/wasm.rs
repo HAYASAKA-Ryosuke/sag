@@ -5,7 +5,7 @@ use crate::parser::Parser;
 use crate::value::Value;
 use crate::tokenizer::tokenize;
 use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
 thread_local! {
@@ -19,7 +19,7 @@ pub fn evaluate(input: &str) -> String {
     let tokens = tokenize(&input.to_string());
     let mut parser = Parser::new(tokens);
     let ast_nodes = parser.parse_lines();
-    let env = Arc::new(Mutex::new(Env::new()));
+    let env = Rc::new(RefCell::new(Env::new()));
     register_builtins(env.clone());
     let result = evals(ast_nodes, env.clone());
 

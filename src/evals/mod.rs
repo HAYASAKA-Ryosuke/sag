@@ -8,13 +8,14 @@ pub mod lambda_node;
 pub mod variable_node;
 pub mod binary_op;
 
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::environment::Env;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::token::Token;
 
-pub fn evals(asts: Vec<ASTNode>, env: Arc<Mutex<Env>>) -> Vec<Value> {
+pub fn evals(asts: Vec<ASTNode>, env: Rc<RefCell<Env>>) -> Vec<Value> {
     let mut values = vec![];
     for ast in asts {
         values.push(eval(ast, env.clone()));
@@ -22,7 +23,7 @@ pub fn evals(asts: Vec<ASTNode>, env: Arc<Mutex<Env>>) -> Vec<Value> {
     values
 }
 
-pub fn eval(ast: ASTNode, env: Arc<Mutex<Env>>) -> Value {
+pub fn eval(ast: ASTNode, env: Rc<RefCell<Env>>) -> Value {
     match ast {
         ASTNode::Literal(value) => value.clone(),
         ASTNode::PrefixOp { op, expr } => {
@@ -141,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::BinaryOp {
             left: Box::new(ASTNode::PrefixOp {
                 op: Token::Minus,
@@ -158,7 +159,7 @@ mod tests {
     }
     #[test]
     fn test_assign() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
@@ -169,13 +170,13 @@ mod tests {
         assert_eq!(Value::Number(Fraction::from(5)), eval(ast, env.clone()));
         assert_eq!(
             Value::Number(Fraction::from(5)),
-            env.lock().unwrap().get("x".to_string(), None).unwrap().value
+            env.borrow().get("x".to_string(), None).unwrap().value
         );
         assert_eq!(
             EnvVariableType::Mutable,
-            env.lock().unwrap().get("x".to_string(), None).unwrap().variable_type
+            env.borrow().get("x".to_string(), None).unwrap().variable_type
         );
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
@@ -186,16 +187,16 @@ mod tests {
         assert_eq!(Value::Number(Fraction::from(5)), eval(ast, env.clone()));
         assert_eq!(
             Value::Number(Fraction::from(5)),
-            env.lock().unwrap().get("x".to_string(), None).unwrap().value
+            env.borrow().get("x".to_string(), None).unwrap().value
         );
         assert_eq!(
             EnvVariableType::Immutable,
-            env.lock().unwrap().get("x".to_string(), None).unwrap().variable_type
+            env.borrow().get("x".to_string(), None).unwrap().variable_type
         );
     }
     #[test]
     fn test_assign_expression_value() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Assign {
             name: "y".to_string(),
             value: Box::new(ASTNode::BinaryOp {
@@ -209,13 +210,13 @@ mod tests {
         };
         assert_eq!(Value::Number(Fraction::from(30)), eval(ast, env.clone()));
         assert_eq!(
-            env.lock().unwrap().get("y".to_string(), None).unwrap().value,
+            env.borrow().get("y".to_string(), None).unwrap().value,
             Value::Number(Fraction::from(30))
         );
     }
     #[test]
     fn test_assign_overwrite_mutable_variable() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
 
         let ast1 = ASTNode::Assign {
             name: "z".to_string(),
@@ -238,14 +239,14 @@ mod tests {
         // 環境に新しい値が登録されていること
         assert_eq!(eval(ast2, env.clone()), Value::Number(Fraction::from(100)));
         assert_eq!(
-            env.lock().unwrap().get("z".to_string(), None).unwrap().value,
+            env.borrow().get("z".to_string(), None).unwrap().value,
             Value::Number(Fraction::from(100))
         );
     }
     #[test]
     #[should_panic(expected = "Cannot reassign to immutable variable")]
     fn test_assign_to_immutable_variable() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
 
         // Immutable 変数の初期値を設定
         let ast1 = ASTNode::Assign {
@@ -269,7 +270,7 @@ mod tests {
     }
     #[test]
     fn test_register_function_and_function_call() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Function {
             name: "foo".into(),
             arguments: vec![
@@ -312,7 +313,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Unexpected prefix op: Plus")]
     fn test_unsupported_prefix_operation() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::PrefixOp {
             op: Token::Plus,
             expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
@@ -323,7 +324,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Unsupported operation")]
     fn test_unsupported_binary_operation() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::BinaryOp {
             left: Box::new(ASTNode::Literal(Value::String("hello".to_string()))),
             op: Token::Mul,
@@ -334,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_list() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Assign {
             name: "x".to_string(),
             value: Box::new(ASTNode::Literal(Value::List(vec![
@@ -360,14 +361,14 @@ mod tests {
                 Value::Number(Fraction::from(2)),
                 Value::Number(Fraction::from(3)),
             ]),
-            env.lock().unwrap().get("x".to_string(), None).unwrap().value
+            env.borrow().get("x".to_string(), None).unwrap().value
         );
     }
 
     #[test]
     #[should_panic(expected = "does not match arguments length")]
     fn test_function_call_argument_mismatch() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast_function = ASTNode::Function {
             name: "bar".to_string(),
             arguments: vec![ASTNode::Variable {
@@ -395,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_scope_management_in_function() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
 
         // 関数定義
         let ast_function = ASTNode::Function {
@@ -442,13 +443,13 @@ mod tests {
         assert_eq!(result, Value::Number(Fraction::from(15)));
 
         // スコープ外でローカル変数が見つからないことを確認
-        let local_var_check = env.lock().unwrap().get("local_var".to_string(), None);
+        let local_var_check = env.borrow().get("local_var".to_string(), None);
         assert!(local_var_check.is_none());
     }
 
     #[test]
     fn test_scope_and_global_variable() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
 
         // グローバル変数 z を定義
         let global_z = ASTNode::Assign {
@@ -604,7 +605,7 @@ mod tests {
 
     #[test]
     fn test_global_variable_and_functions() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
 
         // グローバル変数の定義
         let global_z = ASTNode::Assign {
@@ -694,7 +695,7 @@ mod tests {
 
     #[test]
     fn test_if() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::If {
             condition: Box::new(ASTNode::Eq {
                 left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
@@ -711,7 +712,7 @@ mod tests {
 
     #[test]
     fn test_if_return() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::If {
             condition: Box::new(ASTNode::Eq {
                 left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
@@ -728,7 +729,7 @@ mod tests {
 
     #[test]
     fn test_comparison_operations() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Eq {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
@@ -762,7 +763,7 @@ mod tests {
     }
     #[test]
     fn test_struct() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = ASTNode::Struct {
             name: "Point".into(),
             is_public: true,
@@ -795,13 +796,13 @@ mod tests {
                 ])
             }
         );
-        assert_eq!(env.lock().unwrap().get_struct("Point".to_string()).is_some(), true);
-        assert_eq!(env.lock().unwrap().get_struct("DummuStruct".to_string()).is_some(), false);
+        assert_eq!(env.borrow().get_struct("Point".to_string()).is_some(), true);
+        assert_eq!(env.borrow().get_struct("DummuStruct".to_string()).is_some(), false);
     }
 
     #[test]
     fn test_assign_struct() {
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let ast = vec![
             ASTNode::Struct {
                 name: "Point".into(),
@@ -934,7 +935,7 @@ mod tests {
                 field_name: "x".into()
             },
         ];
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         let result = evals(asts, env.clone());
         assert_eq!(result[4], Value::Number(Fraction::from(3)));
     }
@@ -988,7 +989,7 @@ mod tests {
                 field_name: "x".into()
             },
         ];
-        let env = Arc::new(Mutex::new(Env::new()));
+        let env = Rc::new(RefCell::new(Env::new()));
         evals(asts, env.clone());
     }
 
@@ -1023,7 +1024,7 @@ point.clear()
 
     let tokens = tokenize(&input.to_string());
     let asts = Parser::new(tokens.to_vec()).parse_lines();
-    let env = Arc::new(Mutex::new(Env::new()));
+    let env = Rc::new(RefCell::new(Env::new()));
     register_builtins(env.clone());
     let result = evals(asts, env.clone());
     let base_struct = Value::Struct {
