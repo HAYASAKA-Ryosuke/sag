@@ -4,6 +4,8 @@ use fraction::Fraction;
 use crate::environment::{ValueType, MethodInfo};
 use crate::ast::ASTNode;
 use crate::environment::Env;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -35,7 +37,7 @@ pub enum Value {
     Lambda {
         arguments: Vec<ASTNode>,
         body: Box<ASTNode>,
-        env: Env,
+        env: Rc<RefCell<Env>>,
     },
 }
 

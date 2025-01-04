@@ -14,17 +14,19 @@ use crate::evals::{eval, evals};
 use crate::parser::Parser;
 use crate::tokenizer::tokenize;
 use std::env;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
-    let mut env = Env::new();
-    register_builtins(&mut env);
+    let env = Rc::new(RefCell::new(Env::new()));
+    register_builtins(env.clone());
     for line in std::io::stdin().lines() {
         let tokens = tokenize(&line?);
         println!("{:?}", tokens);
         let mut parser = Parser::new(tokens.to_vec());
         let ast_node = parser.parse();
         println!("ast: {:?}", ast_node);
-        let result = eval(ast_node, &mut env);
+        let result = eval(ast_node, env.clone());
         println!("---------");
         println!("res: {:?}", result);
     }
@@ -38,16 +40,11 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     let mut parser = Parser::new(tokens.to_vec());
     let ast_nodes = parser.parse_lines();
     println!("ast: {:?}", ast_nodes);
-    let mut env = Env::new();
-    register_builtins(&mut env);
-    let result = evals(ast_nodes, &mut env);
+    let env = Rc::new(RefCell::new(Env::new()));
+    register_builtins(env.clone());
+    let result = evals(ast_nodes, env);
     println!("result: {:?}", result);
     Ok(())
-}
-
-fn change_rc() {
-    // Implement the logic to change the RC value
-    println!("RC value changed");
 }
 
 fn main() {
@@ -63,5 +60,4 @@ fn main() {
             eprintln!("Error: {}", e);
         }
     }
-    change_rc();
 }

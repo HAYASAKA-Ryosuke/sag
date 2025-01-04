@@ -67,7 +67,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                _ => {}
             }
             match env.borrow().get(caller.clone(), None) {
-                Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
+                Some(EnvVariableValueInfo{value, ref value_type, variable_type}) => {
                     let local_env = env.clone();
                     let struct_info = match value_type {
                         ValueType::StructInstance { name: struct_name, ..} => {
@@ -76,7 +76,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                         _ => panic!("missing struct: {}", value)
                     };
                     let methods = match struct_info {
-                        Some(Value::Struct{methods, ..}) => methods,
+                        Some(Value::Struct{ref methods, ..}) => methods,
                         _ => panic!("failed get methods")
                     };
 
@@ -87,7 +87,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                             if (args_vec.len() + 1) != define_arguments.len() {
                                 panic!("does not match arguments length");
                             }
-                            let mut local_env = env.clone();
+                            let local_env = env.clone();
                             local_env.borrow().enter_scope(value.to_string());
                             let _ = local_env.borrow().set(
                                 "self".to_string(),
@@ -167,7 +167,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                 panic!("Variable not found: {:?}", variable_name);
                             }
                             let mut struct_fields = HashMap::new();
-                            match obj.unwrap().value.clone() {
+                            match obj.as_ref().unwrap().value.clone() {
                                 Value::StructInstance { .. } => {
                                     let instance_value = obj.unwrap().value.clone();
                                     let updated_value = match instance_value {
