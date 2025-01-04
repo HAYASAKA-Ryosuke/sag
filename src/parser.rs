@@ -83,7 +83,6 @@ impl Parser {
             (scope.clone(), name.to_string()),
             return_type.clone(),
         );
-        println!("register function: {:?}", self.functions);
     }
 
     fn get_function(&self, scope: String, name: String) -> Option<ValueType> {
