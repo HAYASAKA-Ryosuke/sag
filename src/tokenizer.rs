@@ -30,6 +30,10 @@ fn is_space(c: &char) -> bool {
     *c == ' '
 }
 
+fn is_tab(c: &char) -> bool {
+    *c == '\t'
+}
+
 fn is_digit(c: &char) -> bool {
     *c >= '0' && *c <= '9'
 }
@@ -87,6 +91,12 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
             || c == '/'
             || c == '.'
             || c == '|'
+            || c == '<'
+            || c == '>'
+            || c == '\\'
+            || c == '['
+            || c == ']'
+            || c == '\t'
         {
             break;
         }
@@ -370,6 +380,10 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             break;
         }
         if is_space(&c) {
+            tokenizer.pos += 1;
+            continue;
+        }
+        if is_tab(&c) {
             tokenizer.pos += 1;
             continue;
         }
@@ -1032,6 +1046,29 @@ mod tests {
         assert_eq!(
             tokenize(&"// comment".to_string()),
             vec![Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_add_tab() {
+        assert_eq!(
+            tokenize(&"1 + 2\t+ 3".to_string()),
+            vec![
+                Token::Number(Fraction::from(1)),
+                Token::Plus,
+                Token::Number(Fraction::from(2)),
+                Token::Plus,
+                Token::Number(Fraction::from(3)),
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_identifier() {
+        assert_eq!(
+            tokenize(&"x[]".to_string()),
+            vec![Token::Identifier("x".into()), Token::LBrancket, Token::RBrancket, Token::Eof]
         );
     }
 }
