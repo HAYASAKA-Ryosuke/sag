@@ -1,5 +1,5 @@
 use crate::environment::Env;
-use crate::parser::Value;
+use crate::value::Value;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn register_builtins(env: &mut Env) {
