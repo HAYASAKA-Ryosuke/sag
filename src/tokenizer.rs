@@ -89,6 +89,7 @@ fn get_identifier(tokenizer: &mut Tokenizer) -> String {
             || c == '-'
             || c == '*'
             || c == '/'
+            || c == '%'
             || c == '.'
             || c == '|'
             || c == '<'
@@ -573,6 +574,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '-' => tokenizer.tokens.push(Token::Minus),
             '*' => tokenizer.tokens.push(Token::Mul),
             '/' => tokenizer.tokens.push(Token::Div),
+            '%' => tokenizer.tokens.push(Token::Mod),
             '(' => tokenizer.tokens.push(Token::LParen),
             ')' => tokenizer.tokens.push(Token::RParen),
             '[' => tokenizer.tokens.push(Token::LBrancket),
@@ -612,7 +614,7 @@ mod tests {
     #[test]
     fn test_four_basic_arithmetic_operations() {
         assert_eq!(
-            tokenize(&"-1 + 2 * 3/4".to_string()),
+            tokenize(&"-1 + 2 * 3/4 % 3".to_string()),
             vec![
                 Token::Minus,
                 Token::Number(Fraction::from(1)),
@@ -622,6 +624,8 @@ mod tests {
                 Token::Number(Fraction::from(3)),
                 Token::Div,
                 Token::Number(Fraction::from(4)),
+                Token::Mod,
+                Token::Number(Fraction::from(3)),
                 Token::Eof
             ]
         );
