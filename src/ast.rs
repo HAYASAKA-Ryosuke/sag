@@ -115,5 +115,6 @@ pub enum ASTNode {
         base_struct: Box<ValueType>,
         methods: Vec<ASTNode>,
     },
+    CommentBlock(String),
 }
 

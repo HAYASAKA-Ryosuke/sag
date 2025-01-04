@@ -717,6 +717,7 @@ impl Parser {
                     }
                 }
             }
+            Token::CommentBlock(comment) => {ASTNode::CommentBlock(comment.to_string())},
             _ => panic!("undefined token: {:?}", token),
         }
     }

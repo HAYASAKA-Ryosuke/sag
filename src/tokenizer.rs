@@ -136,6 +136,49 @@ fn is_function_call_args(c: &char) -> bool {
     *c == '|'
 }
 
+fn is_comment_block(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "```".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn get_comment_string(tokenizer: &mut Tokenizer) -> String {
+    let mut comment = String::new();
+    let mut pos = tokenizer.pos + 3;
+    let mut back_quote_count = 0;
+    let mut before_c = '\0';
+    loop {
+        let c = tokenizer.get_position_char(pos);
+        if c == '\0' {
+            tokenizer.pos = pos;
+            break;
+        }
+        if back_quote_count == 3 {
+            pos += 2;
+            tokenizer.pos = pos;
+            break;
+        }
+        if c == '`' && back_quote_count == 0 {
+            back_quote_count += 1;
+            before_c = c;
+            pos += 1;
+            continue;
+        }
+        if c == '`' && before_c == '`' {
+            back_quote_count += 1;
+            continue;
+        }
+        back_quote_count = 0;
+        before_c = c;
+        comment += &c.to_string();
+        pos += 1;
+    }
+    comment
+}
+
 fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "val".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -327,6 +370,12 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_immutable(&mut tokenizer) {
             tokenizer.tokens.push(Token::Immutable);
             tokenizer.pos += 3;
+            continue;
+        }
+
+        if is_comment_block(&mut tokenizer) {
+            let comment = get_comment_string(&mut tokenizer);
+            tokenizer.tokens.push(Token::CommentBlock(comment));
             continue;
         }
 
@@ -937,5 +986,13 @@ mod tests {
             tokenize(&"impl Point {\n fun x = (self: Point) {\n self.x\n }\n }".to_string()),
             vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("x".into()), Token::Equal, Token::LParen, Token::Identifier("self".into()), Token::Colon, Token::Identifier("Point".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof],
         )
+    }
+
+    #[test]
+    fn test_comment_block() {
+        assert_eq!(
+            tokenize(&"```# Title\n## title1```".to_string()),
+            vec![Token::CommentBlock("# Title\n## title1".into()), Token::Eof]
+        );
     }
 }

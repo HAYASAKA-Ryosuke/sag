@@ -1,3 +1,8 @@
+```
+hello
+```
+
+
 val mut z = 3
 fun f1(x: number, y: number): number {
     z = 2
@@ -32,7 +37,7 @@ point.x = 1
 point -> print
 point.display()
 
-if x == 8 {
+if (x == 8) {
     print("hello2")
     2
 } else {
@@ -46,7 +51,7 @@ if x == 8 {
 1 * 1
 
 fun fibo(n: number): number {
-    return if n < 2 {
+    return if (n < 2) {
         return n
     } else {
         return fibo(n - 1) + fibo(n - 2)

@@ -121,6 +121,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         ASTNode::BinaryOp { left, op, right } => {
             binary_op::binary_op(op, left, right, env)
         }
+        ASTNode::CommentBlock(_) => Value::Void,
         _ => panic!("Unsupported ast node: {:?}", ast),
     }
 }
