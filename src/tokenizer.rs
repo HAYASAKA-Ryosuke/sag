@@ -136,6 +136,15 @@ fn is_function_call_args(c: &char) -> bool {
     *c == '|'
 }
 
+fn is_line_comment(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "//".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_comment_block(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "```".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -143,6 +152,21 @@ fn is_comment_block(tokenizer: &mut Tokenizer) -> bool {
         }
     }
     true
+}
+
+fn get_line_comment_string(tokenizer: &mut Tokenizer) -> String {
+    let mut comment = String::new();
+    let mut pos = tokenizer.pos + 1;
+    loop {
+        let c = tokenizer.get_position_char(pos);
+        if c == '\0' || c == '\n' {
+            tokenizer.pos = pos;
+            break;
+        }
+        comment += &c.to_string();
+        pos += 1;
+    }
+    comment
 }
 
 fn get_comment_string(tokenizer: &mut Tokenizer) -> String {
@@ -373,9 +397,16 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_line_comment(&mut tokenizer) {
+            let _comment = get_line_comment_string(&mut tokenizer);
+            //tokenizer.tokens.push(Token::CommentLine(comment));
+            tokenizer.pos += 1;
+            continue;
+        }
+
         if is_comment_block(&mut tokenizer) {
-            let comment = get_comment_string(&mut tokenizer);
-            tokenizer.tokens.push(Token::CommentBlock(comment));
+            let _comment = get_comment_string(&mut tokenizer);
+            //tokenizer.tokens.push(Token::CommentBlock(comment));
             continue;
         }
 
@@ -992,7 +1023,15 @@ mod tests {
     fn test_comment_block() {
         assert_eq!(
             tokenize(&"```# Title\n## title1```".to_string()),
-            vec![Token::CommentBlock("# Title\n## title1".into()), Token::Eof]
+            vec![Token::Eof]
+        );
+    }
+
+    #[test]
+    fn test_commnet_line() {
+        assert_eq!(
+            tokenize(&"// comment".to_string()),
+            vec![Token::Eof]
         );
     }
 }

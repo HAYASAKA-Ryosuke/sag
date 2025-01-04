@@ -42,4 +42,5 @@ pub enum Token {
     Dot,
     Impl,
     CommentBlock(String),
+    CommentLine(String),
 }
