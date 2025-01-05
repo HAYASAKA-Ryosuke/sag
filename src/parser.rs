@@ -473,10 +473,14 @@ impl Parser {
                 break;
             }
             if let Token::Identifier(name) = self.consume_token().unwrap() {
-                self.extract_token(Token::Colon);
-                let arg_type = match self.consume_token() {
-                    Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
-                    _ => panic!("Expected type for argument"),
+                let arg_type = if name == "self" && (self.get_current_token() == Some(Token::Comma) || self.get_current_token() == Some(Token::RParen)) {
+                    ValueType::SelfType
+                } else {
+                    self.extract_token(Token::Colon);
+                    match self.consume_token() {
+                        Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
+                        _ => panic!("Expected type for argument"),
+                    }
                 };
                 self.register_variables(
                     scope.to_string(),
@@ -782,26 +786,7 @@ impl Parser {
         self.enter_scope(name.to_string());
         self.consume_token();
         self.extract_token(Token::LParen);
-        let self_type = ValueType::StructInstance {
-            name: self.get_current_scope(),
-            fields: HashMap::new(), // 仮のフィールド
-        };
-        let scope = self.get_current_scope();
-        self.register_variables(
-            scope.clone(),
-            &"self".to_string(),
-            &self_type,
-            &EnvVariableType::Immutable,
-        );
-        let mut arguments = self.parse_function_arguments();
-        arguments.insert(
-            0,
-            ASTNode::Variable {
-                name: "self".to_string(),
-                value_type: None,
-            },
-        );
-
+        let arguments = self.parse_function_arguments();
         let return_type = self.parse_return_type();
         let body = self.parse_block();
         self.leave_scope();
@@ -2207,7 +2192,7 @@ mod tests {
 
     #[test]
     fn test_impl() {
-        let tokens = vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("move".into()), Token::LParen, Token::Identifier("dx".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Equal, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Plus, Token::Identifier("dx".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof];
+        let tokens = vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("move".into()), Token::LParen, Token::Identifier("self".into()), Token::Comma, Token::Identifier("dx".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Equal, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Plus, Token::Identifier("dx".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof];
         let mut parser = Parser::new(tokens);
         let base_struct = ASTNode::Struct {
             name: "Point".into(),
@@ -2237,7 +2222,7 @@ mod tests {
                 arguments: vec![
                     ASTNode::Variable {
                         name: "self".into(),
-                        value_type: None
+                        value_type: Some(ValueType::SelfType)
                     },
                     ASTNode::Variable {
                         name: "dx".into(),

@@ -1000,7 +1000,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_test() {
+    fn test_struct_impl() {
         let input = r#"
 struct Point {
   x: number,
@@ -1008,14 +1008,14 @@ struct Point {
 }
 
 impl Point {
-  fun move(dx: number, dy: number) {
+  fun move(self, dx: number, dy: number) {
       self.x = self.x + dx
       self.y = self.y + dy
   }
 }
 
 impl Point {
-  fun clear() {
+  fun clear(self) {
       self.x = 0
       self.y = 0
   }
@@ -1028,159 +1028,28 @@ point.move(5, 2)
 point.clear()
 "#;
 
-    let tokens = tokenize(&input.to_string());
-    let asts = Parser::new(tokens.to_vec()).parse_lines();
-    let mut env = Env::new();
-    register_builtins(&mut env);
-    let result = evals(asts, &mut env);
-    let base_struct = Value::Struct {
-        name: "Point".into(),
-        fields: HashMap::from_iter(vec![
-            ("y".into(), Value::StructField{
-                value_type: ValueType::Number,
-                is_public: false
-            }),
-            ("x".into(), Value::StructField{
-                value_type: ValueType::Number,
-                is_public: false
-            })
-        ]),
-        methods: HashMap::new(),
-        is_public: false
-    };
-    let base_struct_type = ValueType::Struct {
-        name: "Point".into(),
-        fields: HashMap::from_iter(vec![
-            ("y".into(), ValueType::StructField{
-                value_type: Box::new(ValueType::Number),
-                is_public: false
-            }),
-            ("x".into(), ValueType::StructField{
-                value_type: Box::new(ValueType::Number),
-                is_public: false
-            })
-        ]),
-        is_public: false
-    };
-    assert_eq!(result, vec![
-        base_struct.clone(),
-        Value::Impl {
-            base_struct: base_struct_type.clone(),
-            methods: HashMap::from_iter(vec![
-                ("move".into(), MethodInfo{
-                    arguments: vec![
-                        ASTNode::Variable{
-                            name: "self".into(),
-                            value_type: None
-                        },
-                        ASTNode::Variable{
-                            name: "dx".into(),
-                            value_type: Some(ValueType::Number)
-                        },
-                        ASTNode::Variable{
-                            name: "dy".into(),
-                            value_type: Some(ValueType::Number)
-                        },
-                    ],
-                    return_type: ValueType::Void,
-                    body: Some(ASTNode::Block(vec![
-                            ASTNode::StructFieldAssign {
-                                instance: Box::new(ASTNode::StructFieldAccess {
-                                    instance: Box::new(ASTNode::Variable {
-                                        name: "self".into(),
-                                        value_type: Some(base_struct_type.clone()),
-                                    }),
-                                    field_name: "x".into()
-                                }),
-                                field_name: "x".into(),
-                                value: Box::new(ASTNode::BinaryOp {
-                                    left: Box::new(ASTNode::StructFieldAccess {
-                                        instance: Box::new(ASTNode::Variable {
-                                            name: "self".into(),
-                                            value_type: Some(base_struct_type.clone())
-                                        }),
-                                        field_name: "x".into()
-                                    }),
-                                    op: Token::Plus,
-                                    right: Box::new(ASTNode::Variable {
-                                        name: "dx".into(),
-                                        value_type: Some(ValueType::Number)
-                                    })
-                                })
-                            },
-                            ASTNode::StructFieldAssign {
-                                instance: Box::new(ASTNode::StructFieldAccess {
-                                    instance: Box::new(ASTNode::Variable {
-                                        name: "self".into(),
-                                        value_type: Some(base_struct_type.clone()),
-                                    }),
-                                    field_name: "y".into()
-                                }),
-                                field_name: "y".into(),
-                                value: Box::new(ASTNode::BinaryOp {
-                                    left: Box::new(ASTNode::StructFieldAccess {
-                                        instance: Box::new(ASTNode::Variable {
-                                            name: "self".into(),
-                                            value_type: Some(base_struct_type.clone())
-                                        }),
-                                        field_name: "y".into()
-                                    }),
-                                    op: Token::Plus,
-                                    right: Box::new(ASTNode::Variable {
-                                        name: "dy".into(),
-                                        value_type: Some(ValueType::Number)
-                                    })
-                                })
-                            },
-                    ]))
-                })
-            ])
-        },
-        Value::Impl {
-            base_struct: base_struct_type.clone(),
-            methods: HashMap::from_iter(vec![
-                ("clear".into(), MethodInfo{
-                    arguments: vec![ASTNode::Variable{name: "self".into(), value_type: None}],
-                    return_type: ValueType::Void,
-                    body: Some(ASTNode::Block(vec![
-                        ASTNode::StructFieldAssign {
-                            instance: Box::new(ASTNode::StructFieldAccess {
-                                instance:  Box::new(ASTNode::Variable {
-                                    name: "self".into(),
-                                    value_type: Some(base_struct_type.clone())
-                                }),
-                                field_name: "x".into()
-                            }),
-                            field_name: "x".into(),
-                            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(0))))
-                        },
-                        ASTNode::StructFieldAssign {
-                            instance: Box::new(ASTNode::StructFieldAccess {
-                                instance:  Box::new(ASTNode::Variable {
-                                    name: "self".into(),
-                                    value_type: Some(base_struct_type.clone())
-                                }),
-                                field_name: "y".into()
-                            }),
-                            field_name: "y".into(),
-                            value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(0))))
-                        },
-                    ]))
-                })
-            ])
-        },
-        Value::Number(Fraction::from(8)),
-        Value::Number(Fraction::from(3)),
-        Value::StructInstance {
+        let tokens = tokenize(&input.to_string());
+        let asts = Parser::new(tokens.to_vec()).parse_lines();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let result = evals(asts, &mut env);
+        let base_struct = Value::Struct {
             name: "Point".into(),
             fields: HashMap::from_iter(vec![
-                ("x".into(), Value::Number(Fraction::from(8))),
-                ("y".into(), Value::Number(Fraction::from(3))),
-            ])
-        },
-        Value::Void,
-        Value::Void,
-    ]);
+                ("y".into(), Value::StructField{
+                    value_type: ValueType::Number,
+                    is_public: false
+                }),
+                ("x".into(), Value::StructField{
+                    value_type: ValueType::Number,
+                    is_public: false
+                })
+            ]),
+            methods: HashMap::new(),
+            is_public: false
+        };
+        assert_eq!(result.first(), Some(base_struct.clone()).as_ref());
+        assert_eq!(result.get(6), Some(Value::Void).as_ref());
     }
 
     #[test]

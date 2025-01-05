@@ -47,6 +47,7 @@ pub enum ValueType {
     String,
     Bool,
     Void,
+    SelfType,
     List(Box<ValueType>),
     Function,
     Lambda,

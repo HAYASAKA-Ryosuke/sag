@@ -81,8 +81,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                     match methods.get(&method_name) {
                         Some(MethodInfo{arguments: define_arguments, return_type: _, body}) => {
 
-                            // self分加味
-                            if (args_vec.len() + 1) != define_arguments.len() {
+                            if args_vec.len() != define_arguments.len() - 1 {
                                 panic!("does not match arguments length");
                             }
                             let mut local_env = env.clone();
