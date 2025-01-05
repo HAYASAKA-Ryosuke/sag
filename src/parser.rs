@@ -1197,26 +1197,6 @@ impl Parser {
                 Some(token) => token,
                 _ => break,
             };
-            if token == Token::Eq {
-                lhs = self.parse_eq(lhs);
-                continue;
-            }
-            if token == Token::Gte {
-                lhs = self.parse_gte(lhs);
-                continue;
-            }
-            if token == Token::Gt {
-                lhs = self.parse_gt(lhs);
-                continue;
-            }
-            if token == Token::Lte {
-                lhs = self.parse_lte(lhs);
-                continue;
-            }
-            if token == Token::Lt {
-                lhs = self.parse_lt(lhs);
-                continue;
-            }
             if token == Token::RArrow {
                 if self.is_lparen_call() {
                     self.pos += 1;
@@ -1235,7 +1215,6 @@ impl Parser {
                 continue;
             }
 
-            // 二項演算
             if let Some((left_priority, right_priority)) = self.get_priority(&token) {
                 if left_priority < min_priority {
                     break;
@@ -1243,10 +1222,37 @@ impl Parser {
                 self.pos += 1;
 
                 let rhs = self.parse_expression(right_priority);
-                lhs = ASTNode::BinaryOp {
-                    left: Box::new(lhs),
-                    op: token,
-                    right: Box::new(rhs),
+                if let Token::Eq = token {
+                    lhs = ASTNode::Eq {
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }
+                } else if let Token::Gte = token {
+                    lhs = ASTNode::Gte {
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }
+                } else if let Token::Gt = token {
+                    lhs = ASTNode::Gt {
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }
+                } else if let Token::Lte = token {
+                    lhs = ASTNode::Lte {
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }
+                } else if let Token::Lt = token {
+                    lhs = ASTNode::Lt {
+                        left: Box::new(lhs),
+                        right: Box::new(rhs),
+                    }
+                } else {
+                    lhs = ASTNode::BinaryOp {
+                        left: Box::new(lhs),
+                        op: token,
+                        right: Box::new(rhs),
+                    }
                 }
             } else {
                 break;
@@ -1256,9 +1262,9 @@ impl Parser {
     }
     fn get_priority(&self, token: &Token) -> Option<(u8, u8)> {
         match token {
-            Token::Plus | Token::Minus => Some((1, 2)),
-            Token::Mul | Token::Div => Some((3, 4)),
-            Token::Mod => Some((5, 6)),
+            Token::Eq | Token::Gt | Token::Gte | Token::Lt | Token::Lte => Some((1, 2)),
+            Token::Plus | Token::Minus => Some((3, 4)),
+            Token::Mul | Token::Div | Token::Mod => Some((5, 6)),
             _ => None,
         }
     }
@@ -1308,13 +1314,13 @@ mod tests {
                 }),
                 op: Token::Plus,
                 right: Box::new(ASTNode::BinaryOp {
-                    left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
-                    op: Token::Mul,
-                    right: Box::new(ASTNode::BinaryOp{
-                        left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
-                        op: Token::Mod,
+                    left: Box::new(ASTNode::BinaryOp {
+                        left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
+                        op: Token::Mul,
                         right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
-                    })
+                    }),
+                    op: Token::Mod,
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
                 })
             }
         );
