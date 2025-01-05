@@ -215,7 +215,7 @@ fn get_comment_string(tokenizer: &mut Tokenizer) -> String {
 }
 
 fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "val".chars().enumerate() {
+    for (i, c) in "val ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -224,7 +224,7 @@ fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_mutable(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "val mut".chars().enumerate() {
+    for (i, c) in "val mut ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -233,7 +233,7 @@ fn is_mutable(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_function(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "fun".chars().enumerate() {
+    for (i, c) in "fun ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -242,7 +242,7 @@ fn is_function(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_return(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "return".chars().enumerate() {
+    for (i, c) in "return ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -251,7 +251,7 @@ fn is_return(tokenizer: &mut Tokenizer) -> bool {
 }
 
 fn is_match(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "match".chars().enumerate() {
+    for (i, c) in "match ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -367,7 +367,7 @@ fn is_gt(c: char) -> bool {
 }
 
 fn is_if(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "if".chars().enumerate() {
+    for (i, c) in "if ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }

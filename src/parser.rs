@@ -547,7 +547,10 @@ impl Parser {
                             "number" => ValueType::Number,
                             "str" => ValueType::String,
                             "bool" => ValueType::Bool,
-                            _ => panic!("undefined type: {:?}", value_type),
+                            "void" => ValueType::Void,
+                            _ => {
+                                self.string_to_value_type(value_type)
+                            }
                         },
                         _ => panic!("undefined type"),
                     },
@@ -1035,6 +1038,11 @@ impl Parser {
             if token == Token::RParen {
                 self.pos += 1;
                 break;
+            }
+            if token == Token::Eof {
+                self.pos = 0;
+                self.line += 1;
+                continue;
             }
             let value = self.parse_expression(0);
             arguments.push(value);
