@@ -76,7 +76,7 @@ impl Parser {
         &mut self,
         scope: String,
         name: &String,
-        arguments: &Vec<ASTNode>,  // arugmentsも多重定義を許容するときに使う
+        _arguments: &Vec<ASTNode>,  // arugmentsも多重定義を許容するときに使う
         return_type: &ValueType,
     ) {
         self.functions.insert(
@@ -912,76 +912,6 @@ impl Parser {
         let scope = self.get_current_scope().clone();
         self.register_struct(scope, result.clone());
         result
-    }
-
-    fn parse_eq(&mut self, left: ASTNode) -> ASTNode {
-        match self.get_current_token() {
-            Some(Token::Eq) => self.consume_token(),
-            _ => panic!("unexpected token"),
-        };
-
-        let right = self.parse_expression(0);
-
-        ASTNode::Eq {
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    fn parse_gte(&mut self, left: ASTNode) -> ASTNode {
-        match self.get_current_token() {
-            Some(Token::Gte) => self.consume_token(),
-            _ => panic!("unexpected token"),
-        };
-
-        let right = self.parse_expression(0);
-
-        ASTNode::Gte {
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    fn parse_gt(&mut self, left: ASTNode) -> ASTNode {
-        match self.get_current_token() {
-            Some(Token::Gt) => self.consume_token(),
-            _ => panic!("unexpected token"),
-        };
-
-        let right = self.parse_expression(0);
-
-        ASTNode::Gt {
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    fn parse_lte(&mut self, left: ASTNode) -> ASTNode {
-        match self.get_current_token() {
-            Some(Token::Lte) => self.consume_token(),
-            _ => panic!("unexpected token"),
-        };
-
-        let right = self.parse_expression(0);
-
-        ASTNode::Lte {
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    fn parse_lt(&mut self, left: ASTNode) -> ASTNode {
-        match self.get_current_token() {
-            Some(Token::Lt) => self.consume_token(),
-            _ => panic!("unexpected token"),
-        };
-
-        let right = self.parse_expression(0);
-
-        ASTNode::Lt {
-            left: Box::new(left),
-            right: Box::new(right),
-        }
     }
 
     fn parse_for(&mut self) -> ASTNode {

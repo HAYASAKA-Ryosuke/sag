@@ -36,7 +36,7 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
         },
         Value::StructInstance { ref name, fields: ref instance_fields } => {
             match env.get_struct(name.to_string()) {
-                Some(Value::Struct { name: _, fields, is_public: _, methods }) => {
+                Some(Value::Struct { name: _, fields, is_public: _, methods: _ }) => {
                     for (field_name, value_type) in instance_fields {
                         if !fields.contains_key(&field_name.to_string()) {
                             panic!("Struct field not found: {:?}", field_name);

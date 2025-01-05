@@ -10,7 +10,7 @@ pub fn for_node(variable: String, iterable: Box<ASTNode>, body: Box<ASTNode>, en
             for value in values {
                 let scope_name = format!("for-{}-{}", variable.clone(), value.clone());
                 env.enter_scope(scope_name.clone());
-                env.set(variable.clone(), value.clone(), EnvVariableType::Immutable, value.value_type(), true);
+                let _ = env.set(variable.clone(), value.clone(), EnvVariableType::Immutable, value.value_type(), true);
                 eval(*body.clone(), env);
                 env.leave_scope();
             }
