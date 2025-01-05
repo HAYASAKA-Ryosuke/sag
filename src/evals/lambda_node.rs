@@ -7,7 +7,7 @@ pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, env: &mut
     let mut params_vec = vec![];
     let lambda = match *lambda {
         ASTNode::Lambda { arguments, body } => (arguments, body),
-        _ => panic!("Unexpected value type"),
+        _ => panic!("Unexpected value type: {:?}", lambda),
     };
     for arg in &lambda.0 {
         params_vec.push(match arg {
