@@ -1,9 +1,9 @@
 mod builtin;
 mod environment;
-mod parser;
 mod tokenizer;
 mod wasm;
 mod evals;
+mod parsers;
 mod ast;
 mod value;
 mod token;

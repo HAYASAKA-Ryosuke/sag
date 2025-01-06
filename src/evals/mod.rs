@@ -139,8 +139,8 @@ mod tests {
     use std::collections::HashMap;
     use super::*;
     use crate::tokenizer::tokenize;
-    use crate::parser::Parser;
-    use crate::environment::{MethodInfo, EnvVariableType};
+    use crate::parsers::Parser;
+    use crate::environment::EnvVariableType;
     use crate::builtin::register_builtins;
     use fraction::Fraction;
     use crate::token::Token;
