@@ -1,6 +1,7 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
 use crate::token::Token;
+use crate::environment::ValueType;
 
 impl Parser {
 
@@ -14,6 +15,23 @@ impl Parser {
         self.consume_token();
         self.extract_token(Token::LParen);
         let arguments = self.parse_function_arguments();
+        let mut is_mut = false;
+        if arguments.len() > 0 {
+            match arguments.first() {
+                Some(ASTNode::Variable { name, value_type }) => {
+                    if name != "self" {
+                        panic!("first argument must be self");
+                    }
+                    match value_type {
+                        Some(value_type) => {
+                            is_mut = *value_type != ValueType::SelfType;
+                        },
+                        _ => {},
+                    }
+                },
+                _ => panic!("first argument must be self"),
+            }
+        }
         let return_type = self.parse_return_type();
         let body = self.parse_block();
         self.leave_scope();
@@ -22,6 +40,7 @@ impl Parser {
             arguments,
             body: Box::new(body),
             return_type,
+            is_mut,
         }
     }
 

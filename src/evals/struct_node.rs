@@ -37,11 +37,13 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, env: &mut E
                 arguments,
                 body,
                 return_type,
+                is_mut
             } => {
                 let method_info = MethodInfo {
                     arguments,
                     body: Some(*body),
                     return_type,
+                    is_mut,
                 };
                 impl_methods.insert(name, method_info);
             },
@@ -66,26 +68,27 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
             }
             match env.get(caller.clone(), None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
-                    let local_env = env.clone();
+                    let mut local_env = env.clone();
                     let struct_info = match value_type {
                         ValueType::StructInstance { name: struct_name, ..} => {
-                            local_env.get_struct(struct_name.to_string())
+                            local_env.get_struct(struct_name.to_string()).cloned()
                         },
                         _ => panic!("missing struct: {}", value)
                     };
                     let methods = match struct_info {
-                        Some(Value::Struct{methods, ..}) => methods,
+                        Some(Value::Struct{ref methods, ..}) => methods,
                         _ => panic!("failed get methods")
                     };
-
                     match methods.get(&method_name) {
-                        Some(MethodInfo{arguments: define_arguments, return_type: _, body}) => {
+                        Some(MethodInfo{arguments: define_arguments, return_type: _, body, is_mut}) => {
+                            if *is_mut && (*variable_type == EnvVariableType::Immutable) {
+                                panic!("method is not mutable");
+                            }
 
                             if args_vec.len() != define_arguments.len() - 1 {
                                 panic!("does not match arguments length");
                             }
-                            let mut local_env = env.clone();
-                            local_env.enter_scope(value.to_string());
+                            local_env.enter_scope(method_name.to_string());
                             let _ = local_env.set(
                                 "self".to_string(),
                                 match struct_info {
@@ -107,6 +110,19 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                 },
                                 true
                             );
+                            // set struct_instance fields
+                            for (field_name, field_value) in match value.clone() {
+                                Value::StructInstance { name: _, fields } => fields,
+                                _ => panic!("missing struct instance")
+                            } {
+                                let _ = local_env.set(
+                                    field_name.to_string(),
+                                    field_value.clone(),
+                                    EnvVariableType::Mutable,
+                                    field_value.value_type(),
+                                    true
+                                );
+                            }
                             let mut i = 0;
                             for define_arg in define_arguments {
                                 if let ASTNode::Variable {name, value_type} = define_arg {
@@ -118,16 +134,20 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                     i += 1;
                                 }
                             }
+                            println!("method call: {:?}", body);
                             let result = eval(body.clone().unwrap(), &mut local_env);
                             if let Some(self_value) = local_env.get("self".to_string(), None) {
                                 if let Value::StructInstance { .. } = self_value.value.clone() {
-                                    local_env.set(
+                                    println!("update self: {:?}, {:?}", self_value, variable_type);
+                                    let suss = local_env.set(
                                         caller.to_string(),
                                         self_value.value.clone(),
                                         variable_type.clone(),
                                         value_type.clone(),
                                         false,
-                                    ).expect("Failed to update self in global environment");
+                                    );
+                                    println!("update self: {:?}", suss);
+                                    //).expect("Failed to update self in global environment");
                                 }
                             }
                             env.update_global_env(&local_env);

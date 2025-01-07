@@ -26,6 +26,7 @@ pub struct MethodInfo {
     pub arguments: Vec<ASTNode>,
     pub return_type: ValueType,
     pub body: Option<ASTNode>,
+    pub is_mut: bool,
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
@@ -48,6 +49,7 @@ pub enum ValueType {
     Bool,
     Void,
     SelfType,
+    MutSelfType,
     List(Box<ValueType>),
     Function,
     Lambda,

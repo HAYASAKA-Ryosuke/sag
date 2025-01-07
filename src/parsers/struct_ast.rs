@@ -11,6 +11,7 @@ impl Parser {
             Some(Token::Identifier(name)) => name,
             _ => panic!("unexpected token"),
         };
+        self.enter_struct(name.clone());
         if name[0..1] != name[0..1].to_uppercase() {
             panic!("struct name must start with a capital letter");
         }
@@ -57,6 +58,7 @@ impl Parser {
         let result = ASTNode::Struct { name, fields, is_public };
         let scope = self.get_current_scope().clone();
         self.register_struct(scope, result.clone());
+        self.leave_struct();
         result
     }
 
@@ -104,6 +106,9 @@ impl Parser {
             Some(Token::Identifier(name)) => name,
             _ => panic!("unexpected token"),
         };
+
+        self.enter_struct(struct_name.clone());
+
         let base_struct = self.get_struct(scope.clone(),struct_name.to_string()).expect("undefined struct");
         self.current_struct = Some(struct_name.clone());
         self.consume_token();
@@ -130,6 +135,7 @@ impl Parser {
             }
         }
         self.current_struct = None;
+        self.leave_struct();
         ASTNode::Impl {
             base_struct: Box::new(base_struct),
             methods,

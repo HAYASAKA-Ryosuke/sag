@@ -48,6 +48,18 @@ impl Parser {
         }
     }
 
+    fn enter_struct(&mut self, struct_name: String) {
+        self.current_struct = Some(struct_name);
+    }
+
+    fn leave_struct(&mut self) {
+        self.current_struct = None;
+    }
+
+    fn get_current_struct(&self) -> Option<String> {
+        self.current_struct.clone()
+    }
+
     fn enter_scope(&mut self, scope_name: String) {
         self.scopes.push(scope_name);
     }
@@ -1381,6 +1393,7 @@ mod tests {
                         value_type: Some(ValueType::Number)
                     }
                 ],
+                is_mut: false,
                 body: Box::new(ASTNode::Block(vec![
                           ASTNode::StructFieldAssign {
                               instance: Box::new(ASTNode::StructFieldAccess {

@@ -8,7 +8,7 @@ impl Parser {
     pub fn parse_identifier(&mut self, name: String) -> ASTNode {
         self.pos += 1;
         let scope = self.get_current_scope().to_string();
-        let variable_info = self.find_variables(scope, name.clone());
+        let variable_info = self.find_variables(scope.clone(), name.clone());
         match self.get_current_token() {
             Some(Token::LBrace) => self.create_struct_instance(name.clone()),
             Some(Token::LParen) => self.create_function_call(name.clone()),
@@ -20,7 +20,24 @@ impl Parser {
                 let value_type = if variable_info.is_some() {
                     Some(variable_info.unwrap().0)
                 } else {
-                    None
+                    // structに所属しているかチェック
+                    match self.get_current_struct(){
+                        Some(struct_name) => {
+                            let struct_info = self.get_struct(scope.clone(), struct_name.clone());
+                            match struct_info {
+                                Some(ValueType::Struct { fields, .. }) => {
+                                    let field_info = fields.get(&name);
+                                    println!("field_info: {:?}, {:?}", name, fields);
+                                    match field_info {
+                                        Some(field_info) => Some(field_info.clone()),
+                                        None => None
+                                    }
+                                },
+                                _ => None
+                            }
+                        },
+                        None => None
+                    }
                 };
                 ASTNode::Variable { name, value_type }
             }
@@ -116,10 +133,21 @@ impl Parser {
                 ASTNode::StructFieldAccess { field_name, .. } => field_name,
                 _ => panic!("unexpected token"),
             };
+            // check mutable immutable
             ASTNode::StructFieldAssign {
                 instance: Box::new(struct_instance_access),
                 field_name: field_name.clone(),
                 value: Box::new(value),
+            }
+        } else if let Some(Token::Dot) = self.get_current_token() {
+            println!("sia {:?}", struct_instance_access);
+            match struct_instance_access.clone() {
+                ASTNode::StructFieldAccess { field_name, instance } => {
+                    println!("instance: {:?}", instance);
+                    println!("field_name: {:?}", field_name);
+                    self.parse_identifier(field_name)
+                },
+                _ => panic!("unexpected token"),
             }
         } else {
             struct_instance_access

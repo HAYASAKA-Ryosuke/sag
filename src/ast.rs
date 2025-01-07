@@ -43,6 +43,7 @@ pub enum ASTNode {
         arguments: Vec<ASTNode>,
         body: Box<ASTNode>,
         return_type: ValueType,
+        is_mut: bool,
     },
     MethodCall {
         method_name: String,

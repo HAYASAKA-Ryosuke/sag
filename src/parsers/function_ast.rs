@@ -69,8 +69,18 @@ impl Parser {
                 break;
             }
             if let Token::Identifier(name) = self.consume_token().unwrap() {
+                let mut variable_name = name.clone();
                 let arg_type = if name == "self" && (self.get_current_token() == Some(Token::Comma) || self.get_current_token() == Some(Token::RParen)) {
                     ValueType::SelfType
+                } else if name == "mut" && self.get_current_token() == Some(Token::Identifier("self".to_string())) {
+                    self.consume_token();
+                    if self.get_current_token() == Some(Token::Comma) || self.get_current_token() == Some(Token::RParen) {
+                        println!("mut self: {:?}", name);
+                        variable_name = "self".to_string();
+                        ValueType::MutSelfType
+                    } else {
+                        panic!("Expected self after mut")
+                    }
                 } else {
                     self.extract_token(Token::Colon);
                     match self.consume_token() {
@@ -80,12 +90,13 @@ impl Parser {
                 };
                 self.register_variables(
                     scope.to_string(),
-                    &name,
+                    &variable_name,
                     &arg_type,
                     &EnvVariableType::Immutable,
                 );
+                println!("arg_type: {:?}", arg_type);
                 arguments.push(ASTNode::Variable {
-                    name,
+                    name: variable_name,
                     value_type: Some(arg_type),
                 });
             }
