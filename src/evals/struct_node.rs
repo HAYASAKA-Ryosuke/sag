@@ -104,7 +104,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                         for (field_name, field_value) in fields {
                                             field_types.insert(field_name.to_string(), field_value.value_type());
                                         }
-                                        ValueType::Struct{name: name.to_string(), fields: field_types, is_public: is_public.clone()}
+                                        ValueType::Struct{name: name.to_string(), fields: field_types, is_public: is_public.clone(), methods: methods.clone()}
                                     },
                                     _ => panic!("failed struct")
                                 },
@@ -134,20 +134,16 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                     i += 1;
                                 }
                             }
-                            println!("method call: {:?}", body);
                             let result = eval(body.clone().unwrap(), &mut local_env);
                             if let Some(self_value) = local_env.get("self".to_string(), None) {
                                 if let Value::StructInstance { .. } = self_value.value.clone() {
-                                    println!("update self: {:?}, {:?}", self_value, variable_type);
-                                    let suss = local_env.set(
+                                    local_env.set(
                                         caller.to_string(),
                                         self_value.value.clone(),
                                         variable_type.clone(),
                                         value_type.clone(),
                                         false,
-                                    );
-                                    println!("update self: {:?}", suss);
-                                    //).expect("Failed to update self in global environment");
+                                    ).expect("Failed to update self in global environment");
                                 }
                             }
                             env.update_global_env(&local_env);
@@ -173,12 +169,37 @@ pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, env:
 }
 
 pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: String, updated_value_ast: Box<ASTNode>, env: &mut Env) -> Value {
+    println!("struct_field_assign_node: {:?}", instance);
+    println!("struct_field_assign_node: {:?}", env);
     match *instance {
         ASTNode::StructFieldAccess { instance, field_name: _  } => {
             match *instance {
                 ASTNode::Variable { name: variable_name, value_type } => {
                     match value_type {
                         Some(ValueType::Struct{name, fields, ..}) if variable_name == "self" => {
+                            match env.get_struct(name.to_string()) {
+                                Some(Value::Struct { fields: _, methods, .. }) => {
+                                    let scope = env.get_current_scope();
+                                    match methods.get(&scope) {
+                                        Some(MethodInfo {arguments, ..}) => {
+                                            let first_argument = arguments.first();
+                                            if first_argument.is_none() {
+                                                panic!("missing self argument");
+                                            }
+                                            match first_argument.unwrap() {
+                                                ASTNode::Variable { name: self_argument, value_type: self_type } => {
+                                                    if self_argument != "self" || *self_type != Some(ValueType::MutSelfType) {
+                                                        panic!("{} is not mut self argument", scope);
+                                                    }
+                                                },
+                                                _ => panic!("missing self argument"),
+                                            }
+                                        },
+                                        _ => panic!("missing method info")
+                                    }
+                                },
+                                _ => panic!("Unexpected value type"),
+                            };
                             let obj = env.get(variable_name.to_string(), None);
                             if obj.is_none() {
                                 panic!("Variable not found: {:?}", variable_name);

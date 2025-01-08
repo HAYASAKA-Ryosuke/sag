@@ -35,13 +35,16 @@ impl Parser {
         let return_type = self.parse_return_type();
         let body = self.parse_block();
         self.leave_scope();
-        ASTNode::Method {
-            name,
+        let method = ASTNode::Method {
+            name: name.clone(),
             arguments,
             body: Box::new(body),
             return_type,
             is_mut,
-        }
+        };
+        println!("method: {:?}, {:?}, {:?}", method, name, self.current_struct);
+        self.register_method(self.get_current_scope(), self.current_struct.clone().unwrap(), method.clone());
+        method
     }
 
     pub fn parse_method_call(&mut self, caller: String, method_name: String, arguments: ASTNode) -> ASTNode {

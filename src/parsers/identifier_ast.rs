@@ -133,14 +133,12 @@ impl Parser {
                 ASTNode::StructFieldAccess { field_name, .. } => field_name,
                 _ => panic!("unexpected token"),
             };
-            // check mutable immutable
             ASTNode::StructFieldAssign {
                 instance: Box::new(struct_instance_access),
                 field_name: field_name.clone(),
                 value: Box::new(value),
             }
         } else if let Some(Token::Dot) = self.get_current_token() {
-            println!("sia {:?}", struct_instance_access);
             match struct_instance_access.clone() {
                 ASTNode::StructFieldAccess { field_name, instance } => {
                     println!("instance: {:?}", instance);

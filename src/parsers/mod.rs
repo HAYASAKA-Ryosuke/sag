@@ -15,12 +15,11 @@ pub mod block_ast;
 pub mod prefix_op_ast;
 pub mod string_to_value_type;
 
-use crate::environment::{EnvVariableType, ValueType};
+use crate::environment::{EnvVariableType, ValueType, MethodInfo};
 use crate::token::Token;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use std::collections::HashMap;
-
 
 pub struct Parser {
     tokens: Vec<Vec<Token>>,
@@ -28,7 +27,7 @@ pub struct Parser {
     line: usize,
     scopes: Vec<String>,
     variables: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
-    structs: HashMap<(String, String), (ValueType, EnvVariableType)>, // key: (scope, name), value: value_type
+    structs: HashMap<(String, String), (ValueType, EnvVariableType, HashMap<String, ASTNode>)>, // key: (scope, name), value: value_type
     functions: HashMap<(String, String), ValueType>, // key: (scope, name, arguments), value: (body, return_type)
     current_struct: Option<String>,
 }
@@ -80,7 +79,8 @@ impl Parser {
                     panic!("invalid struct field")
                 }
             }).collect();
-            let insert_value = (ValueType::Struct { name: name.clone(), fields: field_types, is_public: is_public.clone() }, EnvVariableType::Immutable);
+            let methods = HashMap::new();
+            let insert_value = (ValueType::Struct { name: name.clone(), fields: field_types, is_public: is_public.clone(), methods }, EnvVariableType::Immutable, HashMap::new());
             self.structs.insert(
                 (scope.to_string(), name.to_string()),
                 insert_value,
@@ -88,11 +88,37 @@ impl Parser {
         }
     }
 
+    fn register_method(&mut self, scope: String, struct_name: String, method: ASTNode) {
+        if let ASTNode::Method { name: method_name, arguments, body, return_type, is_mut } = method.clone() {
+            for scope in vec![scope.to_string(), "global".to_string()] {
+                if let Some((value_type, _, _)) = self.structs.get_mut(&(scope.to_string(), struct_name.to_string())) {
+                    match value_type {
+                        ValueType::Struct { name: _, fields: _, is_public: _, methods } => {
+                            let method_info = MethodInfo {
+                                arguments: arguments.clone(),
+                                body: Some(*body),
+                                return_type: return_type.clone(),
+                                is_mut: is_mut.clone(),
+                            };
+                            methods.insert(method_name.clone(), method_info);
+                            break
+                        }
+                        _ => panic!("invalid method")
+                    }
+                }
+            }
+        } else {
+            panic!("invalid method")
+        }
+    }
+
     fn get_struct(&mut self, scope: String, name: String) -> Option<ValueType> {
         for checked_scope in vec![scope.to_string(), "global".to_string()] {
             match self.structs.get(&(checked_scope.to_string(), name.to_string())) {
-                Some((ref value_type, _)) => match value_type.clone() {
-                    ValueType::Struct { name, fields, is_public } => return Some(ValueType::Struct { name: name.clone(), fields: fields.clone(), is_public: is_public.clone() }),
+                Some((ref value_type, _, ..)) => match value_type.clone() {
+                    ValueType::Struct { .. } => {
+                        return Some(value_type.clone())
+                    },
                     _ => return None,
                 },
                 None => {}

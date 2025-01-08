@@ -94,7 +94,6 @@ impl Parser {
                     &arg_type,
                     &EnvVariableType::Immutable,
                 );
-                println!("arg_type: {:?}", arg_type);
                 arguments.push(ASTNode::Variable {
                     name: variable_name,
                     value_type: Some(arg_type),

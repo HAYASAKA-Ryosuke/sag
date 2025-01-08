@@ -78,7 +78,7 @@ impl Parser {
             let struct_type = self
                 .get_struct(scope.clone(), current_struct.to_string())
                 .expect("undefined struct for self");
-    
+
             return ASTNode::StructFieldAccess {
                 instance: Box::new(ASTNode::Variable {
                     name: "self".to_string(),
