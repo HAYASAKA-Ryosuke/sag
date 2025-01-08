@@ -1403,7 +1403,8 @@ mod tests {
                     value_type: Box::new(ValueType::Number),
                     is_public: false
                 })
-            ])
+            ]),
+            methods: HashMap::new()
         };
         assert_eq!(parser.parse_lines(), vec![ASTNode::Impl {
             base_struct: Box::new(base_struct_type.clone()),

@@ -169,8 +169,6 @@ pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, env:
 }
 
 pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: String, updated_value_ast: Box<ASTNode>, env: &mut Env) -> Value {
-    println!("struct_field_assign_node: {:?}", instance);
-    println!("struct_field_assign_node: {:?}", env);
     match *instance {
         ASTNode::StructFieldAccess { instance, field_name: _  } => {
             match *instance {

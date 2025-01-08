@@ -1009,14 +1009,14 @@ struct Point {
 }
 
 impl Point {
-  fun move(self, dx: number, dy: number) {
+  fun move(mut self, dx: number, dy: number) {
       self.x = self.x + dx
       self.y = self.y + dy
   }
 }
 
 impl Point {
-  fun clear(self) {
+  fun clear(mut self) {
       self.x = 0
       self.y = 0
   }
