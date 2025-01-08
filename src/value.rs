@@ -37,6 +37,17 @@ pub enum Value {
         body: Box<ASTNode>,
         env: Env,
     },
+    Method {
+        name: String,
+        arguments: Vec<ASTNode>,
+        body: Box<ASTNode>,
+        return_type: ValueType,
+        is_mut: bool,
+    },
+    StructFieldAccess {
+        instance: Box<Value>,
+        field_name: String,
+    },
 }
 
 impl Value {
@@ -93,6 +104,15 @@ impl Value {
                 }
             },
             Value::Lambda { .. } => ValueType::Lambda,
+            Value::Method { return_type, .. } => return_type.clone(),
+            Value::StructFieldAccess { instance, field_name } => {
+                match instance.as_ref() {
+                    Value::StructInstance { fields, .. } => {
+                        fields.get(field_name).unwrap().value_type()
+                    },
+                    _ => panic!("invalid struct instance"),
+                }
+            },
         }
     }
     pub fn to_number(&self) -> Fraction {
@@ -175,6 +195,25 @@ impl fmt::Display for Value {
                     result.push_str(&format!("{}", value));
                 }
                 write!(f, "[{}]", result)
+            }
+            Value::Method { name, arguments, body, return_type, is_mut } => {
+                let mut result = String::new();
+                result.push_str(&format!("Method {{\n"));
+                result.push_str(&format!("    name: {},\n", name));
+                result.push_str(&format!("    arguments: {:?},\n", arguments));
+                result.push_str(&format!("    body: {:?},\n", body));
+                result.push_str(&format!("    return_type: {:?},\n", return_type));
+                result.push_str(&format!("    is_mut: {},\n", is_mut));
+                result.push_str("}");
+                write!(f, "{}", result)
+            }
+            Value::StructFieldAccess { instance, field_name } => {
+                let mut result = String::new();
+                result.push_str(&format!("StructFieldAccess {{\n"));
+                result.push_str(&format!("    instance: {:?},\n", instance));
+                result.push_str(&format!("    field_name: {},\n", field_name));
+                result.push_str("}");
+                write!(f, "{}", result)
             }
         }
     }

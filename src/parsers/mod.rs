@@ -390,6 +390,69 @@ impl Parser {
         }
         ast_nodes
     }
+
+    pub fn parse_impl(&mut self) -> ASTNode {
+        self.consume_token();
+        let scope = self.get_current_scope().clone();
+        let struct_name = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+
+        self.enter_struct(struct_name.clone());
+
+        let base_struct = self.get_struct(scope.clone(),struct_name.to_string()).expect("undefined struct");
+        self.current_struct = Some(struct_name.clone());
+        self.consume_token();
+        self.extract_token(Token::LBrace);
+        let mut methods = Vec::new();
+        while let Some(token) = self.get_current_token() {
+            if token == Token::RBrace {
+                self.consume_token();
+                break;
+            }
+            if token == Token::Eof {
+                self.pos = 0;
+                self.line += 1;
+                continue;
+            }
+            if token == Token::Comma {
+                self.consume_token();
+                continue;
+            }
+            if token == Token::Function {
+                let method = self.parse_method();
+                methods.push(method);
+                continue;
+            }
+        }
+        self.current_struct = None;
+        self.leave_struct();
+        ASTNode::Impl {
+            base_struct: Box::new(base_struct),
+            methods,
+        }
+    }
+
+    pub fn parse_for(&mut self) -> ASTNode {
+        match self.get_current_token() {
+            Some(Token::For) => self.consume_token(),
+            _ => panic!("unexpected token"),
+        };
+        let variable = match self.get_current_token() {
+            Some(Token::Identifier(name)) => name,
+            _ => panic!("unexpected token"),
+        };
+        self.consume_token();
+        self.extract_token(Token::In);
+        let iterable = self.parse_expression(0);
+        let body = self.parse_expression(0);
+        ASTNode::For {
+            variable,
+            iterable: Box::new(iterable),
+            body: Box::new(body),
+        }
+    }
 }
 
 #[cfg(test)]
