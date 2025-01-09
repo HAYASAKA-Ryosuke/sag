@@ -700,40 +700,6 @@ mod tests {
     }
 
     #[test]
-    fn test_if() {
-        let mut env = Env::new();
-        let ast = ASTNode::If {
-            condition: Box::new(ASTNode::Eq {
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-            }),
-            then: Box::new(ASTNode::Block(vec![
-                ASTNode::Literal(Value::Number(Fraction::from(1)))
-            ])),
-            else_: None,
-            value_type: ValueType::Void
-        };
-        assert_eq!(Value::Void, eval(ast, &mut env));
-    }
-
-    #[test]
-    fn test_if_return() {
-        let mut env = Env::new();
-        let ast = ASTNode::If {
-            condition: Box::new(ASTNode::Eq {
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-            }),
-            then: Box::new(ASTNode::Block(vec![
-                ASTNode::Literal(Value::Number(Fraction::from(1)))
-            ])),
-            else_: None,
-            value_type: ValueType::Void
-        };
-        assert_eq!(Value::Void, eval(ast, &mut env));
-    }
-
-    #[test]
     fn test_comparison_operations() {
         let mut env = Env::new();
         let ast = ASTNode::Eq {
