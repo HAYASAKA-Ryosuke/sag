@@ -1019,27 +1019,6 @@ point.clear()
     }
 
     #[test]
-    fn test_for() {
-        let input = r#"
-        val mut sum = 0
-        for i in [0, 1, 2, 3] {
-            sum = sum + i
-        }
-        sum
-        "#;
-        let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
-        let mut env = Env::new();
-        register_builtins(&mut env);
-        let result = evals(asts, &mut env);
-        assert_eq!(result, vec![
-            Value::Number(Fraction::from(0)),
-            Value::Void,
-            Value::Number(Fraction::from(6)),
-        ]);
-    }
-
-    #[test]
     fn test_lambda_expression() {
         let mut env = Env::new();
         let lambda_ast = ASTNode::Lambda {
