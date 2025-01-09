@@ -124,7 +124,6 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             name,
             value_type,
         } => {
-            println!("variable_type: {:?}", value_type);
             variable_node::variable_node(name, value_type, env)
         }
         ASTNode::BinaryOp { left, op, right } => {

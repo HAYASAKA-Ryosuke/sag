@@ -75,7 +75,6 @@ impl Parser {
                 } else if name == "mut" && self.get_current_token() == Some(Token::Identifier("self".to_string())) {
                     self.consume_token();
                     if self.get_current_token() == Some(Token::Comma) || self.get_current_token() == Some(Token::RParen) {
-                        println!("mut self: {:?}", name);
                         variable_name = "self".to_string();
                         ValueType::MutSelfType
                     } else {

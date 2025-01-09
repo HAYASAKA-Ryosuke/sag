@@ -42,7 +42,6 @@ impl Parser {
             return_type,
             is_mut,
         };
-        println!("method: {:?}, {:?}, {:?}", method, name, self.current_struct);
         self.register_method(self.get_current_scope(), self.current_struct.clone().unwrap(), method.clone());
         method
     }
