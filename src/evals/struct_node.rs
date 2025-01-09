@@ -75,16 +75,17 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                         },
                         _ => panic!("missing struct: {}", value)
                     };
+
                     let methods = match struct_info {
                         Some(Value::Struct{ref methods, ..}) => methods,
                         _ => panic!("failed get methods")
                     };
                     match methods.get(&method_name) {
-                        Some(MethodInfo{arguments: define_arguments, return_type: _, body, is_mut}) => {
-                            if *is_mut && (*variable_type == EnvVariableType::Immutable) {
-                                panic!("method is not mutable");
-                            }
+                        Some(MethodInfo{arguments: define_arguments, return_type: _, body, is_mut: _}) => {
 
+                            if *variable_type == EnvVariableType::Immutable {
+                                panic!("{} is not mutable", caller);
+                            }
                             if args_vec.len() != define_arguments.len() - 1 {
                                 panic!("does not match arguments length");
                             }

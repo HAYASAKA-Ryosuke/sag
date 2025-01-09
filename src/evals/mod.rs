@@ -1139,4 +1139,82 @@ point.clear()
         let result = eval(call_ast, &mut env);
         assert_eq!(result, Value::Number(Fraction::from(7)));
     }
+
+    #[test]
+    fn test_mutset_impl() {
+        let input = r#"
+            struct Foo {
+              value: number,
+            }
+            
+            impl Foo {
+              fun set(mut self, num: number) {
+                self.value = num
+              }
+            }
+            
+            val mut foo = Foo{value: 1}
+            foo.set(3)
+            foo.value
+        "#;
+
+        let tokens = tokenize(&input.to_string());
+        let asts = Parser::new(tokens.to_vec()).parse_lines();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let result = evals(asts, &mut env);
+        assert_eq!(result.last(), Some(&Value::Number(Fraction::from(3))));
+    }
+
+    #[test]
+    #[should_panic(expected = "set is not mut self argument")]
+    fn test_not_mut_set_impl() {
+        let input = r#"
+            struct Foo {
+              value: number,
+            }
+            
+            impl Foo {
+              fun set(self, num: number) {
+                self.value = num
+              }
+            }
+            
+            val mut foo = Foo{value: 1}
+            foo.set(3)
+            foo.value
+        "#;
+
+        let tokens = tokenize(&input.to_string());
+        let asts = Parser::new(tokens.to_vec()).parse_lines();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        evals(asts, &mut env);
+    }
+
+    #[test]
+    #[should_panic(expected = "foo is not mutable")]
+    fn test_not_mut_instance_impl() {
+        let input = r#"
+            struct Foo {
+              value: number,
+            }
+            
+            impl Foo {
+              fun set(self, num: number) {
+                self.value = num
+              }
+            }
+            
+            val foo = Foo{value: 1}
+            foo.set(3)
+            foo.value
+        "#;
+
+        let tokens = tokenize(&input.to_string());
+        let asts = Parser::new(tokens.to_vec()).parse_lines();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        evals(asts, &mut env);
+    }
 }
