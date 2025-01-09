@@ -17,3 +17,44 @@ pub fn if_node(condition: Box<ASTNode>, then: Box<ASTNode>, else_: Option<Box<AS
         _ => panic!("Unexpected condition: {:?}", condition),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fraction::Fraction;
+    use crate::environment::ValueType;
+
+    #[test]
+    fn test_if() {
+        let mut env = Env::new();
+        let ast = ASTNode::If {
+            condition: Box::new(ASTNode::Eq {
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+            }),
+            then: Box::new(ASTNode::Block(vec![
+                ASTNode::Literal(Value::Number(Fraction::from(1)))
+            ])),
+            else_: None,
+            value_type: ValueType::Void
+        };
+        assert_eq!(Value::Void, eval(ast, &mut env));
+    }
+
+    #[test]
+    fn test_if_return() {
+        let mut env = Env::new();
+        let ast = ASTNode::If {
+            condition: Box::new(ASTNode::Eq {
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
+            }),
+            then: Box::new(ASTNode::Block(vec![
+                ASTNode::Literal(Value::Number(Fraction::from(1)))
+            ])),
+            else_: None,
+            value_type: ValueType::Void
+        };
+        assert_eq!(Value::Void, eval(ast, &mut env));
+    }
+}
