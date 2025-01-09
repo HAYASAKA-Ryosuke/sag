@@ -37,11 +37,13 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, env: &mut E
                 arguments,
                 body,
                 return_type,
+                is_mut
             } => {
                 let method_info = MethodInfo {
                     arguments,
                     body: Some(*body),
                     return_type,
+                    is_mut,
                 };
                 impl_methods.insert(name, method_info);
             },
@@ -66,26 +68,28 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
             }
             match env.get(caller.clone(), None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
-                    let local_env = env.clone();
+                    let mut local_env = env.clone();
                     let struct_info = match value_type {
                         ValueType::StructInstance { name: struct_name, ..} => {
-                            local_env.get_struct(struct_name.to_string())
+                            local_env.get_struct(struct_name.to_string()).cloned()
                         },
                         _ => panic!("missing struct: {}", value)
                     };
+
                     let methods = match struct_info {
-                        Some(Value::Struct{methods, ..}) => methods,
+                        Some(Value::Struct{ref methods, ..}) => methods,
                         _ => panic!("failed get methods")
                     };
-
                     match methods.get(&method_name) {
-                        Some(MethodInfo{arguments: define_arguments, return_type: _, body}) => {
+                        Some(MethodInfo{arguments: define_arguments, return_type: _, body, is_mut: _}) => {
 
+                            if *variable_type == EnvVariableType::Immutable {
+                                panic!("{} is not mutable", caller);
+                            }
                             if args_vec.len() != define_arguments.len() - 1 {
                                 panic!("does not match arguments length");
                             }
-                            let mut local_env = env.clone();
-                            local_env.enter_scope(value.to_string());
+                            local_env.enter_scope(method_name.to_string());
                             let _ = local_env.set(
                                 "self".to_string(),
                                 match struct_info {
@@ -101,12 +105,25 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                         for (field_name, field_value) in fields {
                                             field_types.insert(field_name.to_string(), field_value.value_type());
                                         }
-                                        ValueType::Struct{name: name.to_string(), fields: field_types, is_public: is_public.clone()}
+                                        ValueType::Struct{name: name.to_string(), fields: field_types, is_public: is_public.clone(), methods: methods.clone()}
                                     },
                                     _ => panic!("failed struct")
                                 },
                                 true
                             );
+                            // set struct_instance fields
+                            for (field_name, field_value) in match value.clone() {
+                                Value::StructInstance { name: _, fields } => fields,
+                                _ => panic!("missing struct instance")
+                            } {
+                                let _ = local_env.set(
+                                    field_name.to_string(),
+                                    field_value.clone(),
+                                    EnvVariableType::Mutable,
+                                    field_value.value_type(),
+                                    true
+                                );
+                            }
                             let mut i = 0;
                             for define_arg in define_arguments {
                                 if let ASTNode::Variable {name, value_type} = define_arg {
@@ -159,6 +176,29 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                 ASTNode::Variable { name: variable_name, value_type } => {
                     match value_type {
                         Some(ValueType::Struct{name, fields, ..}) if variable_name == "self" => {
+                            match env.get_struct(name.to_string()) {
+                                Some(Value::Struct { fields: _, methods, .. }) => {
+                                    let scope = env.get_current_scope();
+                                    match methods.get(&scope) {
+                                        Some(MethodInfo {arguments, ..}) => {
+                                            let first_argument = arguments.first();
+                                            if first_argument.is_none() {
+                                                panic!("missing self argument");
+                                            }
+                                            match first_argument.unwrap() {
+                                                ASTNode::Variable { name: self_argument, value_type: self_type } => {
+                                                    if self_argument != "self" || *self_type != Some(ValueType::MutSelfType) {
+                                                        panic!("{} is not mut self argument", scope);
+                                                    }
+                                                },
+                                                _ => panic!("missing self argument"),
+                                            }
+                                        },
+                                        _ => panic!("missing method info")
+                                    }
+                                },
+                                _ => panic!("Unexpected value type"),
+                            };
                             let obj = env.get(variable_name.to_string(), None);
                             if obj.is_none() {
                                 panic!("Variable not found: {:?}", variable_name);

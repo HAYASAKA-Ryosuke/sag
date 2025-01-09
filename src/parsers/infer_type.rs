@@ -12,7 +12,7 @@ impl Parser {
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
                 Value::Void => Ok(ValueType::Void),
-                Value::Struct { name, fields, is_public, methods: _ } => {
+                Value::Struct { name, fields, is_public, methods } => {
                     let field_types = fields.iter().map(|(name, field)| {
                         if let Value::StructField { value_type, is_public: _ } = field {
                             (name.clone(), value_type.clone())
@@ -20,7 +20,7 @@ impl Parser {
                             panic!("invalid struct field")
                         }
                     }).collect::<HashMap<_,_>>();
-                    Ok(ValueType::Struct { name: name.clone(), fields: field_types.clone(), is_public: is_public.clone() })
+                    Ok(ValueType::Struct { name: name.clone(), fields: field_types.clone(), is_public: is_public.clone(), methods: methods.clone() })
                 },
                 Value::List(values) => {
                     let mut value_type = ValueType::Any;

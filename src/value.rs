@@ -60,7 +60,7 @@ impl Value {
                 }
             }
             Value::StructField { value_type, .. } => value_type.clone(),
-            Value::Struct{ name, fields, is_public, methods: _ } => {
+            Value::Struct{ name, fields, is_public, methods } => {
                 let field_types = fields.iter().map(|(name, field)| {
                     if let Value::StructField { value_type, is_public: _ } = field {
                         (name.clone(), value_type.clone())
@@ -68,7 +68,7 @@ impl Value {
                         panic!("invalid struct field")
                     }
                 }).collect::<HashMap<_,_>>();
-                ValueType::Struct{name: name.clone(), fields: field_types.clone(), is_public: is_public.clone()}
+                ValueType::Struct{name: name.clone(), fields: field_types.clone(), is_public: is_public.clone(), methods: methods.clone()}
             },
             Value::List(values) => {
                 if values.is_empty() {

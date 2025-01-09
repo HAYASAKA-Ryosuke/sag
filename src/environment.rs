@@ -26,6 +26,7 @@ pub struct MethodInfo {
     pub arguments: Vec<ASTNode>,
     pub return_type: ValueType,
     pub body: Option<ASTNode>,
+    pub is_mut: bool,
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
@@ -48,11 +49,12 @@ pub enum ValueType {
     Bool,
     Void,
     SelfType,
+    MutSelfType,
     List(Box<ValueType>),
     Function,
     Lambda,
     Return,
-    Struct{name: String, fields: HashMap<String, ValueType>, is_public: bool},
+    Struct{name: String, fields: HashMap<String, ValueType>, methods: HashMap<String, MethodInfo>, is_public: bool},
     StructField{value_type: Box<ValueType>, is_public: bool},
     StructInstance{name: String, fields: HashMap<String, ValueType>},
     Impl{base_struct: Box<ValueType>, methods: HashMap<String, MethodInfo>},
@@ -97,7 +99,7 @@ impl Env {
                 if let ValueType::Struct { name, .. } = base_struct {
                     if let Some(Value::Struct { methods: ref mut struct_methods, .. }) = self.structs.get_mut(&name) {
                         for (method_name, method_info) in methods {
-                            struct_methods.insert(method_name, method_info);
+                            struct_methods.insert(method_name.clone(), method_info.clone());
                         }
                     } else {
                         panic!("Struct '{}' not found for Impl", name);
@@ -133,6 +135,13 @@ impl Env {
         }
 
         self.scope_stack.pop();
+    }
+
+    pub fn get_current_scope(&self) -> String {
+        match self.scope_stack.last() {
+            Some(scope) => scope.clone(),
+            None => "global".to_string(),
+        }
     }
 
     pub fn register_function(&mut self, name: String, function: FunctionInfo) {
