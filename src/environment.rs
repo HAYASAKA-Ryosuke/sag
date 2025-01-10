@@ -110,7 +110,6 @@ impl Env {
         evals(ast_nodes, &mut module_env);
 
         self.modules.insert(module_name.to_string(), module_env);
-        println!("modules: {:?}", self.modules);
 
         Ok(())
     }
@@ -120,7 +119,6 @@ impl Env {
     }
 
     pub fn register_exported_symbol(&mut self, name: String) {
-        println!("name: {:?}", name);
         if let Some(_) = self.variable_map.get(&VariableKeyInfo {
             name: name.clone(),
             scope: "global".to_string(),

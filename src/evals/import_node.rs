@@ -11,7 +11,6 @@ pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> 
         Err(e) => panic!("Failed to import module {}: {:?}", module_name, e),
     }
     if let Some(module_env) = env.clone().get_module(&module_name) {
-        println!("Importing symbol {:?}",module_env);
         for symbol in symbols {
             if let Some(exported_symbol_type) = module_env.get_exported_symbol(&symbol) {
                 match exported_symbol_type.clone() {
@@ -59,7 +58,6 @@ pub fn public_node(node: Box<ASTNode>, env: &mut Env) -> Value {
         },
         _ => panic!("Only variables, struct and functions can be exported")
     }
-    println!("envvvvvvi: {:?}", env);
     Value::Void
 }
 
