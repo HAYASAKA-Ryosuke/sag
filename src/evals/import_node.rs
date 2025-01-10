@@ -22,6 +22,14 @@ pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> 
                             None => {}
                         };
                     }
+                    ExportedSymbolType::Struct => {
+                        match module_env.clone().get_struct(symbol) {
+                            Some(s) => {
+                                env.register_struct(s.clone());
+                            },
+                            None => {}
+                        }
+                    }
                     ExportedSymbolType::Variable => {
                         match module_env.get(symbol.clone(), None) {
                             Some(symbol_value) => {
@@ -52,6 +60,10 @@ pub fn public_node(node: Box<ASTNode>, env: &mut Env) -> Value {
             eval(*node, env);
             env.register_exported_symbol(name);
         },
+        ASTNode::Struct{name, ..} => {
+            eval(*node, env);
+            env.register_exported_symbol(name);
+        },
         ASTNode::Assign{name, ..} => {
             eval(*node, env);
             env.register_exported_symbol(name);
@@ -71,10 +83,10 @@ mod tests {
     fn test_import() {
         let mut env = Env::new();
         let file_path = "test_foo.sag";
-        let _ = std::fs::write(file_path, "pub val a = 0\npub fun f() {{\n}}");
+        let _ = std::fs::write(file_path, "pub val a = 0\npub fun f() {{\n}}\npub struct Ham {\nx: number\n}\nimpl Ham {\n fun egg(self) {\n }\n }");
         let ast = ASTNode::Import {
             module_name: "test_foo".to_string(),
-            symbols: vec!["a".to_string(), "f".to_string()]
+            symbols: vec!["a".to_string(), "f".to_string(), "Ham".to_string()]
         };
         assert_eq!(Value::Void, eval(ast, &mut env));
         let module = env.get_module(&"test_foo".to_string()).unwrap();
@@ -83,6 +95,10 @@ mod tests {
             None => false,
         }, true);
         assert_eq!(match module.get_exported_symbol(&"f".to_string()) {
+            Some(_) => true,
+            None => false,
+        }, true);
+        assert_eq!(match module.get_exported_symbol(&"Ham".to_string()) {
             Some(_) => true,
             None => false,
         }, true);

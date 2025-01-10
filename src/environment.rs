@@ -108,9 +108,7 @@ impl Env {
 
         let mut module_env = Env::new();
         evals(ast_nodes, &mut module_env);
-
         self.modules.insert(module_name.to_string(), module_env);
-
         Ok(())
     }
 
@@ -126,6 +124,8 @@ impl Env {
             self.exported_symbols.insert(name, ExportedSymbolType::Variable);
         } else if let Some(_) = self.get_function(name.clone()) {
             self.exported_symbols.insert(name, ExportedSymbolType::Function);
+        } else if let Some(_) = self.get_struct(name.clone()) {
+            self.exported_symbols.insert(name, ExportedSymbolType::Struct);
         }
     }
 

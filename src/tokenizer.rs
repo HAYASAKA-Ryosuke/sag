@@ -295,15 +295,6 @@ fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
-fn is_public_struct(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "pub struct ".chars().enumerate() {
-        if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false;
-        }
-    }
-    true
-}
-
 fn is_pub(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "pub ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -494,12 +485,6 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_right_arrow(&mut tokenizer) {
             tokenizer.tokens.push(Token::RArrow);
             tokenizer.pos += 2;
-            continue;
-        }
-
-        if is_public_struct(&mut tokenizer) {
-            tokenizer.tokens.push(Token::PublicStruct);
-            tokenizer.pos += 10;
             continue;
         }
 
