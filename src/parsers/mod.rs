@@ -14,6 +14,7 @@ pub mod list_ast;
 pub mod block_ast;
 pub mod prefix_op_ast;
 pub mod string_to_value_type;
+pub mod import_ast;
 
 use crate::environment::{EnvVariableType, ValueType, MethodInfo};
 use crate::token::Token;
@@ -250,6 +251,7 @@ impl Parser {
         match token {
             Token::PrivateStruct => self.parse_struct(false),
             Token::PublicStruct => self.parse_struct(true),
+            Token::Pub => self.parse_public(),
             Token::Impl => self.parse_impl(),
             Token::Minus => self.parse_prefix_op(Token::Minus),
             Token::Return => self.parse_return(),
@@ -260,6 +262,7 @@ impl Parser {
             Token::BackSlash => self.parse_lambda(),
             Token::Mutable | Token::Immutable => self.parse_assign(),
             Token::For => self.parse_for(),
+            Token::Import => self.parse_import(),
             Token::If => {
                 let ast_if = self.parse_if();
                 match ast_if {

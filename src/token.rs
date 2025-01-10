@@ -46,4 +46,6 @@ pub enum Token {
     CommentLine(String),
     For,
     In,
+    Import,
+    From,
 }

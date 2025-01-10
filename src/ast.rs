@@ -122,5 +122,12 @@ pub enum ASTNode {
         iterable: Box<ASTNode>,
         body: Box<ASTNode>,
     },
+    Import {
+        module_name: String,
+        symbols: Vec<String>,
+    },
+    Public {
+        node: Box<ASTNode>,
+    },
 }
 

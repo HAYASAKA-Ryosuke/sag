@@ -8,6 +8,7 @@ pub mod lambda_node;
 pub mod variable_node;
 pub mod binary_op;
 pub mod for_node;
+pub mod import_node;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -24,6 +25,15 @@ pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
 
 pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
     match ast {
+        ASTNode::Import {
+            module_name,
+            symbols,
+        } => {
+            import_node::import_node(module_name, symbols, env)
+        }
+        ASTNode::Public { node } => {
+            import_node::public_node(node, env)
+        }
         ASTNode::Literal(value) => value.clone(),
         ASTNode::PrefixOp { op, expr } => {
             prefix_op::prefix_op(op, expr, env)
