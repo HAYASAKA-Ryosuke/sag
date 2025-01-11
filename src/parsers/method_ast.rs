@@ -47,7 +47,6 @@ impl Parser {
     }
 
     pub fn parse_method_call(&mut self, caller: String, method_name: String, arguments: ASTNode) -> ASTNode {
-        self.consume_token();
         ASTNode::MethodCall {
             method_name,
             caller,
