@@ -41,9 +41,8 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         ASTNode::Struct {
             name,
             fields,
-            is_public
         } => {
-            struct_node::struct_node(name, fields, is_public, env)
+            struct_node::struct_node(name, fields, env)
         }
         ASTNode::Impl {
             base_struct,
@@ -748,7 +747,6 @@ mod tests {
         let mut env = Env::new();
         let ast = ASTNode::Struct {
             name: "Point".into(),
-            is_public: true,
             fields: HashMap::from_iter(vec![
                 ("x".into(), ASTNode::StructField {
                     value_type: ValueType::Number,
@@ -764,7 +762,6 @@ mod tests {
             result,
             Value::Struct {
                 name: "Point".into(),
-                is_public: true,
                 methods: HashMap::new(),
                 fields: HashMap::from_iter(vec![
                     ("x".into(), Value::StructField {
@@ -798,7 +795,6 @@ mod tests {
                         is_public: false
                     })
                 ]),
-                is_public: false
             },
             ASTNode::Assign {
                 name: "point".into(),
@@ -826,7 +822,6 @@ mod tests {
             vec![
                 Value::Struct {
                     name: "Point".into(),
-                    is_public: false,
                     fields: HashMap::from_iter(vec![
                         ("y".into(), Value::StructField {
                             value_type: ValueType::String,
@@ -854,7 +849,6 @@ mod tests {
         let asts = vec![
             ASTNode::Struct {
                 name: "Point".into(),
-                is_public: true,
                 fields: HashMap::from_iter(vec![
                     ("x".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
@@ -928,7 +922,6 @@ mod tests {
         let asts = vec![
             ASTNode::Struct {
                 name: "Point".into(),
-                is_public: true,
                 fields: HashMap::from_iter(vec![
                     ("x".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
@@ -1022,7 +1015,6 @@ point.clear()
                 })
             ]),
             methods: HashMap::new(),
-            is_public: false
         };
         assert_eq!(result.first(), Some(base_struct.clone()).as_ref());
         assert_eq!(result.get(6), Some(Value::Void).as_ref());

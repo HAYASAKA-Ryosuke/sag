@@ -5,7 +5,7 @@ use crate::environment::ValueType;
 use std::collections::HashMap;
 
 impl Parser {
-    pub fn parse_struct(&mut self, is_public: bool) -> ASTNode {
+    pub fn parse_struct(&mut self) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token::Identifier(name)) => name,
@@ -55,7 +55,7 @@ impl Parser {
                 continue;
             }
         }
-        let result = ASTNode::Struct { name, fields, is_public };
+        let result = ASTNode::Struct { name, fields };
         let scope = self.get_current_scope().clone();
         self.register_struct(scope, result.clone());
         self.leave_struct();

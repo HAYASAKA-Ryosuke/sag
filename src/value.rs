@@ -17,8 +17,7 @@ pub enum Value {
     Struct {
         name: String,
         fields: HashMap<String, Value>,  // field_name: value
-        methods: HashMap<String, MethodInfo>,
-        is_public: bool,
+        methods: HashMap<String, MethodInfo>
     },
     StructInstance {
         name: String,
@@ -60,7 +59,7 @@ impl Value {
                 }
             }
             Value::StructField { value_type, .. } => value_type.clone(),
-            Value::Struct{ name, fields, is_public, methods } => {
+            Value::Struct{ name, fields, methods } => {
                 let field_types = fields.iter().map(|(name, field)| {
                     if let Value::StructField { value_type, is_public: _ } = field {
                         (name.clone(), value_type.clone())
@@ -68,7 +67,7 @@ impl Value {
                         panic!("invalid struct field")
                     }
                 }).collect::<HashMap<_,_>>();
-                ValueType::Struct{name: name.clone(), fields: field_types.clone(), is_public: is_public.clone(), methods: methods.clone()}
+                ValueType::Struct{name: name.clone(), fields: field_types.clone(), methods: methods.clone()}
             },
             Value::List(values) => {
                 if values.is_empty() {

@@ -72,7 +72,7 @@ impl Parser {
     }
 
     fn register_struct(&mut self, scope: String, struct_value: ASTNode) {
-        if let ASTNode::Struct { name, fields, ref is_public } = &struct_value {
+        if let ASTNode::Struct { name, fields } = &struct_value {
             let field_types = fields.iter().map(|(name, field)| {
                 if let ASTNode::StructField { value_type, is_public } = field {
                     (name.clone(), ValueType::StructField { value_type: Box::new(value_type.clone()), is_public: is_public.clone() })
@@ -81,7 +81,7 @@ impl Parser {
                 }
             }).collect();
             let methods = HashMap::new();
-            let insert_value = (ValueType::Struct { name: name.clone(), fields: field_types, is_public: is_public.clone(), methods }, EnvVariableType::Immutable, HashMap::new());
+            let insert_value = (ValueType::Struct { name: name.clone(), fields: field_types, methods }, EnvVariableType::Immutable, HashMap::new());
             self.structs.insert(
                 (scope.to_string(), name.to_string()),
                 insert_value,
@@ -94,7 +94,7 @@ impl Parser {
             for scope in vec![scope.to_string(), "global".to_string()] {
                 if let Some((value_type, _, _)) = self.structs.get_mut(&(scope.to_string(), struct_name.to_string())) {
                     match value_type {
-                        ValueType::Struct { name: _, fields: _, is_public: _, methods } => {
+                        ValueType::Struct { name: _, fields: _, methods } => {
                             let method_info = MethodInfo {
                                 arguments: arguments.clone(),
                                 body: Some(*body),
@@ -249,8 +249,7 @@ impl Parser {
             _ => panic!("token not found!"),
         };
         match token {
-            Token::PrivateStruct => self.parse_struct(false),
-            Token::PublicStruct => self.parse_struct(true),
+            Token::Struct => self.parse_struct(),
             Token::Pub => self.parse_public(),
             Token::Impl => self.parse_impl(),
             Token::Minus => self.parse_prefix_op(Token::Minus),
@@ -1212,7 +1211,7 @@ mod tests {
     #[test]
     fn test_struct() {
         let tokens = vec![
-            Token::PrivateStruct,
+            Token::Struct,
             Token::Identifier("Point".into()),
             Token::LBrace,
             Token::Eof,
@@ -1233,7 +1232,6 @@ mod tests {
             parser.parse(),
             ASTNode::Struct {
                 name: "Point".into(),
-                is_public: false,
                 fields: HashMap::from_iter(vec![
                     ("x".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
@@ -1280,7 +1278,8 @@ mod tests {
     #[test]
     fn test_struct_field_access() {
         let tokens = vec![
-            Token::PublicStruct,
+            Token::Pub,
+            Token::Struct,
             Token::Identifier("Point".into()),
             Token::LBrace,
             Token::Eof,
@@ -1325,20 +1324,21 @@ mod tests {
         assert_eq!(
             parser.parse_lines(),
             vec![
-                ASTNode::Struct {
-                    name: "Point".into(),
-                    is_public: true,
-                    fields: HashMap::from_iter(vec![
-                        ("x".into(), ASTNode::StructField {
-                            value_type: ValueType::Number,
-                            is_public: true
-                        }),
-                        ("y".into(), ASTNode::StructField {
-                            value_type: ValueType::Number,
-                            is_public: true
-                        })
-                    ])
-                },
+                ASTNode::Public { node: Box::new(
+                    ASTNode::Struct {
+                        name: "Point".into(),
+                        fields: HashMap::from_iter(vec![
+                            ("x".into(), ASTNode::StructField {
+                                value_type: ValueType::Number,
+                                is_public: true
+                            }),
+                            ("y".into(), ASTNode::StructField {
+                                value_type: ValueType::Number,
+                                is_public: true
+                            })
+                        ])
+                    }
+                )},
                 ASTNode::Assign {
                     name: "point".into(),
                     variable_type: EnvVariableType::Immutable,
@@ -1394,13 +1394,11 @@ mod tests {
                     value_type: ValueType::Number,
                     is_public: false
                 }),
-            ]),
-            is_public: false
+            ])
         };
         parser.register_struct("global".into(), base_struct);
         let base_struct_type = ValueType::Struct {
             name: "Point".into(),
-            is_public: false,
             fields: HashMap::from_iter(vec![
                 ("x".into(), ValueType::StructField {
                     value_type: Box::new(ValueType::Number),

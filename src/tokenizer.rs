@@ -489,7 +489,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
 
         if is_struct(&mut tokenizer) {
-            tokenizer.tokens.push(Token::PrivateStruct);
+            tokenizer.tokens.push(Token::Struct);
             tokenizer.pos += 6;
             continue;
         }
@@ -979,7 +979,7 @@ mod tests {
         assert_eq!(
             tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()),
             vec![
-                Token::PrivateStruct,
+                Token::Struct,
                 Token::Identifier("Point".into()),
                 Token::LBrace,
                 Token::Eof,
@@ -999,7 +999,8 @@ mod tests {
         assert_eq!(
             tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()),
             vec![
-                Token::PublicStruct,
+                Token::Pub,
+                Token::Struct,
                 Token::Identifier("Point".into()),
                 Token::LBrace,
                 Token::Eof,
