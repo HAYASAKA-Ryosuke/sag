@@ -37,8 +37,7 @@ pub enum Token {
     Lt,
     Gte,
     Gt,
-    PublicStruct,
-    PrivateStruct,
+    Struct,
     Pub,
     Dot,
     Impl,
@@ -46,4 +45,6 @@ pub enum Token {
     CommentLine(String),
     For,
     In,
+    Import,
+    From,
 }

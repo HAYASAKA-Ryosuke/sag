@@ -4,7 +4,7 @@ use crate::value::Value;
 use crate::environment::{Env, ValueType, MethodInfo, EnvVariableValueInfo, EnvVariableType};
 use crate::evals::eval;
 
-pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, is_public: bool, env: &mut Env) -> Value {
+pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, env: &mut Env) -> Value {
     let mut struct_fields = HashMap::new();
     // fields field_name: StructField
     for (field_name, struct_field) in fields {
@@ -21,8 +21,7 @@ pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, is_public: bo
     let result = Value::Struct {
         name,
         fields: struct_fields,
-        methods: HashMap::new(),
-        is_public
+        methods: HashMap::new()
     };
     env.register_struct(result.clone());
     result
@@ -100,12 +99,12 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                 },
                                 EnvVariableType::Mutable,
                                 match struct_info {
-                                    Some(Value::Struct{name, fields, methods: _, is_public}) => {
+                                    Some(Value::Struct{name, fields, methods: _}) => {
                                         let mut field_types = HashMap::new();
                                         for (field_name, field_value) in fields {
                                             field_types.insert(field_name.to_string(), field_value.value_type());
                                         }
-                                        ValueType::Struct{name: name.to_string(), fields: field_types, is_public: is_public.clone(), methods: methods.clone()}
+                                        ValueType::Struct{name: name.to_string(), fields: field_types, methods: methods.clone()}
                                     },
                                     _ => panic!("failed struct")
                                 },

@@ -27,7 +27,6 @@ impl Parser {
                             match struct_info {
                                 Some(ValueType::Struct { fields, .. }) => {
                                     let field_info = fields.get(&name);
-                                    println!("field_info: {:?}, {:?}", name, fields);
                                     match field_info {
                                         Some(field_info) => Some(field_info.clone()),
                                         None => None
@@ -140,9 +139,7 @@ impl Parser {
             }
         } else if let Some(Token::Dot) = self.get_current_token() {
             match struct_instance_access.clone() {
-                ASTNode::StructFieldAccess { field_name, instance } => {
-                    println!("instance: {:?}", instance);
-                    println!("field_name: {:?}", field_name);
+                ASTNode::StructFieldAccess { field_name, instance: _ } => {
                     self.parse_identifier(field_name)
                 },
                 _ => panic!("unexpected token"),

@@ -2,6 +2,10 @@ use std::collections::HashMap;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use wasm_bindgen::prelude::*;
+use crate::tokenizer::tokenize;
+use crate::parsers::Parser;
+use crate::evals::evals;
+
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, PartialEq)]
@@ -11,6 +15,15 @@ pub struct Env {
     functions: HashMap<String, FunctionInfo>,
     structs: HashMap<String, Value>,
     builtins: HashMap<String, FunctionInfo>,
+    modules: HashMap<String, Env>,
+    exported_symbols: HashMap<String, ExportedSymbolType>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExportedSymbolType {
+    Function,
+    Variable,
+    Struct
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,7 +67,7 @@ pub enum ValueType {
     Function,
     Lambda,
     Return,
-    Struct{name: String, fields: HashMap<String, ValueType>, methods: HashMap<String, MethodInfo>, is_public: bool},
+    Struct{name: String, fields: HashMap<String, ValueType>, methods: HashMap<String, MethodInfo>},
     StructField{value_type: Box<ValueType>, is_public: bool},
     StructInstance{name: String, fields: HashMap<String, ValueType>},
     Impl{base_struct: Box<ValueType>, methods: HashMap<String, MethodInfo>},
@@ -75,7 +88,49 @@ impl Env {
             functions: HashMap::new(),
             structs: HashMap::new(),
             builtins: HashMap::new(),
+            modules: HashMap::new(),
+            exported_symbols: HashMap::new(),
         }
+    }
+
+    pub fn register_module(&mut self, module_name: &String, module_path: &String) -> Result<(), String> {
+        if self.modules.contains_key(module_name) {
+            // 登録済
+            return Ok(());
+        }
+
+        let file_content = std::fs::read_to_string(module_path)
+            .map_err(|e| format!("Failed to read file '{}': {}", module_path, e))?;
+
+        let tokens = tokenize(&file_content);
+        let mut parser = Parser::new(tokens);
+        let ast_nodes = parser.parse_lines();
+
+        let mut module_env = Env::new();
+        evals(ast_nodes, &mut module_env);
+        self.modules.insert(module_name.to_string(), module_env);
+        Ok(())
+    }
+
+    pub fn get_module(&self, module_name: &String) -> Option<&Env> {
+        self.modules.get(module_name)
+    }
+
+    pub fn register_exported_symbol(&mut self, name: String) {
+        if let Some(_) = self.variable_map.get(&VariableKeyInfo {
+            name: name.clone(),
+            scope: "global".to_string(),
+        }) {
+            self.exported_symbols.insert(name, ExportedSymbolType::Variable);
+        } else if let Some(_) = self.get_function(name.clone()) {
+            self.exported_symbols.insert(name, ExportedSymbolType::Function);
+        } else if let Some(_) = self.get_struct(name.clone()) {
+            self.exported_symbols.insert(name, ExportedSymbolType::Struct);
+        }
+    }
+
+    pub fn get_exported_symbol(&self, name: &String) -> Option<&ExportedSymbolType> {
+        self.exported_symbols.get(name)
     }
 
     pub fn register_struct(&mut self, struct_value: Value) {

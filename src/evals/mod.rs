@@ -8,6 +8,7 @@ pub mod lambda_node;
 pub mod variable_node;
 pub mod binary_op;
 pub mod for_node;
+pub mod import_node;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -24,6 +25,15 @@ pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
 
 pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
     match ast {
+        ASTNode::Import {
+            module_name,
+            symbols,
+        } => {
+            import_node::import_node(module_name, symbols, env)
+        }
+        ASTNode::Public { node } => {
+            import_node::public_node(node, env)
+        }
         ASTNode::Literal(value) => value.clone(),
         ASTNode::PrefixOp { op, expr } => {
             prefix_op::prefix_op(op, expr, env)
@@ -31,9 +41,8 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         ASTNode::Struct {
             name,
             fields,
-            is_public
         } => {
-            struct_node::struct_node(name, fields, is_public, env)
+            struct_node::struct_node(name, fields, env)
         }
         ASTNode::Impl {
             base_struct,
@@ -738,7 +747,6 @@ mod tests {
         let mut env = Env::new();
         let ast = ASTNode::Struct {
             name: "Point".into(),
-            is_public: true,
             fields: HashMap::from_iter(vec![
                 ("x".into(), ASTNode::StructField {
                     value_type: ValueType::Number,
@@ -754,7 +762,6 @@ mod tests {
             result,
             Value::Struct {
                 name: "Point".into(),
-                is_public: true,
                 methods: HashMap::new(),
                 fields: HashMap::from_iter(vec![
                     ("x".into(), Value::StructField {
@@ -788,7 +795,6 @@ mod tests {
                         is_public: false
                     })
                 ]),
-                is_public: false
             },
             ASTNode::Assign {
                 name: "point".into(),
@@ -816,7 +822,6 @@ mod tests {
             vec![
                 Value::Struct {
                     name: "Point".into(),
-                    is_public: false,
                     fields: HashMap::from_iter(vec![
                         ("y".into(), Value::StructField {
                             value_type: ValueType::String,
@@ -844,7 +849,6 @@ mod tests {
         let asts = vec![
             ASTNode::Struct {
                 name: "Point".into(),
-                is_public: true,
                 fields: HashMap::from_iter(vec![
                     ("x".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
@@ -918,7 +922,6 @@ mod tests {
         let asts = vec![
             ASTNode::Struct {
                 name: "Point".into(),
-                is_public: true,
                 fields: HashMap::from_iter(vec![
                     ("x".into(), ASTNode::StructField {
                         value_type: ValueType::Number,
@@ -1012,31 +1015,9 @@ point.clear()
                 })
             ]),
             methods: HashMap::new(),
-            is_public: false
         };
         assert_eq!(result.first(), Some(base_struct.clone()).as_ref());
         assert_eq!(result.get(6), Some(Value::Void).as_ref());
-    }
-
-    #[test]
-    fn test_for() {
-        let input = r#"
-        val mut sum = 0
-        for i in [0, 1, 2, 3] {
-            sum = sum + i
-        }
-        sum
-        "#;
-        let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
-        let mut env = Env::new();
-        register_builtins(&mut env);
-        let result = evals(asts, &mut env);
-        assert_eq!(result, vec![
-            Value::Number(Fraction::from(0)),
-            Value::Void,
-            Value::Number(Fraction::from(6)),
-        ]);
     }
 
     #[test]

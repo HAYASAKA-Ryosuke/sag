@@ -165,6 +165,24 @@ fn is_comment_block(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_import(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "import ".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_from(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "from ".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn get_line_comment_string(tokenizer: &mut Tokenizer) -> String {
     let mut comment = String::new();
     let mut pos = tokenizer.pos + 1;
@@ -270,15 +288,6 @@ fn is_right_arrow(tokenizer: &mut Tokenizer) -> bool {
 
 fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "=>".chars().enumerate() {
-        if c != tokenizer.get_position_char(i + tokenizer.pos) {
-            return false;
-        }
-    }
-    true
-}
-
-fn is_public_struct(tokenizer: &mut Tokenizer) -> bool {
-    for (i, c) in "pub struct ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
             return false;
         }
@@ -449,6 +458,18 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        if is_import(&mut tokenizer) {
+            tokenizer.tokens.push(Token::Import);
+            tokenizer.pos += 6;
+            continue;
+        }
+
+        if is_from(&mut tokenizer) {
+            tokenizer.tokens.push(Token::From);
+            tokenizer.pos += 5;
+            continue;
+        }
+
         if is_match(&mut tokenizer) {
             tokenizer.tokens.push(Token::Match);
             tokenizer.pos += 5;
@@ -467,14 +488,8 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
-        if is_public_struct(&mut tokenizer) {
-            tokenizer.tokens.push(Token::PublicStruct);
-            tokenizer.pos += 10;
-            continue;
-        }
-
         if is_struct(&mut tokenizer) {
-            tokenizer.tokens.push(Token::PrivateStruct);
+            tokenizer.tokens.push(Token::Struct);
             tokenizer.pos += 6;
             continue;
         }
@@ -964,7 +979,7 @@ mod tests {
         assert_eq!(
             tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()),
             vec![
-                Token::PrivateStruct,
+                Token::Struct,
                 Token::Identifier("Point".into()),
                 Token::LBrace,
                 Token::Eof,
@@ -984,7 +999,8 @@ mod tests {
         assert_eq!(
             tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()),
             vec![
-                Token::PublicStruct,
+                Token::Pub,
+                Token::Struct,
                 Token::Identifier("Point".into()),
                 Token::LBrace,
                 Token::Eof,
@@ -1121,6 +1137,38 @@ mod tests {
                 Token::Comma,
                 Token::Number(Fraction::from(3)),
                 Token::RBrancket,
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_import() {
+        assert_eq!(
+            tokenize(&"import foo1,foo2, foo3 from Foo".to_string()),
+            vec![
+                Token::Import,
+                Token::Identifier("foo1".into()),
+                Token::Comma,
+                Token::Identifier("foo2".into()),
+                Token::Comma,
+                Token::Identifier("foo3".into()),
+                Token::From,
+                Token::Identifier("Foo".into()),
+                Token::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn test_export() {
+        assert_eq!(
+            tokenize(&"pub foo1 = 1".to_string()),
+            vec![
+                Token::Pub,
+                Token::Identifier("foo1".into()),
+                Token::Equal,
+                Token::Number(Fraction::from(1)),
                 Token::Eof
             ]
         );

@@ -93,7 +93,6 @@ pub enum ASTNode {
     Struct {
         name: String,
         fields: HashMap<String, ASTNode>,  // field_name: StructField
-        is_public: bool,
     },
     StructField {
         value_type: ValueType,
@@ -121,6 +120,13 @@ pub enum ASTNode {
         variable: String,
         iterable: Box<ASTNode>,
         body: Box<ASTNode>,
+    },
+    Import {
+        module_name: String,
+        symbols: Vec<String>,
+    },
+    Public {
+        node: Box<ASTNode>,
     },
 }
 
