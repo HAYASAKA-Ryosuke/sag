@@ -74,6 +74,25 @@ impl Parser {
                     ),
                 }
             },
+            ASTNode::If { condition, then, else_, value_type: _ } => {
+                let condition_type = self.infer_type(&condition)?;
+                if condition_type != ValueType::Bool {
+                    return Err("condition must be bool".to_string());
+                }
+
+                let then_type = self.infer_type(&then)?;
+                let else_type = if let Some(else_) = else_ {
+                    self.infer_type(&else_)?
+                } else {
+                    ValueType::Void
+                };
+
+                if then_type == else_type {
+                    Ok(then_type)
+                } else {
+                    Err("type mismatch in if statement".to_string())
+                }
+            }
             ASTNode::Variable { name, value_type } => {
                 if let Some(value_type) = value_type {
                     Ok(value_type.clone())

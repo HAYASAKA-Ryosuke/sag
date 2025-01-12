@@ -35,7 +35,7 @@ impl Parser {
                         include_return = true;
                         if let Ok(return_value_type) = self.infer_type(&value.clone()) {
                             if return_value_type != return_type {
-                                panic!("Return type mismatch: {:?}", return_type);
+                                panic!("Return type mismatch Exptected type: {:?}, Actual type: {:?}", return_type, return_value_type);
                             }
                         }
                     }
