@@ -68,18 +68,15 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: Rc<RefCell
             panic!("Arguments length mismatch");
         }
 
-        {
-            let mut env_mut = env.borrow_mut();
-            env_mut.enter_scope(name.to_string());
-        }
+        let mut env_mut = env.borrow_mut().new_child();
+        env_mut.enter_scope(name.to_string());
 
         for (param, arg) in params_vec.iter().zip(&args_vec) {
             let arg_value = eval(arg.clone(), env.clone());
             let name = param.0.to_string();
             let value_type = param.1.clone();
             {
-                let mut env_mut = env.borrow_mut();
-                env_mut.set(
+                let aa = env_mut.set(
                     name,
                     arg_value,
                     EnvVariableType::Immutable,
@@ -91,13 +88,10 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: Rc<RefCell
 
         let result = {
             let body = function.body.expect("Function body is missing");
-            eval(body, env.clone())
+            eval(body, Rc::new(RefCell::new(env_mut.clone())))
         };
 
-        {
-            let mut env_mut = env.borrow_mut();
-            env_mut.leave_scope();
-        }
+        env_mut.leave_scope();
 
         if let Value::Return(v) = result {
             *v

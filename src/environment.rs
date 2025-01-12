@@ -76,6 +76,16 @@ impl Env {
             builtins: Rc::new(RefCell::new(HashMap::new())),
         }
     }
+    
+    pub fn new_child(&self) -> Self {
+        Self {
+            variable_map: Rc::new(RefCell::new(HashMap::new())),
+            scope_stack: Rc::new(RefCell::new(vec!["global".to_string()])),
+            functions: self.functions.clone(),
+            structs: self.structs.clone(),
+            builtins: self.builtins.clone(),
+        }
+    }
 
     pub fn register_struct(&self, struct_value: Value) {
         let name = match struct_value {
