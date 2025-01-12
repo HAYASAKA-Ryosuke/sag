@@ -1,7 +1,6 @@
 use crate::ast::ASTNode;
 use crate::token::Token;
 use crate::parsers::Parser;
-use crate::environment::{EnvVariableType, ValueType};
 
 impl Parser {
     pub fn parse_for(&mut self) -> ASTNode {
