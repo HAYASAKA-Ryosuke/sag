@@ -27,6 +27,27 @@ impl Parser {
 
         self.leave_scope();
 
+        let mut include_return = false;
+        match body.clone() {
+            ASTNode::Block(statements) => {
+                for statement in statements {
+                    if let ASTNode::Return(value) = statement {
+                        include_return = true;
+                        if let Ok(return_value_type) = self.infer_type(&value.clone()) {
+                            if return_value_type != return_type {
+                                panic!("Return type mismatch: {:?}", return_type);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => (),
+        };
+
+        if !include_return && return_type != ValueType::Void {
+            panic!("Missing return statement");
+        }
+
         ASTNode::Function {
             name,
             arguments,
