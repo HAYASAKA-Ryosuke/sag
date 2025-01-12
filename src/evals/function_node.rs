@@ -25,13 +25,13 @@ pub fn block_node(statements: Vec<ASTNode>, env: &mut Env) -> Value {
 }
 
 pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) -> Value {
-    if env.get_function(name.to_string()).is_some()
-        || env.get_builtin(name.to_string()).is_some()
+    if env.get_function(&name).is_some()
+        || env.get_builtin(&name).is_some()
     {
-        let function = match env.get_function(name.to_string()) {
+        let function = match env.get_function(&name) {
             Some(function) => function.clone(),
             None => {
-                let builtin = env.get_builtin(name.to_string());
+                let builtin = env.get_builtin(&name);
                 if builtin.is_some() {
                     builtin.unwrap().clone()
                 } else {
@@ -89,10 +89,10 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, env: &mut Env) 
             result
         }
     } else if env
-        .get(name.to_string(), Some(&ValueType::Lambda))
+        .get(&name, Some(&ValueType::Lambda))
         .is_some()
     {
-        let lambda = match env.get(name.to_string(), None).unwrap().value.clone() {
+        let lambda = match env.get(&name, None).unwrap().value.clone() {
             Value::Lambda {
                 arguments,
                 body,

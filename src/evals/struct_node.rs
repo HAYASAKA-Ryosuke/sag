@@ -65,12 +65,12 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                }
                _ => {}
             }
-            match env.get(caller.clone(), None) {
+            match env.get(&caller, None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
                     let mut local_env = env.clone();
                     let struct_info = match value_type {
                         ValueType::StructInstance { name: struct_name, ..} => {
-                            local_env.get_struct(struct_name.to_string()).cloned()
+                            local_env.get_struct(&struct_name).cloned()
                         },
                         _ => panic!("missing struct: {}", value)
                     };
@@ -88,7 +88,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                             if args_vec.len() != define_arguments.len() - 1 {
                                 panic!("does not match arguments length");
                             }
-                            local_env.enter_scope(method_name.to_string());
+                            local_env.enter_scope(method_name);
                             let _ = local_env.set(
                                 "self".to_string(),
                                 match struct_info {
@@ -135,7 +135,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                                 }
                             }
                             let result = eval(body.clone().unwrap(), &mut local_env);
-                            if let Some(self_value) = local_env.get("self".to_string(), None) {
+                            if let Some(self_value) = local_env.get(&"self".to_string(), None) {
                                 if let Value::StructInstance { .. } = self_value.value.clone() {
                                     local_env.set(
                                         caller.to_string(),
@@ -175,7 +175,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                 ASTNode::Variable { name: variable_name, value_type } => {
                     match value_type {
                         Some(ValueType::Struct{name, fields, ..}) if variable_name == "self" => {
-                            match env.get_struct(name.to_string()) {
+                            match env.get_struct(&name) {
                                 Some(Value::Struct { fields: _, methods, .. }) => {
                                     let scope = env.get_current_scope();
                                     match methods.get(&scope) {
@@ -198,7 +198,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                 },
                                 _ => panic!("Unexpected value type"),
                             };
-                            let obj = env.get(variable_name.to_string(), None);
+                            let obj = env.get(&variable_name, None);
                             if obj.is_none() {
                                 panic!("Variable not found: {:?}", variable_name);
                             }
@@ -246,7 +246,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                             }
                         }
                         Some(ValueType::StructInstance { name, fields }) => {
-                            let obj = env.get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }));
+                            let obj = env.get(&variable_name, Some(&ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }));
                             if obj.is_none() {
                                 panic!("Variable not found: {:?}", variable_name);
                             }
@@ -294,14 +294,14 @@ pub fn struct_field_access_node(instance: Box<ASTNode>, field_name: String, env:
         ASTNode::Variable { name: variable_name, value_type } => {
             match value_type {
                 Some(ValueType::Struct { .. }) if variable_name == "self" => {
-                    let obj = env.get(variable_name.to_string(), None);
+                    let obj = env.get(&variable_name, None);
                     if obj.is_none() {
                         panic!("Variable not found: {:?}", variable_name);
                     }
                     obj.unwrap().value.clone()
                 },
                 Some(ValueType::StructInstance { name, fields }) => {
-                    let obj = env.get(variable_name.to_string(), Some(&ValueType::StructInstance { name: name.to_string(), fields }));
+                    let obj = env.get(&variable_name, Some(&ValueType::StructInstance { name: name.to_string(), fields }));
                     if obj.is_none() {
                         panic!("Variable not found: {:?}", variable_name);
                     }

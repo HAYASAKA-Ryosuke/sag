@@ -122,9 +122,9 @@ impl Env {
             scope: "global".to_string(),
         }) {
             self.exported_symbols.insert(name, ExportedSymbolType::Variable);
-        } else if let Some(_) = self.get_function(name.clone()) {
+        } else if let Some(_) = self.get_function(&name) {
             self.exported_symbols.insert(name, ExportedSymbolType::Function);
-        } else if let Some(_) = self.get_struct(name.clone()) {
+        } else if let Some(_) = self.get_struct(&name) {
             self.exported_symbols.insert(name, ExportedSymbolType::Struct);
         }
     }
@@ -144,8 +144,8 @@ impl Env {
         self.structs.insert(name.clone(), struct_value.clone());
     }
 
-    pub fn get_struct(&self, name: String) -> Option<&Value> {
-        self.structs.get(&name)
+    pub fn get_struct(&self, name: &String) -> Option<&Value> {
+        self.structs.get(name)
     }
 
     pub fn register_impl(&mut self, impl_value: Value) {
@@ -177,8 +177,8 @@ impl Env {
         self.builtins.insert(name, function_info);
     }
 
-    pub fn get_builtin(&self, name: String) -> Option<&FunctionInfo> {
-        self.builtins.get(&name)
+    pub fn get_builtin(&self, name: &String) -> Option<&FunctionInfo> {
+        self.builtins.get(name)
     }
 
     pub fn enter_scope(&mut self, scope: String) {
@@ -203,8 +203,8 @@ impl Env {
         self.functions.insert(name, function);
     }
 
-    pub fn get_function(&mut self, name: String) -> Option<&FunctionInfo> {
-        self.functions.get(&name)
+    pub fn get_function(&mut self, name: &String) -> Option<&FunctionInfo> {
+        self.functions.get(name)
     }
 
     pub fn update_global_env(&mut self, local_env: &Self) {
@@ -312,7 +312,7 @@ impl Env {
 
     pub fn get(
         &self,
-        name: String,
+        name: &String,
         value_type: Option<&ValueType>,
     ) -> Option<&EnvVariableValueInfo> {
         for scope in self.scope_stack.iter().rev() {

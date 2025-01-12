@@ -12,12 +12,11 @@ pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> 
     }
     
     if let Some(module_env) = env.clone().get_module(&module_name) {
-        println!("mm: {:?}", module_env);
         for symbol in symbols {
             if let Some(exported_symbol_type) = module_env.get_exported_symbol(&symbol) {
                 match exported_symbol_type.clone() {
                     ExportedSymbolType::Function => {
-                        match module_env.clone().get_function(symbol.clone()) {
+                        match module_env.clone().get_function(&symbol) {
                             Some(func) => {
                                 env.register_function(symbol.clone(), func.clone());
                             }
@@ -25,7 +24,7 @@ pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> 
                         };
                     }
                     ExportedSymbolType::Struct => {
-                        match module_env.clone().get_struct(symbol) {
+                        match module_env.clone().get_struct(&symbol) {
                             Some(s) => {
                                 env.register_struct(s.clone());
                             },
@@ -33,7 +32,7 @@ pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> 
                         }
                     }
                     ExportedSymbolType::Variable => {
-                        match module_env.get(symbol.clone(), None) {
+                        match module_env.get(&symbol, None) {
                             Some(symbol_value) => {
                                 let _ = env.set(
                                     symbol.clone(),
