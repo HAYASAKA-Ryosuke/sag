@@ -664,7 +664,7 @@ mod tests {
         let _ = parser.parse();
     }
     #[test]
-    #[should_panic(expected = "Return type mismatch: Void")]
+    #[should_panic(expected = "Return type mismatch Expected type: Void, Actual type: Number")]
     fn test_function_without_arguments_and_void_return() {
         let mut parser = Parser::new(vec![
             Token::Function,
