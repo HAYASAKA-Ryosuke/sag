@@ -66,9 +66,15 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                _ => {}
             }
             match *caller {
+                ASTNode::MethodCall { caller, method_name: child_method, arguments, builtin: _ } => {
+                    let result = method_call_node(child_method, caller, arguments, env);
+                    println!("method_call_node: {:?}", result);
+                    return result;
+                },
                 ASTNode::Literal(Value::Number(value)) => {
                     match method_name.as_str() {
                         "to_string" => {
+                            println!("fff to_string: {}, {:?}", value.to_string(), args_vec);
                             return Value::String(value.to_string());
                         }
                         "abs" => {
@@ -81,6 +87,7 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                             return Value::Number(value.floor());
                         },
                         "round" => {
+                            println!("round: {} {}, {:?}", value, value.round(), args_vec);
                             return Value::Number(value.round());
                         },
                         "trunc" => {

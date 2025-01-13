@@ -51,6 +51,7 @@ impl Parser {
             method_name,
             caller: Box::new(caller),
             arguments: Box::new(arguments),
+            builtin: false,
         }
     }
 }

@@ -166,7 +166,7 @@ impl Env {
             _ => panic!("Invalid impl value"),
         }
     }
-    
+
     pub fn register_builtin(&mut self, name: String, function: fn(Vec<Value>) -> Value) {
         let function_info = FunctionInfo {
             arguments: vec![],

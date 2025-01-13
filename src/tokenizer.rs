@@ -39,35 +39,30 @@ fn is_digit(c: &char) -> bool {
 }
 
 fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
-    let mut num = Fraction::from(0);
+    let mut num = String::new();
     let mut pos = tokenizer.pos;
     let mut is_decimal_point = false;
     loop {
         let c = tokenizer.get_position_char(pos);
-        if c == '\0' || (!is_digit(&c) && c != '.') {
-            if tokenizer.get_position_char(pos - 1) == '.' {
-                pos -= 1;
-            }
-            break;
-        }
         if is_digit(&c) {
-            if is_decimal_point {
-                num = num
-                    + Fraction::from(c.to_string().parse::<i32>().unwrap()) / Fraction::from(10);
-            } else {
-                num = num * 10 + Fraction::from(c.to_string().parse::<i32>().unwrap());
-            }
+            num += &c.to_string();
             pos += 1;
-        } else if c == '.' && !is_decimal_point {
+        } else if c == '.' {
+            if is_decimal_point {
+                break;
+            }
             is_decimal_point = true;
+            num += &c.to_string();
             pos += 1;
         } else {
-            pos -= 1;
             break;
         }
     }
     tokenizer.pos = pos;
-    num
+    match num.parse::<f64>() {
+        Ok(n) => fraction::Fraction::from(n),
+        Err(_) => fraction::Fraction::from(0),
+    }
 }
 
 fn is_string(c: &char) -> bool {
@@ -1175,6 +1170,14 @@ mod tests {
                 Token::Number(Fraction::from(1)),
                 Token::Eof
             ]
+        );
+    }
+
+    #[test]
+    fn test_convert_number() {
+        assert_eq!(
+            tokenize(&"1.2.a".to_string()),
+            vec![Token::Number(Fraction::from(1.2)), Token::Dot, Token::Identifier("a".into()), Token::Eof]
         );
     }
 }

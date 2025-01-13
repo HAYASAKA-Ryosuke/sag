@@ -61,7 +61,7 @@ impl Parser {
                 let value_type = function.unwrap();
                 Ok(value_type.clone())
             }
-            ASTNode::MethodCall { method_name, caller, arguments: _ } => {
+            ASTNode::MethodCall { method_name, caller, arguments: _, builtin: _ } => {
                 let caller_type = self.infer_type(&caller)?;
                 let method = self.get_method(self.get_current_scope(), caller_type, method_name.clone());
                 if method.is_none() {

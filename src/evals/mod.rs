@@ -50,8 +50,63 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         } => {
             struct_node::impl_node(base_struct, methods, env)
         }
-        ASTNode::MethodCall { method_name, caller, arguments } => {
-            struct_node::method_call_node(method_name, caller, arguments, env)
+        ASTNode::MethodCall { method_name, caller, arguments, builtin } => {
+            println!("method call: {:?}, builtin: {}", method_name, builtin);
+            if builtin {
+                match *caller {
+                    ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _ } => {
+                        let method_name = method_name.clone();
+                        let arguments = match *arguments {
+                            ASTNode::FunctionCallArgs(arguments) => arguments,
+                            _ => vec![],
+                        };
+                        match method_name.as_str() {
+                            "to_string" => {
+                                let value = eval(arguments[0].clone(), env);
+                                match value {
+                                    Value::Number(value) => Value::String(value.to_string()),
+                                    _ => Value::Void,
+                                }
+                            },
+                            "round" => {
+                                let value = eval(arguments[0].clone(), env);
+                                match value {
+                                    Value::Number(value) => Value::Number(value.round()),
+                                    _ => Value::Void,
+                                }
+                            },
+                            _ => Value::Void,
+                        }
+                    }
+                    ASTNode::Literal(Value::Number(_)) => {
+                        let method_name = method_name.clone();
+                        let arguments = match *arguments {
+                            ASTNode::FunctionCallArgs(arguments) => arguments,
+                            _ => vec![],
+                        };
+                        match method_name.as_str() {
+                            "to_string" => {
+                                let value = eval(arguments[0].clone(), env);
+                                match value {
+                                    Value::Number(value) => Value::String(value.to_string()),
+                                    _ => Value::Void,
+                                }
+                            },
+                            "round" => {
+                                let value = eval(arguments[0].clone(), env);
+                                match value {
+                                    Value::Number(value) => Value::Number(value.round()),
+                                    _ => Value::Void,
+                                }
+                            },
+                            _ => Value::Void,
+                        }
+                    }
+                    _ => Value::Void,
+                }
+            } else {
+                struct_node::method_call_node(method_name, caller, arguments, env)
+            }
         }
         ASTNode::StructInstance {
             name,

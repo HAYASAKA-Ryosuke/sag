@@ -272,6 +272,7 @@ impl Parser {
             Some(token) => token,
             _ => panic!("token not found!"),
         };
+        println!("token: {:?}", token);
         match token {
             Token::Struct => self.parse_struct(),
             Token::Pub => self.parse_public(),
@@ -337,13 +338,37 @@ impl Parser {
                         self.pos += 1;
                         let args = self.parse_function_call_arguments_paren();
                         println!("args: {:?}", args);
-                        lhs = ASTNode::MethodCall{
-                            caller: Box::new(lhs),
-                            method_name,
-                            arguments: Box::new(args),
-                        };
-                        self.pos += 3;
                         println!("pos: {:?}, {:?}", self.pos, self.get_current_token());
+
+                        let builtin = match lhs {
+                            ASTNode::Literal(Value::Number(_)) => true,
+                            ASTNode::Literal(Value::String(_)) => true,
+                            ASTNode::Literal(Value::Bool(_)) => true,
+                            ASTNode::Literal(Value::Void) => true,
+                            ASTNode::MethodCall { ref caller, .. } => {
+                                match self.infer_type(&caller) {
+                                    Ok(ValueType::Number) => true,
+                                    Ok(ValueType::String) => true,
+                                    Ok(ValueType::Bool) => true,
+                                    Ok(ValueType::Void) => true,
+                                    _ => false,
+                                }
+                            },
+                            _ => false,
+                        };
+
+                        lhs = ASTNode::MethodCall{
+                            caller: Box::new(lhs.clone()),
+                            method_name,
+                            builtin,
+                            arguments: match args {
+                                ASTNode::FunctionCallArgs(args) => {
+                                    Box::new(ASTNode::FunctionCallArgs(vec![lhs].into_iter().chain(args.into_iter()).collect()))
+                                }
+                                _ => Box::new(ASTNode::FunctionCallArgs(vec![lhs])),
+                            }
+                        };
+                        continue;
                     }
                 }
                 continue;
