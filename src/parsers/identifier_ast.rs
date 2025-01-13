@@ -118,7 +118,11 @@ impl Parser {
             };
             self.pos += 1;
             let arguments = self.parse_function_call_arguments_paren();
-            return self.parse_method_call(name.to_string(), method_name.to_string(), arguments);
+            let caller_variable_ast = ASTNode::Variable {
+                name: name.clone(),
+                value_type: None,
+            };
+            return self.parse_method_call(caller_variable_ast, method_name.to_string(), arguments);
         }
         self.pos -= 2;
         

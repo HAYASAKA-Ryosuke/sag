@@ -47,7 +47,7 @@ pub enum ASTNode {
     },
     MethodCall {
         method_name: String,
-        caller: String,
+        caller: Box<ASTNode>,
         arguments: Box<ASTNode>
     },
     FunctionCall {

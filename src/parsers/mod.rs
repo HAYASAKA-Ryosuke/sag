@@ -151,6 +151,30 @@ impl Parser {
         None
     }
 
+    fn get_method(&self, scope: String, value_type: ValueType, method_name: String) -> Option<MethodInfo> {
+        match value_type {
+            ValueType::Struct { name, fields: _, methods } => {
+                match methods.get(&method_name) {
+                    Some(method) => Some(method.clone()),
+                    None => None
+                }
+            },
+            ValueType::Number => {
+                if method_name == "to_string" {
+                    Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::String,
+                        is_mut: false,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None
+        }
+    }
+
     fn register_variables(
         &mut self,
         scope: String,
@@ -304,6 +328,26 @@ impl Parser {
                 Some(token) => token,
                 _ => break,
             };
+            if token == Token::Dot {
+                self.pos += 2;
+                if let Token::LParen = self.get_current_token().unwrap() {
+                    self.pos -= 1;
+                    if let Token::Identifier(method_name) = self.get_current_token().unwrap() {
+                        println!("method_name: {:?}", method_name);
+                        self.pos += 1;
+                        let args = self.parse_function_call_arguments_paren();
+                        println!("args: {:?}", args);
+                        lhs = ASTNode::MethodCall{
+                            caller: Box::new(lhs),
+                            method_name,
+                            arguments: Box::new(args),
+                        };
+                        self.pos += 3;
+                        println!("pos: {:?}, {:?}", self.pos, self.get_current_token());
+                    }
+                }
+                continue;
+            }
             if token == Token::RArrow {
                 if self.is_lparen_call() {
                     self.pos += 1;

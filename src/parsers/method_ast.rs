@@ -46,10 +46,10 @@ impl Parser {
         method
     }
 
-    pub fn parse_method_call(&mut self, caller: String, method_name: String, arguments: ASTNode) -> ASTNode {
+    pub fn parse_method_call(&mut self, caller: ASTNode, method_name: String, arguments: ASTNode) -> ASTNode {
         ASTNode::MethodCall {
             method_name,
-            caller,
+            caller: Box::new(caller),
             arguments: Box::new(arguments),
         }
     }

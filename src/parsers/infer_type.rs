@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 impl Parser {
     pub fn infer_type(&self, ast: &ASTNode) -> Result<ValueType, String> {
+        println!("infer_type: {:?}", ast);
         match ast {
             ASTNode::Literal(ref v) => match v {
                 Value::Number(_) => Ok(ValueType::Number),
@@ -59,6 +60,16 @@ impl Parser {
                 }
                 let value_type = function.unwrap();
                 Ok(value_type.clone())
+            }
+            ASTNode::MethodCall { method_name, caller, arguments: _ } => {
+                let caller_type = self.infer_type(&caller)?;
+                let method = self.get_method(self.get_current_scope(), caller_type, method_name.clone());
+                if method.is_none() {
+                    return Err(format!("undefined method: {:?}", method_name));
+                }
+                let method = method.unwrap();
+                let return_type = method.return_type.clone();
+                Ok(return_type)
             }
             ASTNode::BinaryOp { left, op, right } => {
                 let left_type = self.infer_type(&left)?;

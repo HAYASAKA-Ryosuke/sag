@@ -57,7 +57,7 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, env: &mut E
     result
 }
 
-pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTNode>, env: &mut Env) -> Value {
+pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, env: &mut Env) -> Value {
             let mut args_vec = vec![];
             match *arguments {
                ASTNode::FunctionCallArgs(arguments) => {
@@ -65,7 +65,51 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                }
                _ => {}
             }
-            match env.get(&caller, None) {
+            match *caller {
+                ASTNode::Literal(Value::Number(value)) => {
+                    match method_name.as_str() {
+                        "to_string" => {
+                            return Value::String(value.to_string());
+                        }
+                        "abs" => {
+                            return Value::Number(value.abs());
+                        },
+                        "ceil" => {
+                            return Value::Number(value.ceil());
+                        },
+                        "floor" => {
+                            return Value::Number(value.floor());
+                        },
+                        "round" => {
+                            return Value::Number(value.round());
+                        },
+                        "trunc" => {
+                            return Value::Number(value.trunc());
+                        },
+                        "fract" => {
+                            return Value::Number(value.fract());
+                        },
+                        "is_nan" => {
+                            return Value::Bool(value.is_nan());
+                        },
+                        "is_infinite" => {
+                            return Value::Bool(value.is_infinite());
+                        },
+                        "is_finite" => {
+                            return Value::Bool(value.is_finite());
+                        },
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+            let caller_name = match *caller {
+                ASTNode::Variable { name, value_type } => {
+                    name
+                },
+                _ => panic!("Unexpected caller: {:?}", caller),
+            };
+            match env.get(&caller_name, None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
                     let mut local_env = env.clone();
                     let struct_info = match value_type {
@@ -83,7 +127,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                         Some(MethodInfo{arguments: define_arguments, return_type: _, body, is_mut: _}) => {
 
                             if *variable_type == EnvVariableType::Immutable {
-                                panic!("{} is not mutable", caller);
+                                panic!("{} is not mutable", caller_name);
                             }
                             if args_vec.len() != define_arguments.len() - 1 {
                                 panic!("does not match arguments length");
@@ -138,7 +182,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                             if let Some(self_value) = local_env.get(&"self".to_string(), None) {
                                 if let Value::StructInstance { .. } = self_value.value.clone() {
                                     local_env.set(
-                                        caller.to_string(),
+                                        caller_name.to_string(),
                                         self_value.value.clone(),
                                         variable_type.clone(),
                                         value_type.clone(),
@@ -153,7 +197,7 @@ pub fn method_call_node(method_name: String, caller: String, arguments: Box<ASTN
                         _ => panic!("call failed method: {}", method_name)
                     }
                 },
-                None => panic!("missing struct: {}", caller)
+                None => panic!("missing struct: {}", caller_name)
             }
 }
 
