@@ -185,11 +185,11 @@ mod tests {
         assert_eq!(Value::Number(Fraction::from(5)), eval(ast, &mut env));
         assert_eq!(
             Value::Number(Fraction::from(5)),
-            env.get("x".to_string(), None).unwrap().value
+            env.get(&"x".to_string(), None).unwrap().value
         );
         assert_eq!(
             EnvVariableType::Mutable,
-            env.get("x".to_string(), None).unwrap().variable_type
+            env.get(&"x".to_string(), None).unwrap().variable_type
         );
         let mut env = Env::new();
         let ast = ASTNode::Assign {
@@ -202,11 +202,11 @@ mod tests {
         assert_eq!(Value::Number(Fraction::from(5)), eval(ast, &mut env));
         assert_eq!(
             Value::Number(Fraction::from(5)),
-            env.get("x".to_string(), None).unwrap().value
+            env.get(&"x".to_string(), None).unwrap().value
         );
         assert_eq!(
             EnvVariableType::Immutable,
-            env.get("x".to_string(), None).unwrap().variable_type
+            env.get(&"x".to_string(), None).unwrap().variable_type
         );
     }
     #[test]
@@ -225,7 +225,7 @@ mod tests {
         };
         assert_eq!(Value::Number(Fraction::from(30)), eval(ast, &mut env));
         assert_eq!(
-            env.get("y".to_string(), None).unwrap().value,
+            env.get(&"y".to_string(), None).unwrap().value,
             Value::Number(Fraction::from(30))
         );
     }
@@ -254,7 +254,7 @@ mod tests {
         // 環境に新しい値が登録されていること
         assert_eq!(eval(ast2, &mut env), Value::Number(Fraction::from(100)));
         assert_eq!(
-            env.get("z".to_string(), None).unwrap().value,
+            env.get(&"z".to_string(), None).unwrap().value,
             Value::Number(Fraction::from(100))
         );
     }
@@ -376,7 +376,7 @@ mod tests {
                 Value::Number(Fraction::from(2)),
                 Value::Number(Fraction::from(3)),
             ]),
-            env.get("x".to_string(), None).unwrap().value
+            env.get(&"x".to_string(), None).unwrap().value
         );
     }
 
@@ -458,7 +458,7 @@ mod tests {
         assert_eq!(result, Value::Number(Fraction::from(15)));
 
         // スコープ外でローカル変数が見つからないことを確認
-        let local_var_check = env.get("local_var".to_string(), None);
+        let local_var_check = env.get(&"local_var".to_string(), None);
         assert!(local_var_check.is_none());
     }
 
