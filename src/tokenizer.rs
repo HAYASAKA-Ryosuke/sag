@@ -44,7 +44,10 @@ fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
     let mut is_decimal_point = false;
     loop {
         let c = tokenizer.get_position_char(pos);
-        if c == '\0' {
+        if c == '\0' || (!is_digit(&c) && c != '.') {
+            if tokenizer.get_position_char(pos - 1) == '.' {
+                pos -= 1;
+            }
             break;
         }
         if is_digit(&c) {
@@ -55,7 +58,7 @@ fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
                 num = num * 10 + Fraction::from(c.to_string().parse::<i32>().unwrap());
             }
             pos += 1;
-        } else if c == '.' {
+        } else if c == '.' && !is_decimal_point {
             is_decimal_point = true;
             pos += 1;
         } else {
