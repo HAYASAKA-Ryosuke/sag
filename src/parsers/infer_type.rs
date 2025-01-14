@@ -24,16 +24,12 @@ impl Parser {
                     Ok(ValueType::Struct { name: name.clone(), fields: field_types.clone(), methods: methods.clone() })
                 },
                 Value::List(values) => {
-                    let mut value_type = ValueType::Any;
-                    for value in values {
-                        let value_type_ = self.infer_type(&ASTNode::Literal(value.clone()))?;
-                        if value_type == ValueType::Any {
-                            value_type = value_type_;
-                        } else if value_type != value_type_ {
-                            return Err("type mismatch in list".to_string());
-                        }
+                    println!("values: {:?}", values);
+                    if values.is_empty() {
+                        return Ok(ValueType::List(Box::new(ValueType::Any)));
                     }
-                    Ok(value_type)
+                    let value = values.first().unwrap();
+                    Ok(ValueType::List(Box::new(value.value_type().clone())))
                 },
                 _ => Ok(ValueType::Any),
             },

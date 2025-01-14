@@ -75,6 +75,15 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                                     _ => Value::Void,
                                 }
                             },
+                            "push" => {
+                                let mut list = match eval(arguments[0].clone(), env) {
+                                    Value::List(list) => list,
+                                    _ => vec![],
+                                };
+                                let value = eval(arguments[1].clone(), env);
+                                list.push(value);
+                                Value::List(list)
+                            },
                             _ => Value::Void,
                         }
                     }
@@ -99,6 +108,40 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
                                     _ => Value::Void,
                                 }
                             },
+                            "push" => {
+                                let mut list = match *caller {
+                                    ASTNode::Variable { name, value_type } => {
+                                        let variable = env.get(&name, None).unwrap();
+                                        match variable.value.clone() {
+                                            Value::List(list) => list,
+                                            _ => vec![],
+                                        }
+                                    },
+                                    _ => vec![],
+                                };
+                                let value = eval(arguments[1].clone(), env);
+                                list.push(value);
+                                Value::List(list)
+                            },
+                            _ => Value::Void,
+                        }
+                    }
+                    ASTNode::Variable { ref name, ref value_type } => {
+                        match method_name.as_str() {
+                            "push" => {
+                                let variable_info = env.get(&name, value_type.as_ref()).unwrap().clone();
+                                let mut variable = match variable_info.value.clone() {
+                                    Value::List(list) => list,
+                                    _ => vec![],
+                                };
+                                let value = match *arguments {
+                                    ASTNode::FunctionCallArgs(arguments) => eval(arguments[0].clone(), env),
+                                    _ => Value::Void,
+                                };
+                                variable.push(value);
+                                let _ = env.set(name.to_string(), Value::List(variable.clone()), variable_info.variable_type.clone(), variable_info.value_type.clone(), false);
+                                Value::List(variable)
+                            }
                             _ => Value::Void,
                         }
                     }

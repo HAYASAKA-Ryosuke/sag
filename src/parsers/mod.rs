@@ -206,6 +206,7 @@ impl Parser {
                     &ValueType::StructInstance{ref name, ref fields} => {
                         return Some((ValueType::StructInstance{name: name.to_string(), fields: fields.clone()}, value.1.clone()))
                     },
+                    &ValueType::List(ref value_type) => return Some((ValueType::List(Box::new(*value_type.clone())), value.1.clone())),
                     _ => return None,
                 },
                 None => {}
@@ -345,17 +346,20 @@ impl Parser {
                             ASTNode::Literal(Value::String(_)) => true,
                             ASTNode::Literal(Value::Bool(_)) => true,
                             ASTNode::Literal(Value::Void) => true,
+                            ASTNode::Literal(Value::List(_)) => true,
                             ASTNode::MethodCall { ref caller, .. } => {
                                 match self.infer_type(&caller) {
                                     Ok(ValueType::Number) => true,
                                     Ok(ValueType::String) => true,
                                     Ok(ValueType::Bool) => true,
                                     Ok(ValueType::Void) => true,
+                                    Ok(ValueType::List(_)) => true,
                                     _ => false,
                                 }
                             },
                             _ => false,
                         };
+                        println!("builtin: {:?}", builtin);
 
                         lhs = ASTNode::MethodCall{
                             caller: Box::new(lhs.clone()),
