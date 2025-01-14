@@ -9,6 +9,7 @@ pub mod variable_node;
 pub mod binary_op;
 pub mod for_node;
 pub mod import_node;
+pub mod method_call_node;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -50,8 +51,12 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
         } => {
             struct_node::impl_node(base_struct, methods, env)
         }
-        ASTNode::MethodCall { method_name, caller, arguments } => {
-            struct_node::method_call_node(method_name, caller, arguments, env)
+        ASTNode::MethodCall { method_name, caller, arguments, builtin } => {
+            if builtin {
+                method_call_node::builtin_method_call_node(method_name, caller, arguments, env)
+            } else {
+                method_call_node::method_call_node(method_name, caller, arguments, env)
+            }
         }
         ASTNode::StructInstance {
             name,

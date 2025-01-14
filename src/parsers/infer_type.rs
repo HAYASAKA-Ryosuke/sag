@@ -23,16 +23,11 @@ impl Parser {
                     Ok(ValueType::Struct { name: name.clone(), fields: field_types.clone(), methods: methods.clone() })
                 },
                 Value::List(values) => {
-                    let mut value_type = ValueType::Any;
-                    for value in values {
-                        let value_type_ = self.infer_type(&ASTNode::Literal(value.clone()))?;
-                        if value_type == ValueType::Any {
-                            value_type = value_type_;
-                        } else if value_type != value_type_ {
-                            return Err("type mismatch in list".to_string());
-                        }
+                    if values.is_empty() {
+                        return Ok(ValueType::List(Box::new(ValueType::Any)));
                     }
-                    Ok(value_type)
+                    let value = values.first().unwrap();
+                    Ok(ValueType::List(Box::new(value.value_type().clone())))
                 },
                 _ => Ok(ValueType::Any),
             },
@@ -59,6 +54,16 @@ impl Parser {
                 }
                 let value_type = function.unwrap();
                 Ok(value_type.clone())
+            }
+            ASTNode::MethodCall { method_name, caller, arguments: _, builtin: _ } => {
+                let caller_type = self.infer_type(&caller)?;
+                let method = self.get_method(self.get_current_scope(), caller_type, method_name.clone());
+                if method.is_none() {
+                    return Err(format!("undefined method: {:?}", method_name));
+                }
+                let method = method.unwrap();
+                let return_type = method.return_type.clone();
+                Ok(return_type)
             }
             ASTNode::BinaryOp { left, op, right } => {
                 let left_type = self.infer_type(&left)?;

@@ -2,6 +2,7 @@ use crate::ast::ASTNode;
 use crate::parsers::Parser;
 use crate::token::Token;
 use crate::environment::ValueType;
+use crate::value::Value;
 
 impl Parser {
 
@@ -46,11 +47,67 @@ impl Parser {
         method
     }
 
-    pub fn parse_method_call(&mut self, caller: String, method_name: String, arguments: ASTNode) -> ASTNode {
+    fn is_builtin_method(&self, caller: &ASTNode) -> bool {
+        let builtin = match caller {
+            ASTNode::Literal(Value::Number(_)) => true,
+            ASTNode::Literal(Value::String(_)) => true,
+            ASTNode::Literal(Value::Bool(_)) => true,
+            ASTNode::Literal(Value::Void) => true,
+            ASTNode::Literal(Value::List(_)) => true,
+            ASTNode::Variable { name, value_type } => {
+                if value_type.is_none() {
+                    let variable = self.find_variables(self.get_current_scope(), name.clone());
+                    match variable {
+                        Some((value_type, _)) => {
+                            match value_type {
+                                ValueType::Number => true,
+                                ValueType::String => true,
+                                ValueType::Bool => true,
+                                ValueType::Void => true,
+                                ValueType::List(_) => true,
+                                _ => false,
+                            }
+                        },
+                        _ => false,
+                    }
+                } else {
+                    match value_type {
+                        Some(value_type) => {
+                            match value_type {
+                                ValueType::Number => true,
+                                ValueType::String => true,
+                                ValueType::Bool => true,
+                                ValueType::Void => true,
+                                ValueType::List(_) => true,
+                                _ => false,
+                            }
+                        },
+                        _ => false,
+                    }
+                }
+            },
+            ASTNode::MethodCall { ref caller, .. } => {
+                match self.infer_type(&caller) {
+                    Ok(ValueType::Number) => true,
+                    Ok(ValueType::String) => true,
+                    Ok(ValueType::Bool) => true,
+                    Ok(ValueType::Void) => true,
+                    Ok(ValueType::List(_)) => true,
+                    _ => false,
+                }
+            },
+            _ => false,
+        };
+        builtin
+    }
+
+    pub fn parse_method_call(&mut self, caller: ASTNode, method_name: String, arguments: ASTNode) -> ASTNode {
+        let builtin = self.is_builtin_method(&caller);
         ASTNode::MethodCall {
             method_name,
-            caller,
+            caller: Box::new(caller),
             arguments: Box::new(arguments),
+            builtin
         }
     }
 }
