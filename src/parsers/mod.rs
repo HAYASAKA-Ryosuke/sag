@@ -335,11 +335,8 @@ impl Parser {
                 if let Token::LParen = self.get_current_token().unwrap() {
                     self.pos -= 1;
                     if let Token::Identifier(method_name) = self.get_current_token().unwrap() {
-                        println!("method_name: {:?}", method_name);
                         self.pos += 1;
                         let args = self.parse_function_call_arguments_paren();
-                        println!("args: {:?}", args);
-                        println!("pos: {:?}, {:?}", self.pos, self.get_current_token());
 
                         let builtin = match lhs {
                             ASTNode::Literal(Value::Number(_)) => true,
@@ -359,7 +356,6 @@ impl Parser {
                             },
                             _ => false,
                         };
-                        println!("builtin: {:?}", builtin);
 
                         lhs = ASTNode::MethodCall{
                             caller: Box::new(lhs.clone()),

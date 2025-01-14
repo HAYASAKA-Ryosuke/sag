@@ -6,7 +6,6 @@ use std::collections::HashMap;
 
 impl Parser {
     pub fn infer_type(&self, ast: &ASTNode) -> Result<ValueType, String> {
-        println!("infer_type: {:?}", ast);
         match ast {
             ASTNode::Literal(ref v) => match v {
                 Value::Number(_) => Ok(ValueType::Number),
@@ -24,7 +23,6 @@ impl Parser {
                     Ok(ValueType::Struct { name: name.clone(), fields: field_types.clone(), methods: methods.clone() })
                 },
                 Value::List(values) => {
-                    println!("values: {:?}", values);
                     if values.is_empty() {
                         return Ok(ValueType::List(Box::new(ValueType::Any)));
                     }
