@@ -54,6 +54,10 @@ fn get_digit(tokenizer: &mut Tokenizer) -> Fraction {
             is_decimal_point = true;
             num += &c.to_string();
             pos += 1;
+            if !is_digit(&tokenizer.get_position_char(pos)) {
+                pos -= 1;
+                break;
+            }
         } else {
             break;
         }

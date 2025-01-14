@@ -8,8 +8,7 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
     match *caller {
         ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _ } => {
             let method_name = method_name.clone();
-            let arguments = match *arguments {
-                ASTNode::FunctionCallArgs(arguments) => arguments,
+            let arguments = match *arguments { ASTNode::FunctionCallArgs(arguments) => arguments,
                 _ => vec![],
             };
             match method_name.as_str() {
@@ -205,4 +204,48 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                 },
                 None => panic!("missing struct: {}", caller_name)
             }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokenizer::tokenize;
+    use crate::parsers::Parser;
+    use crate::builtin::register_builtins;
+    use crate::evals::evals;
+
+    #[test]
+    fn test_to_string_method_call_node() {
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let input = "1.to_string()".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let result = evals(vec![ast], &mut env);
+        assert_eq!(result[0], Value::String("1".to_string()));
+    }
+
+    #[test]
+    fn test_round_method_call_node() {
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let input = "(1.5).round()".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let result = eval(ast, &mut env);
+        assert_eq!(result, Value::Number(2.into()));
+    }
+    #[test]
+    fn test_push_method_call_node() {
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let input = "val mut xs = []\nxs.push(1)\n".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse_lines();
+        let result = evals(ast, &mut env);
+        assert_eq!(result[1], Value::List(vec![Value::Number(1.into())]));
+    }
 }
