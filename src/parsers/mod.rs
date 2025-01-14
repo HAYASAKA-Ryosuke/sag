@@ -151,24 +151,40 @@ impl Parser {
         None
     }
 
-    fn get_method(&self, scope: String, value_type: ValueType, method_name: String) -> Option<MethodInfo> {
+    fn get_method(&self, _scope: String, value_type: ValueType, method_name: String) -> Option<MethodInfo> {
         match value_type {
-            ValueType::Struct { name, fields: _, methods } => {
+            ValueType::Struct { name: _, fields: _, methods } => {
                 match methods.get(&method_name) {
                     Some(method) => Some(method.clone()),
                     None => None
                 }
             },
+            ValueType::List(_value_type) => {
+                match method_name.as_str() {
+                    "push" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Void,
+                        is_mut: true,
+                    }),
+                    _ => None
+                }
+            }
             ValueType::Number => {
-                if method_name == "to_string" {
-                    Some(MethodInfo {
+                match method_name.as_str() {
+                    "to_string" => Some(MethodInfo {
                         arguments: vec![],
                         body: None,
                         return_type: ValueType::String,
                         is_mut: false,
-                    })
-                } else {
-                    None
+                    }),
+                    "round" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Number,
+                        is_mut: false,
+                    }),
+                    _ => None
                 }
             }
             _ => None
