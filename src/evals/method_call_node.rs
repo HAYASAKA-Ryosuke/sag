@@ -19,14 +19,14 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
                     }
                 },
                 "round" => {
-                    let value = eval(arguments[0].clone(), env);
+                    let value = eval(*caller.clone(), env);
                     match value {
                         Value::Number(value) => Value::Number(value.round()),
                         _ => Value::Void,
                     }
                 },
                 "push" => {
-                    let mut list = match eval(arguments[0].clone(), env) {
+                    let mut list = match eval(*caller.clone(), env) {
                         Value::List(list) => list,
                         _ => vec![],
                     };
@@ -278,5 +278,28 @@ mod tests {
         let ast = parser.parse_lines();
         let result = evals(ast, &mut env);
         assert_eq!(result[1], Value::List(vec![Value::Number(1.into())]));
+    }
+
+    #[test]
+    fn test_push_method_call_node_with_variable() {
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let input = "val mut xs = [1,2]\nval x = 3\nxs.push(x)\n".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse_lines();
+        let result = evals(ast, &mut env);
+        assert_eq!(result[2], Value::List(vec![Value::Number(1.into()), Value::Number(2.into()), Value::Number(3.into())]));
+    }
+    #[test]
+    fn method_chaining_with_round_and_to_string() {
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let input = "fun add(x: number): number {\n return x + 1\n}\n add(1.5).round().to_string()".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse_lines();
+        let result = evals(ast, &mut env);
+        assert_eq!(result[1], Value::String("3".to_string()));
     }
 }
