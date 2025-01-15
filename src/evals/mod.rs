@@ -55,7 +55,9 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             if builtin {
                 method_call_node::builtin_method_call_node(method_name, caller, arguments, env)
             } else {
-                method_call_node::method_call_node(method_name, caller, arguments, env)
+                match caller {
+                    _ => method_call_node::method_call_node(method_name, caller, arguments, env)
+                }
             }
         }
         ASTNode::StructInstance {

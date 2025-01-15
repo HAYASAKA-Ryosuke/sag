@@ -289,7 +289,6 @@ impl Parser {
             Some(token) => token,
             _ => panic!("token not found!"),
         };
-        println!("token: {:?}", token);
         match token {
             Token::Struct => self.parse_struct(),
             Token::Pub => self.parse_public(),
@@ -360,6 +359,21 @@ impl Parser {
                             ASTNode::Literal(Value::Bool(_)) => true,
                             ASTNode::Literal(Value::Void) => true,
                             ASTNode::Literal(Value::List(_)) => true,
+                            ASTNode::FunctionCall { ref name, .. } => {
+                                match self.get_function(self.get_current_scope(), name.clone()) {
+                                    Some(value_type) => {
+                                        match value_type {
+                                            ValueType::Number => true,
+                                            ValueType::String => true,
+                                            ValueType::Bool => true,
+                                            ValueType::Void => true,
+                                            ValueType::List(_) => true,
+                                            _ => false,
+                                        }
+                                    }
+                                    _ => false,
+                                }
+                            },
                             ASTNode::MethodCall { ref caller, .. } => {
                                 match self.infer_type(&caller) {
                                     Ok(ValueType::Number) => true,

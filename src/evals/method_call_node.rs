@@ -5,7 +5,38 @@ use crate::environment::{Env, ValueType, MethodInfo, EnvVariableType, EnvVariabl
 use crate::evals::eval;
 
 pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, env: &mut Env) -> Value {
-    match *caller {
+    match *caller.clone() {
+        ASTNode::FunctionCall { name: _, arguments } => {
+            let arguments = match *arguments { ASTNode::FunctionCallArgs(arguments) => arguments,
+                _ => vec![],
+            };
+            match method_name.as_str() {
+                "to_string" => {
+                    let value = eval(*caller.clone(), env);
+                    match value {
+                        Value::Number(value) => Value::String(value.to_string()),
+                        _ => Value::Void,
+                    }
+                },
+                "round" => {
+                    let value = eval(arguments[0].clone(), env);
+                    match value {
+                        Value::Number(value) => Value::Number(value.round()),
+                        _ => Value::Void,
+                    }
+                },
+                "push" => {
+                    let mut list = match eval(arguments[0].clone(), env) {
+                        Value::List(list) => list,
+                        _ => vec![],
+                    };
+                    let value = eval(arguments[1].clone(), env);
+                    list.push(value);
+                    Value::List(list)
+                },
+                _ => Value::Void,
+            }
+        }
         ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _ } => {
             let method_name = method_name.clone();
             let arguments = match *arguments { ASTNode::FunctionCallArgs(arguments) => arguments,
