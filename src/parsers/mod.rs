@@ -17,7 +17,7 @@ pub mod string_to_value_type;
 pub mod import_ast;
 
 use crate::environment::{EnvVariableType, ValueType, MethodInfo};
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 use crate::ast::ASTNode;
 use crate::value::Value;
 use std::collections::HashMap;
@@ -234,10 +234,10 @@ impl Parser {
     fn split_lines(tokens: Vec<Token>) -> Vec<Vec<Token>> {
         let mut lines = Vec::new();
         let mut current_line = Vec::new();
-        for token in tokens {
-            if token == Token::Eof {
+        for token in tokens.clone() {
+            if token.kind == TokenKind::Eof {
                 if !current_line.is_empty() {
-                    current_line.push(Token::Eof);
+                    current_line.push(Token{kind: TokenKind::Eof, line: token.line, column: token.column + 1});
                     lines.push(current_line);
                     current_line = Vec::new();
                 }
@@ -246,7 +246,7 @@ impl Parser {
             }
         }
         if !current_line.is_empty() {
-            current_line.push(Token::Eof);
+            current_line.push(Token{kind: TokenKind::Eof, line: tokens.len(), column: tokens.last().unwrap().column + 1});
             lines.push(current_line);
         }
         lines
@@ -266,11 +266,11 @@ impl Parser {
         Some(token)
     }
 
-    pub fn extract_token(&mut self, token: Token) -> Token {
+    pub fn extract_token(&mut self, token: TokenKind) -> Token {
         match self.get_current_token() {
-            Some(current_token) if current_token == token => {
+            Some(Token{kind: current_token_kind, line, column}) if current_token_kind == token => {
                 self.pos += 1;
-                current_token
+                Token{kind: current_token_kind, line, column}
             }
             _ => panic!("unexpected token: {:?}", token),
         }
@@ -280,7 +280,10 @@ impl Parser {
         self.pos += 1;
         let next_token = self.get_current_token();
         self.pos -= 1;
-        next_token == Some(Token::LParen)
+        match next_token {
+            Some(Token { kind: TokenKind::LParen, .. }) => true,
+            _ => false,
+        }
     }
 
 
@@ -289,21 +292,21 @@ impl Parser {
             Some(token) => token,
             _ => panic!("token not found!"),
         };
-        match token {
-            Token::Struct => self.parse_struct(),
-            Token::Pub => self.parse_public(),
-            Token::Impl => self.parse_impl(),
-            Token::Minus => self.parse_prefix_op(Token::Minus),
-            Token::Return => self.parse_return(),
-            Token::Number(value) => self.parse_literal(Value::Number(value)),
-            Token::String(value) => self.parse_literal(Value::String(value.into())),
-            Token::Function => self.parse_function(),
-            Token::Pipe => self.parse_function_call_arguments(),
-            Token::BackSlash => self.parse_lambda(),
-            Token::Mutable | Token::Immutable => self.parse_assign(),
-            Token::For => self.parse_for(),
-            Token::Import => self.parse_import(),
-            Token::If => {
+        match token.kind {
+            TokenKind::Struct => self.parse_struct(),
+            TokenKind::Pub => self.parse_public(),
+            TokenKind::Impl => self.parse_impl(),
+            TokenKind::Minus => self.parse_prefix_op(TokenKind::Minus),
+            TokenKind::Return => self.parse_return(),
+            TokenKind::Number(value) => self.parse_literal(Value::Number(value)),
+            TokenKind::String(value) => self.parse_literal(Value::String(value.into())),
+            TokenKind::Function => self.parse_function(),
+            TokenKind::Pipe => self.parse_function_call_arguments(),
+            TokenKind::BackSlash => self.parse_lambda(),
+            TokenKind::Mutable | TokenKind::Immutable => self.parse_assign(),
+            TokenKind::For => self.parse_for(),
+            TokenKind::Import => self.parse_import(),
+            TokenKind::If => {
                 let ast_if = self.parse_if();
                 match ast_if {
                     ASTNode::If {
@@ -322,18 +325,18 @@ impl Parser {
                 }
                 ast_if
             },
-            Token::LParen => {
+            TokenKind::LParen => {
                 self.pos += 1;
                 let expr = self.parse_expression(0);
                 self.pos += 1;
                 expr
             }
-            Token::LBrace => self.parse_block(),
-            Token::LBrancket => self.parse_list(),
-            Token::Identifier(name) => {
+            TokenKind::LBrace => self.parse_block(),
+            TokenKind::LBrancket => self.parse_list(),
+            TokenKind::Identifier(name) => {
                 self.parse_identifier(name)
             }
-            Token::CommentBlock(comment) => {ASTNode::CommentBlock(comment.to_string())},
+            TokenKind::CommentBlock(comment) => {ASTNode::CommentBlock(comment.to_string())},
             _ => panic!("undefined token: {:?}", token),
         }
     }
@@ -345,11 +348,11 @@ impl Parser {
                 Some(token) => token,
                 _ => break,
             };
-            if token == Token::Dot {
+            if token.kind == TokenKind::Dot {
                 self.pos += 2;
-                if let Token::LParen = self.get_current_token().unwrap() {
+                if let TokenKind::LParen = self.get_current_token().unwrap().kind {
                     self.pos -= 1;
-                    if let Token::Identifier(method_name) = self.get_current_token().unwrap() {
+                    if let TokenKind::Identifier(method_name) = self.get_current_token().unwrap().kind {
                         self.pos += 1;
                         let args = self.parse_function_call_arguments_paren();
 
@@ -403,7 +406,7 @@ impl Parser {
                 }
                 continue;
             }
-            if token == Token::RArrow {
+            if token.kind == TokenKind::RArrow {
                 if self.is_lparen_call() {
                     self.pos += 1;
                     let rhs = self.parse_primary();
@@ -428,27 +431,27 @@ impl Parser {
                 self.pos += 1;
 
                 let rhs = self.parse_expression(right_priority);
-                if let Token::Eq = token {
+                if let TokenKind::Eq = token.kind {
                     lhs = ASTNode::Eq {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
                     }
-                } else if let Token::Gte = token {
+                } else if let TokenKind::Gte = token.kind {
                     lhs = ASTNode::Gte {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
                     }
-                } else if let Token::Gt = token {
+                } else if let TokenKind::Gt = token.kind {
                     lhs = ASTNode::Gt {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
                     }
-                } else if let Token::Lte = token {
+                } else if let TokenKind::Lte = token.kind {
                     lhs = ASTNode::Lte {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
                     }
-                } else if let Token::Lt = token {
+                } else if let TokenKind::Lt = token.kind {
                     lhs = ASTNode::Lt {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
@@ -456,7 +459,7 @@ impl Parser {
                 } else {
                     lhs = ASTNode::BinaryOp {
                         left: Box::new(lhs),
-                        op: token,
+                        op: token.kind,
                         right: Box::new(rhs),
                     }
                 }
@@ -467,10 +470,10 @@ impl Parser {
         lhs
     }
     fn get_priority(&self, token: &Token) -> Option<(u8, u8)> {
-        match token {
-            Token::Eq | Token::Gt | Token::Gte | Token::Lt | Token::Lte => Some((1, 2)),
-            Token::Plus | Token::Minus => Some((3, 4)),
-            Token::Mul | Token::Div | Token::Mod => Some((5, 6)),
+        match token.kind {
+            TokenKind::Eq | TokenKind::Gt | TokenKind::Gte | TokenKind::Lt | TokenKind::Lte => Some((1, 2)),
+            TokenKind::Plus | TokenKind::Minus => Some((3, 4)),
+            TokenKind::Mul | TokenKind::Div | TokenKind::Mod => Some((5, 6)),
             _ => None,
         }
     }
@@ -501,15 +504,15 @@ mod tests {
     #[test]
     fn test_four_basic_arithmetic_operations() {
         let mut parser = Parser::new(vec![
-            Token::Minus,
-            Token::Number(Fraction::from(1)),
-            Token::Plus,
-            Token::Number(Fraction::from(2)),
-            Token::Mul,
-            Token::Number(Fraction::from(3)),
-            Token::Mod,
-            Token::Number(Fraction::from(3)),
-            Token::Eof,
+            TokenKind::Minus,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Plus,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Mul,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Mod,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Eof,
         ]);
         assert_eq!(
             parser.parse(),

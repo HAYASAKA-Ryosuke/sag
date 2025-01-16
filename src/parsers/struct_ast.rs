@@ -1,5 +1,5 @@
 use crate::ast::ASTNode;
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
 use crate::environment::ValueType;
 use std::collections::HashMap;
@@ -8,7 +8,7 @@ impl Parser {
     pub fn parse_struct(&mut self) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
-            Some(Token::Identifier(name)) => name,
+            Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
             _ => panic!("unexpected token"),
         };
         self.enter_struct(name.clone());
@@ -16,34 +16,34 @@ impl Parser {
             panic!("struct name must start with a capital letter");
         }
         self.consume_token();
-        self.extract_token(Token::LBrace);
+        self.extract_token(TokenKind::LBrace);
         let mut fields = HashMap::new();
         let mut field_is_public = false;
         while let Some(token) = self.get_current_token() {
-            if token == Token::RBrace {
+            if token.kind == TokenKind::RBrace {
                 self.consume_token();
                 break;
             }
-            if token == Token::Comma {
+            if token.kind == TokenKind::Comma {
                 self.consume_token();
                 continue;
             }
-            if token == Token::Eof {
+            if token.kind == TokenKind::Eof {
                 self.pos = 0;
                 self.line += 1;
                 continue;
             }
-            if token == Token::Pub {
+            if token.kind == TokenKind::Pub {
                 field_is_public = true;
                 self.consume_token();
                 continue;
             }
     
-            if let Token::Identifier(name) = token {
+            if let Token{kind: TokenKind::Identifier(name), ..} = token {
                 self.consume_token();
-                self.extract_token(Token::Colon);
+                self.extract_token(TokenKind::Colon);
                 let value_type = match self.get_current_token() {
-                    Some(Token::Identifier(type_name)) => self.string_to_value_type(type_name),
+                    Some(Token{kind: TokenKind::Identifier(type_name), ..}) => self.string_to_value_type(type_name),
                     _ => panic!("undefined type"),
                 };
                 fields.insert(name, ASTNode::StructField {
@@ -65,7 +65,7 @@ impl Parser {
     pub fn parse_struct_instance_access(&mut self, name: String) -> ASTNode {
         self.consume_token();
         let field_name = match self.get_current_token() {
-            Some(Token::Identifier(name)) => name,
+            Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
             _ => panic!("unexpected token"),
         };
         self.consume_token();
@@ -103,7 +103,7 @@ impl Parser {
         self.consume_token();
         let scope = self.get_current_scope().clone();
         let struct_name = match self.get_current_token() {
-            Some(Token::Identifier(name)) => name,
+            Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
             _ => panic!("unexpected token"),
         };
 
@@ -112,23 +112,23 @@ impl Parser {
         let base_struct = self.get_struct(scope.clone(),struct_name.to_string()).expect("undefined struct");
         self.current_struct = Some(struct_name.clone());
         self.consume_token();
-        self.extract_token(Token::LBrace);
+        self.extract_token(TokenKind::LBrace);
         let mut methods = Vec::new();
         while let Some(token) = self.get_current_token() {
-            if token == Token::RBrace {
+            if token.kind == TokenKind::RBrace {
                 self.consume_token();
                 break;
             }
-            if token == Token::Eof {
+            if token.kind == TokenKind::Eof {
                 self.pos = 0;
                 self.line += 1;
                 continue;
             }
-            if token == Token::Comma {
+            if token.kind == TokenKind::Comma {
                 self.consume_token();
                 continue;
             }
-            if token == Token::Function {
+            if token.kind == TokenKind::Function {
                 let method = self.parse_method();
                 methods.push(method);
                 continue;

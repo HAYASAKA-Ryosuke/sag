@@ -1,6 +1,6 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 use crate::environment::ValueType;
 use crate::value::Value;
 
@@ -9,12 +9,12 @@ impl Parser {
     pub fn parse_method(&mut self) -> ASTNode {
         self.consume_token();
         let name = match self.get_current_token() {
-            Some(Token::Identifier(name)) => name,
+            Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
             _ => panic!("unexpected token"),
         };
         self.enter_scope(name.to_string());
         self.consume_token();
-        self.extract_token(Token::LParen);
+        self.extract_token(TokenKind::LParen);
         let arguments = self.parse_function_arguments();
         let mut is_mut = false;
         if arguments.len() > 0 {

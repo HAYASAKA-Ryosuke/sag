@@ -1,6 +1,6 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 use crate::environment::{ValueType, EnvVariableType};
 use std::collections::HashMap;
 
@@ -10,11 +10,11 @@ impl Parser {
         let scope = self.get_current_scope().to_string();
         let variable_info = self.find_variables(scope.clone(), name.clone());
         match self.get_current_token() {
-            Some(Token::LBrace) => self.create_struct_instance(name.clone()),
-            Some(Token::LParen) => self.create_function_call(name.clone()),
-            Some(Token::Equal) => self.create_assignment(name.clone(), variable_info),
-            Some(Token::Colon) => self.create_variable_declaration(name.clone()),
-            Some(Token::Dot) => self.create_struct_field_access(name.clone()),
+            Some(Token{kind: TokenKind::LBrace, ..}) => self.create_struct_instance(name.clone()),
+            Some(Token{kind: TokenKind::LParen, ..}) => self.create_function_call(name.clone()),
+            Some(Token{kind: TokenKind::Equal, ..}) => self.create_assignment(name.clone(), variable_info),
+            Some(Token{kind: TokenKind::Colon, ..}) => self.create_variable_declaration(name.clone()),
+            Some(Token{kind: TokenKind::Dot, ..}) => self.create_struct_field_access(name.clone()),
             _ => {
                 // 代入
                 let value_type = if variable_info.is_some() {
@@ -48,17 +48,17 @@ impl Parser {
         self.consume_token();
         let mut fields = HashMap::new();
         while let Some(token) = self.get_current_token() {
-            if token == Token::RBrace {
+            if token.kind == TokenKind::RBrace {
                 self.consume_token();
                 break;
             }
-            if token == Token::Comma {
+            if token.kind == TokenKind::Comma {
                 self.consume_token();
                 continue;
             }
-            if let Token::Identifier(field_name) = token {
+            if let TokenKind::Identifier(field_name) = token.kind {
                 self.consume_token();
-                self.extract_token(Token::Colon);
+                self.extract_token(TokenKind::Colon);
                 let value = self.parse_expression(0);
                 fields.insert(field_name, value);
                 continue;
@@ -100,7 +100,7 @@ impl Parser {
     fn create_variable_declaration(&mut self, name: String) -> ASTNode {
         self.consume_token();
         let value_type =
-            if let Some(Token::Identifier(type_name)) = self.get_current_token() {
+            if let Some(Token{kind: TokenKind::Identifier(type_name), ..}) = self.get_current_token() {
                 Some(self.string_to_value_type(type_name))
             } else {
                 panic!("undefined type")
@@ -110,26 +110,29 @@ impl Parser {
 
     fn create_struct_field_access(&mut self, name: String) -> ASTNode {
         self.pos += 2;
-        if Some(Token::LParen) == self.get_current_token() {
-            self.pos -= 1;
-            let method_name = match self.get_current_token() {
-                Some(Token::Identifier(method_name)) => method_name,
-                _ => panic!("missing method name: {:?}", self.get_current_token())
-            };
-            self.pos += 1;
-            let arguments = self.parse_function_call_arguments_paren();
-            let caller_variable_ast = ASTNode::Variable {
-                name: name.clone(),
-                value_type: None,
-            };
-            return self.parse_method_call(caller_variable_ast, method_name.to_string(), arguments);
+        match self.get_current_token() {
+            Some(Token{kind: TokenKind::LParen, ..}) => {
+                self.pos -= 1;
+                let method_name = match self.get_current_token() {
+                    Some(Token{kind: TokenKind::Identifier(method_name), ..}) => method_name,
+                    _ => panic!("missing method name: {:?}", self.get_current_token())
+                };
+                self.pos += 1;
+                let arguments = self.parse_function_call_arguments_paren();
+                let caller_variable_ast = ASTNode::Variable {
+                    name: name.clone(),
+                    value_type: None,
+                };
+                return self.parse_method_call(caller_variable_ast, method_name.to_string(), arguments);
+            }
+            _ => {}
         }
         self.pos -= 2;
         
         // 構造体のフィールドアクセス
         let struct_instance_access = self.parse_struct_instance_access(name.clone());
         // 代入
-        if let Some(Token::Equal) = self.get_current_token() {
+        if let Some(Token{kind: TokenKind::Equal, ..}) = self.get_current_token() {
             self.consume_token();
             let value = self.parse_expression(0);
             let field_name = match struct_instance_access.clone() {
@@ -141,7 +144,7 @@ impl Parser {
                 field_name: field_name.clone(),
                 value: Box::new(value),
             }
-        } else if let Some(Token::Dot) = self.get_current_token() {
+        } else if let Some(Token{kind: TokenKind::Dot, ..}) = self.get_current_token() {
             match struct_instance_access.clone() {
                 ASTNode::StructFieldAccess { field_name, instance: _ } => {
                     self.parse_identifier(field_name)

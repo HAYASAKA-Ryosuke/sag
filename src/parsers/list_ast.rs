@@ -1,6 +1,6 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
-use crate::token::Token;
+use crate::token::TokenKind;
 use crate::value::Value;
 
 impl Parser {
@@ -8,17 +8,17 @@ impl Parser {
         self.consume_token();
         let mut list = vec![];
         while let Some(token) = self.get_current_token() {
-            if token == Token::RBrancket {
+            if token.kind == TokenKind::RBrancket {
                 self.consume_token();
                 break;
             }
-            if token == Token::Comma {
+            if token.kind == TokenKind::Comma {
                 self.consume_token();
                 continue;
             }
-            let value = match token {
-                Token::Number(value) => Value::Number(value),
-                Token::String(value) => Value::String(value),
+            let value = match token.kind {
+                TokenKind::Number(value) => Value::Number(value),
+                TokenKind::String(value) => Value::String(value),
                 _ => panic!("unexpected token: {:?}", token),
             };
             list.push(ASTNode::Literal(value));

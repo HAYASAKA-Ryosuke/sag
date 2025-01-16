@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::token::Token;
+use crate::token::TokenKind;
 use crate::value::Value;
 use crate::environment::{ValueType, EnvVariableType};
 
@@ -15,13 +15,13 @@ pub enum ASTNode {
     Block(Vec<ASTNode>),
     // -5, !trueなどの一つのオペランドを持つ演算子
     PrefixOp {
-        op: Token,
+        op: TokenKind,
         expr: Box<ASTNode>,
     },
     // 1 + 2のような二項演算子
     BinaryOp {
         left: Box<ASTNode>,
-        op: Token,
+        op: TokenKind,
         right: Box<ASTNode>,
     },
     // 変数の代入

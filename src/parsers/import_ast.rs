@@ -1,37 +1,37 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 
 
 impl Parser {
     pub fn parse_import(&mut self) -> ASTNode {
-        self.extract_token(Token::Import);
+        self.extract_token(TokenKind::Import);
         let mut symbols = vec![];
         while let Some(token) = self.get_current_token() {
-            if token == Token::Comma {
+            if token.kind == TokenKind::Comma {
                 self.consume_token();
                 continue;
             }
-            if token == Token::From {
+            if token.kind == TokenKind::From {
                 break;
             }
-            match token {
-                Token::Identifier(name) =>  {
+            match token.kind {
+                TokenKind::Identifier(name) =>  {
                     self.consume_token();
                     symbols.push(name);
                 },
                 _ => panic!("Expected identifier"),
             };
         }
-        self.extract_token(Token::From);
-        let module_name = match self.get_current_token() { Some(Token::Identifier(module_name)) => module_name.clone(),
+        self.extract_token(TokenKind::From);
+        let module_name = match self.get_current_token() { Some(Token{kind: TokenKind::Identifier(module_name), ..}) => module_name.clone(),
             _ => panic!("Expected module name"),
         };
         ASTNode::Import { module_name, symbols }
     }
 
     pub fn parse_public(&mut self) -> ASTNode {
-        self.extract_token(Token::Pub);
+        self.extract_token(TokenKind::Pub);
         ASTNode::Public {node: Box::new(self.parse_expression(0))}
     }
 }

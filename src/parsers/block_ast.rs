@@ -1,25 +1,32 @@
 use crate::ast::ASTNode;
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
 
 impl Parser {
     pub fn parse_block(&mut self) -> ASTNode {
         let mut statements = Vec::new();
-        if self.get_current_token() != Some(Token::LBrace) {
-            panic!("Expected LBrace at the start of a block");
+        match self.get_current_token() {
+            Some(Token{kind: TokenKind::LBrace, ..}) => {},
+            _ => panic!("Expected LBrace at the start of a block")
         }
         self.consume_token();
 
         loop {
             let token = self.get_current_token();
-            if token == Some(Token::RBrace) {
-                self.consume_token();
-                break;
+            match token {
+                Some(Token{kind: TokenKind::RBrace, ..}) => {
+                    self.consume_token();
+                    break;
+                },
+                _ => {}
             }
-            if token == Some(Token::Eof) {
-                self.pos = 0;
-                self.line += 1;
-                continue;
+            match token {
+                Some(Token{kind: TokenKind::Eof, ..}) => {
+                    self.pos = 0;
+                    self.line += 1;
+                    continue;
+                },
+                _ => {}
             }
             if token == None {
                 if self.line >= self.tokens.len() {

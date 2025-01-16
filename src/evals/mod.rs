@@ -14,7 +14,7 @@ pub mod method_call_node;
 use crate::environment::Env;
 use crate::ast::ASTNode;
 use crate::value::Value;
-use crate::token::Token;
+use crate::token::TokenKind;
 
 pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
     let mut values = vec![];
@@ -92,19 +92,19 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             Value::Return(Box::new(eval(*value, env)))
         }
         ASTNode::Eq { left, right } => {
-            comparison_op::comparison_op_node(Token::Eq, left, right, env)
+            comparison_op::comparison_op_node(TokenKind::Eq, left, right, env)
         }
         ASTNode::Gte { left, right } => {
-            comparison_op::comparison_op_node(Token::Gte, left, right, env)
+            comparison_op::comparison_op_node(TokenKind::Gte, left, right, env)
         }
         ASTNode::Gt { left, right } => {
-            comparison_op::comparison_op_node(Token::Gt, left, right, env)
+            comparison_op::comparison_op_node(TokenKind::Gt, left, right, env)
         }
         ASTNode::Lte { left, right } => {
-            comparison_op::comparison_op_node(Token::Lte, left, right, env)
+            comparison_op::comparison_op_node(TokenKind::Lte, left, right, env)
         }
         ASTNode::Lt { left, right } => {
-            comparison_op::comparison_op_node(Token::Lt, left, right, env)
+            comparison_op::comparison_op_node(TokenKind::Lt, left, right, env)
         }
         ASTNode::For {
             variable,
