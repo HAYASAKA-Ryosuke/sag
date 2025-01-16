@@ -110,6 +110,20 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
         }
         ASTNode::Variable { ref name, ref value_type } => {
             match method_name.as_str() {
+                "to_string" => {
+                    let value = eval(*caller.clone(), env);
+                    match value {
+                        Value::Number(value) => Value::String(value.to_string()),
+                        _ => Value::Void,
+                    }
+                },
+                "round" => {
+                    let value = eval(*caller.clone(), env);
+                    match value {
+                        Value::Number(value) => Value::Number(value.round()),
+                        _ => Value::Void,
+                    }
+                },
                 "push" => {
                     let variable_info = env.get(&name, value_type.as_ref()).unwrap().clone();
                     let mut variable = match variable_info.value.clone() {

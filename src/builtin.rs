@@ -1,9 +1,12 @@
 use crate::environment::Env;
+use crate::environment::ValueType;
 use crate::value::Value;
+use std::collections::HashMap;
 use fraction::Fraction;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn register_builtins(env: &mut Env) {
+pub fn register_builtins(env: &mut Env) -> HashMap<(String, String), ValueType> {
+    let mut builtins = HashMap::new();
     env.register_builtin("print".to_string(), |args: Vec<Value>| {
         for arg in args {
             print!("{} ", arg);
@@ -11,6 +14,7 @@ pub fn register_builtins(env: &mut Env) {
         println!();
         Value::Void
     });
+    builtins.insert(("global".into(), "print".to_string()), ValueType::Void);
 
     env.register_builtin("len".to_string(), |args: Vec<Value>| {
         if args.len() != 1 {
@@ -22,6 +26,8 @@ pub fn register_builtins(env: &mut Env) {
             _ => panic!("len function takes a list as an argument"),
         }
     });
+    builtins.insert(("global".into(), "len".to_string()), ValueType::Number);
+
     env.register_builtin("range".to_string(), |args: Vec<Value>| {
         if let [Value::Number(start), Value::Number(end)] = args.as_slice() {
             Value::List(((*start.numer().unwrap() as i64)..(*end.numer().unwrap() as i64)).map(|x| Value::Number(Fraction::from(x))).collect())
@@ -33,12 +39,15 @@ pub fn register_builtins(env: &mut Env) {
             panic!("range function takes 1, 2 or 3 arguments")
         }
     });
+    builtins.insert(("global".into(), "range".to_string()), ValueType::Number);
+    builtins
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn register_builtins(env: &mut Env) {
+pub fn register_builtins(env: &mut Env) -> HashMap<(String, String), ValueType> {
     use crate::wasm::CONSOLE_OUTPUT;
 
+    let mut builtins = HashMap::new();
     env.register_builtin("print".to_string(), |args: Vec<Value>| {
         let output = args
             .iter()
@@ -56,6 +65,7 @@ pub fn register_builtins(env: &mut Env) {
 
         Value::Void
     });
+    builtins.insert(("global".into(), "print".to_string()), ValueType::Void);
 
     env.register_builtin("len".to_string(), |args: Vec<Value>| {
         if args.len() != 1 {
@@ -67,6 +77,7 @@ pub fn register_builtins(env: &mut Env) {
             _ => panic!("len function takes a list as an argument"),
         }
     });
+    builtins.insert(("global".into(), "len".to_string()), ValueType::Number);
 
     env.register_builtin("range".to_string(), |args: Vec<Value>| {
         if let [Value::Number(start), Value::Number(end)] = args.as_slice() {
@@ -79,4 +90,6 @@ pub fn register_builtins(env: &mut Env) {
             panic!("range function takes 1, 2 or 3 arguments")
         }
     });
+    builtins.insert(("global".into(), "range".to_string()), ValueType::Number);
+    builtins
 }

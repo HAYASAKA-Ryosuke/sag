@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 use crate::tokenizer::tokenize;
 use crate::parsers::Parser;
 use crate::evals::evals;
+use crate::builtin::register_builtins;
 
 
 #[wasm_bindgen]
@@ -103,7 +104,8 @@ impl Env {
             .map_err(|e| format!("Failed to read file '{}': {}", module_path, e))?;
 
         let tokens = tokenize(&file_content);
-        let mut parser = Parser::new(tokens);
+        let builtins = register_builtins(self);
+        let mut parser = Parser::new(tokens, builtins);
         let ast_nodes = parser.parse_lines();
 
         let mut module_env = Env::new();

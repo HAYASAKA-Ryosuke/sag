@@ -34,7 +34,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, initial_functions: HashMap<(String, String), ValueType>) -> Self {
         let lines = Self::split_lines(tokens);
         Parser {
             tokens: lines.clone(),
@@ -43,7 +43,7 @@ impl Parser {
             scopes: vec!["global".into()],
             variables: HashMap::new(),
             structs: HashMap::new(),
-            functions: HashMap::new(),
+            functions: initial_functions,
             current_struct: None,
         }
     }
@@ -1543,7 +1543,7 @@ mod tests {
                                       }),
                                       field_name: "x".into()
                                   }),
-                                  op: Token::Plus,
+                                  op: TokenKind::Plus,
                                   right: Box::new(ASTNode::Variable {
                                       name: "dx".into(),
                                       value_type: Some(ValueType::Number)
@@ -1559,25 +1559,25 @@ mod tests {
     #[test]
     fn test_for() {
         let tokens = vec![
-            Token::For,
-            Token::Identifier("i".into()),
-            Token::In,
-            Token::LBrancket,
-            Token::Number(Fraction::from(1)),
-            Token::Comma,
-            Token::Number(Fraction::from(2)),
-            Token::Comma,
-            Token::Number(Fraction::from(3)),
-            Token::RBrancket,
-            Token::LBrace,
-            Token::Eof,
-            Token::Identifier("print".into()),
-            Token::LParen,
-            Token::Identifier("i".into()),
-            Token::RParen,
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof
+            Token{kind: TokenKind::For, line: 1, column: 1},
+            Token{kind: TokenKind::Identifier("i".into()), line: 1, column: 5},
+            Token{kind: TokenKind::In, line: 1, column: 7},
+            Token{kind: TokenKind::LBrancket, line: 1, column: 10},
+            Token{kind: TokenKind::Number(Fraction::from(1)), line: 1, column: 11},
+            Token{kind: TokenKind::Comma, line: 1, column: 12},
+            Token{kind: TokenKind::Number(Fraction::from(2)), line: 1, column: 13},
+            Token{kind: TokenKind::Comma, line: 1, column: 14},
+            Token{kind: TokenKind::Number(Fraction::from(3)), line: 1, column: 15},
+            Token{kind: TokenKind::RBrancket, line: 1, column: 16},
+            Token{kind: TokenKind::LBrace, line: 1, column: 17},
+            Token{kind: TokenKind::Eof, line: 1, column: 18},
+            Token{kind: TokenKind::Identifier("print".into()), line: 1, column: 19},
+            Token{kind: TokenKind::LParen, line: 1, column: 24},
+            Token{kind: TokenKind::Identifier("i".into()), line: 1, column: 25},
+            Token{kind: TokenKind::RParen, line: 1, column: 26},
+            Token{kind: TokenKind::Eof, line: 1, column: 27},
+            Token{kind: TokenKind::RBrace, line: 1, column: 28},
+            Token{kind: TokenKind::Eof, line: 1, column: 29},
         ];
         let mut parser = Parser::new(tokens);
         assert_eq!(parser.parse(), ASTNode::For {

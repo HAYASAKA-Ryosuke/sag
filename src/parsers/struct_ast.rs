@@ -142,3 +142,44 @@ impl Parser {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokenizer::tokenize;
+
+    #[test]
+    fn test_parse_struct() {
+        let input = r#"
+struct Point {
+  x: number,
+  y: number
+}
+
+impl Point {
+  fun move(mut self, dx: number, dy: number) {
+      self.x = self.x + dx
+      self.y = self.y + dy
+  }
+}
+
+impl Point {
+  fun clear(mut self) {
+      self.x = 0
+      self.y = 0
+  }
+}
+
+val x = 8
+val y = 3
+val mut point = Point{x: x, y: y}
+point.move(5, 2)
+point.clear()
+"#;
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse_lines();
+        println!("{:?}", ast);
+    }
+}
