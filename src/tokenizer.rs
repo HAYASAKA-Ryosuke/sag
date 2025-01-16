@@ -679,557 +679,549 @@ mod tests {
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        assert_eq!(
-            tokenize(&"-1 + 2 * 3/4 % 3".to_string()),
-            vec![
-                Token{ kind: TokenKind::Minus, line: 1, column: 1},
-                Token{ kind: TokenKind::Number(Fraction::from(1)), line: 1, column: 2},
-                Token{ kind: TokenKind::Plus, line: 1, column: 4},
-                Token{ kind: TokenKind::Number(Fraction::from(2)), line: 1, column: 5},
-                Token{ kind: TokenKind::Mul, line: 1, column: 7},
-                Token{ kind: TokenKind::Number(Fraction::from(3)), line: 1, column: 9},
-                Token{ kind: TokenKind::Div, line: 1, column: 9},
-                Token{ kind: TokenKind::Number(Fraction::from(4)), line: 1, column: 10},
-                Token{ kind: TokenKind::Mod, line: 1, column: 11},
-                Token{ kind: TokenKind::Number(Fraction::from(3)), line: 1, column: 13},
-                Token{ kind: TokenKind::Eof, line: 1, column: 14}
-            ]
-        );
+        let result = vec![
+            TokenKind::Minus,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Plus,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Mul,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Div,
+            TokenKind::Number(Fraction::from(4)),
+            TokenKind::Mod,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"-1 + 2 * 3/4 % 3".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
     #[test]
     fn test_variable_definition() {
-        assert_eq!(
-            tokenize(&"val mut x = 1".to_string()),
-            vec![
-                Token::Mutable,
-                Token::Identifier("x".into()),
-                Token::Equal,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
-        assert_eq!(
-            tokenize(&"val x: num = 1".to_string()),
-            vec![
-                Token::Immutable,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Identifier("num".into()),
-                Token::Equal,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Mutable,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Equal,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"val mut x = 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+        let result = vec![
+            TokenKind::Immutable,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("num".into()),
+            TokenKind::Equal,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"val x: num = 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_multiline() {
-        assert_eq!(
-            tokenize(&"-1 + 2\n val x = 1".to_string()),
-            vec![
-                Token::Minus,
-                Token::Number(Fraction::from(1)),
-                Token::Plus,
-                Token::Number(Fraction::from(2)),
-                Token::Eof,
-                Token::Immutable,
-                Token::Identifier("x".into()),
-                Token::Equal,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Minus,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Plus,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Eof,
+            TokenKind::Immutable,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Equal,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"-1 + 2\n val x = 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_string() {
-        assert_eq!(
-            tokenize(&"\"Hello World!!\"".to_string()),
-            vec![Token::String("Hello World!!".into()), Token::Eof]
-        );
+        let result = vec![TokenKind::String("Hello World!!".into()), TokenKind::Eof];
+        for (i, token) in tokenize(&"\"Hello World!!\"".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_function() {
-        assert_eq!(
-            tokenize(&"fun foo = (x:number, y: number): number {\n return x + y \n}".to_string()),
-            vec![
-                Token::Function,
-                Token::Identifier("foo".into()),
-                Token::Equal,
-                Token::LParen,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::Comma,
-                Token::Identifier("y".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::RParen,
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Identifier("x".into()),
-                Token::Plus,
-                Token::Identifier("y".into()),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Function,
+            TokenKind::Identifier("foo".into()),
+            TokenKind::Equal,
+            TokenKind::LParen,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Comma,
+            TokenKind::Identifier("y".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::RParen,
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Plus,
+            TokenKind::Identifier("y".into()),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"fun foo = (x:number, y: number): number {\n return x + y \n}".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
     #[test]
     fn test_call_function() {
-        assert_eq!(
-            tokenize(&"(x, y) -> foo".to_string()),
-            vec![
-                Token::LParen,
-                Token::Identifier("x".into()),
-                Token::Comma,
-                Token::Identifier("y".into()),
-                Token::RParen,
-                Token::RArrow,
-                Token::Identifier("foo".into()),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::LParen,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Comma,
+            TokenKind::Identifier("y".into()),
+            TokenKind::RParen,
+            TokenKind::RArrow,
+            TokenKind::Identifier("foo".into()),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"(x, y) -> foo".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_decimal_point() {
-        assert_eq!(
-            tokenize(&"1.5".to_string()),
-            vec![Token::Number(Fraction::from(1.5)), Token::Eof]
-        );
+        let result = vec![TokenKind::Number(Fraction::from(1.5)), TokenKind::Eof];
+        for (i, token) in tokenize(&"1.5".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_list() {
-        assert_eq!(
-            tokenize(&"[1, 2, 3]".to_string()),
-            vec![
-                Token::LBrancket,
-                Token::Number(Fraction::from(1)),
-                Token::Comma,
-                Token::Number(Fraction::from(2)),
-                Token::Comma,
-                Token::Number(Fraction::from(3)),
-                Token::RBrancket,
-                Token::Eof
-            ]
-        );
-        assert_eq!(
-            tokenize(&"[\"Hello\", \"World\"]".to_string()),
-            vec![
-                Token::LBrancket,
-                Token::String("Hello".into()),
-                Token::Comma,
-                Token::String("World".into()),
-                Token::RBrancket,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::LBrancket,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Comma,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Comma,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::RBrancket,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"[1, 2, 3]".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+        let result = vec![
+            TokenKind::LBrancket,
+            TokenKind::String("Hello".into()),
+            TokenKind::Comma,
+            TokenKind::String("World".into()),
+            TokenKind::RBrancket,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"[\"Hello\", \"World\"]".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_call_functions() {
-        assert_eq!(
-            tokenize(&"1 -> f1 -> f2".to_string()),
-            vec![
-                Token::Number(Fraction::from(1)),
-                Token::RArrow,
-                Token::Identifier("f1".into()),
-                Token::RArrow,
-                Token::Identifier("f2".into()),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::RArrow,
+            TokenKind::Identifier("f1".into()),
+            TokenKind::RArrow,
+            TokenKind::Identifier("f2".into()),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"1 -> f1 -> f2".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_lambda() {
-        assert_eq!(
-            tokenize(&"val inc = \\|x: number| => x + 1".to_string()),
-            vec![
-                Token::Immutable,
-                Token::Identifier("inc".into()),
-                Token::Equal,
-                Token::BackSlash,
-                Token::Pipe,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::Pipe,
-                Token::RRocket,
-                Token::Identifier("x".into()),
-                Token::Plus,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Immutable,
+            TokenKind::Identifier("inc".into()),
+            TokenKind::Equal,
+            TokenKind::BackSlash,
+            TokenKind::Pipe,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Pipe,
+            TokenKind::RRocket,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Plus,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"val inc = \\|x: number| => x + 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_if() {
-        assert_eq!(
-            tokenize(&"if x == 1 {\n return 1\n }".to_string()),
-            vec![
-                Token::If,
-                Token::Identifier("x".into()),
-                Token::Eq,
-                Token::Number(Fraction::from(1)),
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Number(Fraction::from(1)),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::If,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Eq,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"if x == 1 {\n return 1\n }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_else() {
-        assert_eq!(
-            tokenize(&"if x == 1 {\n return 1\n } else {\n return 0 \n}".to_string()),
-            vec![
-                Token::If,
-                Token::Identifier("x".into()),
-                Token::Eq,
-                Token::Number(Fraction::from(1)),
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Number(Fraction::from(1)),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof,
-                Token::Else,
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Number(Fraction::from(0)),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::If,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Eq,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof,
+            TokenKind::Else,
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Number(Fraction::from(0)),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"if x == 1 {\n return 1\n } else {\n return 0 \n}".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_else_if() {
-        assert_eq!(
-            tokenize(&"if x == 1 {\n return 1\n } else if x == 2 {\n return 2 \n} else {\n return 0 \n}".to_string()),
-            vec![
-                Token::If,
-                Token::Identifier("x".into()),
-                Token::Eq,
-                Token::Number(Fraction::from(1)),
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Number(Fraction::from(1)),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof,
-                Token::Else,
-                Token::If,
-                Token::Identifier("x".into()),
-                Token::Eq,
-                Token::Number(Fraction::from(2)),
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Number(Fraction::from(2)),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof,
-                Token::Else,
-                Token::LBrace,
-                Token::Eof,
-                Token::Return,
-                Token::Number(Fraction::from(0)),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::If,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Eq,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof,
+            TokenKind::Else,
+            TokenKind::If,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Eq,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof,
+            TokenKind::Else,
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Return,
+            TokenKind::Number(Fraction::from(0)),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"if x == 1 {\n return 1\n } else if x == 2 {\n return 2 \n} else {\n return 0 \n}".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_funtion_call_front() {
-        assert_eq!(
-            tokenize(&"f1()".to_string()),
-            vec![
-                Token::Identifier("f1".into()),
-                Token::LParen,
-                Token::RParen,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Identifier("f1".into()),
+            TokenKind::LParen,
+            TokenKind::RParen,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"f1()".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_comparison_operations() {
-        assert_eq!(
-            tokenize(&"1 == 1".to_string()),
-            vec![
-                Token::Number(Fraction::from(1)),
-                Token::Eq,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eq,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"1 == 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
 
-        assert_eq!(
-            tokenize(&"2 > 1".to_string()),
-            vec![
-                Token::Number(Fraction::from(2)),
-                Token::Gt,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Gt,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
 
-        assert_eq!(
-            tokenize(&"3 >= 3".to_string()),
-            vec![
-                Token::Number(Fraction::from(3)),
-                Token::Gte,
-                Token::Number(Fraction::from(3)),
-                Token::Eof
-            ]
-        );
+        for (i, token) in tokenize(&"2 > 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
 
-        assert_eq!(
-            tokenize(&"1 < 2".to_string()),
-            vec![
-                Token::Number(Fraction::from(1)),
-                Token::Lt,
-                Token::Number(Fraction::from(2)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Gte,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"3 >= 3".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
 
-        assert_eq!(
-            tokenize(&"4 <= 4".to_string()),
-            vec![
-                Token::Number(Fraction::from(4)),
-                Token::Lte,
-                Token::Number(Fraction::from(4)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Lt,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"1 < 2".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+
+        let result = vec![
+            TokenKind::Number(Fraction::from(4)),
+            TokenKind::Lte,
+            TokenKind::Number(Fraction::from(4)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"4 <= 4".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_struct() {
-        assert_eq!(
-            tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()),
-            vec![
-                Token::Struct,
-                Token::Identifier("Point".into()),
-                Token::LBrace,
-                Token::Eof,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::Comma,
-                Token::Eof,
-                Token::Identifier("y".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
-        assert_eq!(
-            tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()),
-            vec![
-                Token::Pub,
-                Token::Struct,
-                Token::Identifier("Point".into()),
-                Token::LBrace,
-                Token::Eof,
-                Token::Pub,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::Comma,
-                Token::Eof,
-                Token::Identifier("y".into()),
-                Token::Colon,
-                Token::Identifier("number".into()),
-                Token::Eof,
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Struct,
+            TokenKind::Identifier("Point".into()),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Comma,
+            TokenKind::Eof,
+            TokenKind::Identifier("y".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"struct Point {\n x: number,\n y: number\n }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+        let result = vec![
+            TokenKind::Pub,
+            TokenKind::Struct,
+            TokenKind::Identifier("Point".into()),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Pub,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Comma,
+            TokenKind::Eof,
+            TokenKind::Identifier("y".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"pub struct Point {\n pub x: number,\n y: number\n }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
     #[test]
     fn test_struct_instance() {
-        assert_eq!(
-            tokenize(&"Point { x: 1, y: 2 }".to_string()),
-            vec![
-                Token::Identifier("Point".into()),
-                Token::LBrace,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Number(Fraction::from(1)),
-                Token::Comma,
-                Token::Identifier("y".into()),
-                Token::Colon,
-                Token::Number(Fraction::from(2)),
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Identifier("Point".into()),
+            TokenKind::LBrace,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Comma,
+            TokenKind::Identifier("y".into()),
+            TokenKind::Colon,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"Point { x: 1, y: 2 }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_assign_struct() {
-        assert_eq!(
-            tokenize(&"val point = Point { x: 1, y: 2 }".to_string()),
-            vec![
-                Token::Immutable,
-                Token::Identifier("point".into()),
-                Token::Equal,
-                Token::Identifier("Point".into()),
-                Token::LBrace,
-                Token::Identifier("x".into()),
-                Token::Colon,
-                Token::Number(Fraction::from(1)),
-                Token::Comma,
-                Token::Identifier("y".into()),
-                Token::Colon,
-                Token::Number(Fraction::from(2)),
-                Token::RBrace,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Immutable,
+            TokenKind::Identifier("point".into()),
+            TokenKind::Equal,
+            TokenKind::Identifier("Point".into()),
+            TokenKind::LBrace,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Colon,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Comma,
+            TokenKind::Identifier("y".into()),
+            TokenKind::Colon,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::RBrace,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"val point = Point { x: 1, y: 2 }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_struct_field_access() {
-        assert_eq!(
-            tokenize(&"point.x".to_string()),
-            vec![
-                Token::Identifier("point".into()),
-                Token::Dot,
-                Token::Identifier("x".into()),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Identifier("point".into()),
+            TokenKind::Dot,
+            TokenKind::Identifier("x".into()),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"point.x".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_impl() {
-        assert_eq!(
-            tokenize(&"impl Point {\n fun x = (self: Point) {\n self.x\n }\n }".to_string()),
-            vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("x".into()), Token::Equal, Token::LParen, Token::Identifier("self".into()), Token::Colon, Token::Identifier("Point".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof],
-        )
+        let result = vec![TokenKind::Impl, TokenKind::Identifier("Point".into()), TokenKind::LBrace, TokenKind::Eof, TokenKind::Function, TokenKind::Identifier("x".into()), TokenKind::Equal, TokenKind::LParen, TokenKind::Identifier("self".into()), TokenKind::Colon, TokenKind::Identifier("Point".into()), TokenKind::RParen, TokenKind::LBrace, TokenKind::Eof, TokenKind::Identifier("self".into()), TokenKind::Dot, TokenKind::Identifier("x".into()), TokenKind::Eof, TokenKind::RBrace, TokenKind::Eof, TokenKind::RBrace, TokenKind::Eof];
+        for (i, token) in tokenize(&"impl Point {\n fun x = (self: Point) {\n self.x\n }\n }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_comment_block() {
         assert_eq!(
-            tokenize(&"```# Title\n## title1```".to_string()),
-            vec![Token::Eof]
+            tokenize(&"```# Title\n## title1```".to_string())[0].kind,
+            TokenKind::Eof
         );
     }
 
     #[test]
     fn test_commnet_line() {
+
         assert_eq!(
-            tokenize(&"// comment".to_string()),
-            vec![Token::Eof]
+            tokenize(&"// comment".to_string())[0].kind,
+            TokenKind::Eof
         );
     }
 
     #[test]
     fn test_add_tab() {
-        assert_eq!(
-            tokenize(&"1 + 2\t+ 3".to_string()),
-            vec![
-                Token::Number(Fraction::from(1)),
-                Token::Plus,
-                Token::Number(Fraction::from(2)),
-                Token::Plus,
-                Token::Number(Fraction::from(3)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Plus,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Plus,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"1\t+ 2\t+ 3".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_identifier() {
-        assert_eq!(
-            tokenize(&"x[]".to_string()),
-            vec![Token::Identifier("x".into()), Token::LBrancket, Token::RBrancket, Token::Eof]
-        );
+        let result = vec![TokenKind::Identifier("x".into()), TokenKind::LBrancket, TokenKind::RBrancket, TokenKind::Eof];
+        for (i, token) in tokenize(&"x[]".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_for() {
-        assert_eq!(
-            tokenize(&"for x in [1, 2, 3]".to_string()),
-            vec![
-                Token::For,
-                Token::Identifier("x".into()),
-                Token::In,
-                Token::LBrancket,
-                Token::Number(Fraction::from(1)),
-                Token::Comma,
-                Token::Number(Fraction::from(2)),
-                Token::Comma,
-                Token::Number(Fraction::from(3)),
-                Token::RBrancket,
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::For,
+            TokenKind::Identifier("x".into()),
+            TokenKind::In,
+            TokenKind::LBrancket,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Comma,
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Comma,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::RBrancket,
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"for x in [1, 2, 3]".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_import() {
-        assert_eq!(
-            tokenize(&"import foo1,foo2, foo3 from Foo".to_string()),
-            vec![
-                Token::Import,
-                Token::Identifier("foo1".into()),
-                Token::Comma,
-                Token::Identifier("foo2".into()),
-                Token::Comma,
-                Token::Identifier("foo3".into()),
-                Token::From,
-                Token::Identifier("Foo".into()),
-                Token::Eof
-            ]
-        );
+        let token_kinds = vec![TokenKind::Import, TokenKind::Identifier("foo1".into()), TokenKind::Comma, TokenKind::Identifier("foo2".into()), TokenKind::Comma, TokenKind::Identifier("foo3".into()), TokenKind::From, TokenKind::Identifier("Foo".into()), TokenKind::Eof];
+        for (i, token) in tokenize(&"import foo1,foo2, foo3 from Foo".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, token_kinds[i]);
+        }
     }
 
     #[test]
     fn test_export() {
-        assert_eq!(
-            tokenize(&"pub foo1 = 1".to_string()),
-            vec![
-                Token::Pub,
-                Token::Identifier("foo1".into()),
-                Token::Equal,
-                Token::Number(Fraction::from(1)),
-                Token::Eof
-            ]
-        );
+        let result = vec![
+            TokenKind::Pub,
+            TokenKind::Identifier("foo1".into()),
+            TokenKind::Equal,
+            TokenKind::Number(Fraction::from(1)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"pub foo1 = 1".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 
     #[test]
     fn test_convert_number() {
-        assert_eq!(
-            tokenize(&"1.2.a".to_string()),
-            vec![Token::Number(Fraction::from(1.2)), Token::Dot, Token::Identifier("a".into()), Token::Eof]
-        );
+        let result = vec![TokenKind::Number(Fraction::from(1.2)), TokenKind::Dot, TokenKind::Identifier("a".into()), TokenKind::Eof];
+        for (i, token) in tokenize(&"1.2.a".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
     }
 }

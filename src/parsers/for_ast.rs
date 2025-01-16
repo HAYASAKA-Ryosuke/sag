@@ -32,11 +32,15 @@ mod tests {
     use super::*;
     use crate::value::Value;
     use crate::tokenizer::tokenize;
+    use crate::environment::Env;
+    use crate::builtin::register_builtins;
+
     #[test]
     fn test_parse_for() {
         let input = "for i in range(10) { i }".to_string();
         let tokens = tokenize(&input);
-        let mut parser = Parser::new(tokens);
+        let builtin = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse_for();
         assert_eq!(
             ast,
@@ -44,9 +48,9 @@ mod tests {
                 variable: "i".into(),
                 iterable: Box::new(ASTNode::FunctionCall {
                     name: "range".into(),
-                    arguments: Box::new(ASTNode::Literal(Value::Number(10.into()))),
+                    arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Literal(Value::Number(10.into()))])),
                 }),
-                body: Box::new(ASTNode::Variable{name: "i".into(), value_type: None}),
+                body: Box::new(ASTNode::Block(vec![ASTNode::Variable{name: "i".into(), value_type: Some(ValueType::Number)}])),
             }
         );
     }

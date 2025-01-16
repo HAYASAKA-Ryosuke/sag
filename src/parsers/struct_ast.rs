@@ -148,6 +148,8 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::tokenizer::tokenize;
+    use crate::environment::Env;
+    use crate::builtin::register_builtins;
 
     #[test]
     fn test_parse_struct() {
@@ -178,7 +180,8 @@ point.move(5, 2)
 point.clear()
 "#;
         let tokens = tokenize(&input.to_string());
-        let mut parser = Parser::new(tokens);
+        let builtin = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse_lines();
         println!("{:?}", ast);
     }

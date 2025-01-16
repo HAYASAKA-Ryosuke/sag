@@ -500,35 +500,36 @@ impl Parser {
 mod tests {
     use super::*;
     use fraction::Fraction;
+    use crate::token::TokenKind;
+    use crate::ast::ASTNode;
+    use crate::value::Value;
+    use crate::environment::{EnvVariableType, Env, ValueType};
+    use crate::builtin::register_builtins;
+    use crate::tokenizer::tokenize;
+
 
     #[test]
     fn test_four_basic_arithmetic_operations() {
-        let mut parser = Parser::new(vec![
-            TokenKind::Minus,
-            TokenKind::Number(Fraction::from(1)),
-            TokenKind::Plus,
-            TokenKind::Number(Fraction::from(2)),
-            TokenKind::Mul,
-            TokenKind::Number(Fraction::from(3)),
-            TokenKind::Mod,
-            TokenKind::Number(Fraction::from(3)),
-            TokenKind::Eof,
-        ]);
+        let input = "-1 + 2 * 3 % 3";
+
+        let builtins = register_builtins(&mut Env::new());
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::BinaryOp {
                 left: Box::new(ASTNode::PrefixOp {
-                    op: Token::Minus,
+                    op: TokenKind::Minus,
                     expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
                 }),
-                op: Token::Plus,
+                op: TokenKind::Plus,
                 right: Box::new(ASTNode::BinaryOp {
                     left: Box::new(ASTNode::BinaryOp {
                         left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
-                        op: Token::Mul,
+                        op: TokenKind::Mul,
                         right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
                     }),
-                    op: Token::Mod,
+                    op: TokenKind::Mod,
                     right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
                 })
             }
@@ -537,15 +538,10 @@ mod tests {
 
     #[test]
     fn test_type_specified() {
-        let mut parser = Parser::new(vec![
-            Token::Mutable,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-        ]);
+        let input = "val mut x: number = 1";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Assign {
@@ -560,13 +556,10 @@ mod tests {
 
     #[test]
     fn test_type_estimate() {
-        let mut parser = Parser::new(vec![
-            Token::Mutable,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-        ]);
+        let input = "val mut x = 1";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Assign {
@@ -581,28 +574,10 @@ mod tests {
 
     #[test]
     fn test_register_function() {
-        let mut parser = Parser::new(vec![
-            Token::Function,
-            Token::Identifier("foo".into()),
-            Token::LParen,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Comma,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::RParen,
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::LBrace,
-            Token::Return,
-            Token::Identifier("x".into()),
-            Token::Plus,
-            Token::Identifier("y".into()),
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = "fun foo(x: number, y: number): number { return x + y }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Function {
@@ -623,7 +598,7 @@ mod tests {
                             name: "x".into(),
                             value_type: Some(ValueType::Number)
                         }),
-                        op: Token::Plus,
+                        op: TokenKind::Plus,
                         right: Box::new(ASTNode::Variable {
                             name: "y".into(),
                             value_type: Some(ValueType::Number)
@@ -637,20 +612,10 @@ mod tests {
 
     #[test]
     fn test_block() {
-        let mut parser = Parser::new(vec![
-            Token::LBrace,
-            Token::Identifier("x".into()),
-            Token::Plus,
-            Token::Identifier("y".into()),
-            Token::Eof,
-            Token::Return,
-            Token::Number(Fraction::from(1)),
-            Token::Minus,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = "{ x + y\n return 1 - 1 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse_block(),
             ASTNode::Block(vec![
@@ -659,7 +624,7 @@ mod tests {
                         name: "x".into(),
                         value_type: None
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "y".into(),
                         value_type: None
@@ -667,7 +632,7 @@ mod tests {
                 },
                 ASTNode::Return(Box::new(ASTNode::BinaryOp {
                     left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                    op: Token::Minus,
+                    op: TokenKind::Minus,
                     right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
                 }))
             ])
@@ -676,17 +641,10 @@ mod tests {
 
     #[test]
     fn test_reassign_to_mutable_variable() {
-        let mut parser = Parser::new(vec![
-            Token::Mutable,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(2)),
-            Token::Eof,
-        ]);
+        let input = "val mut x = 1\nx = 2";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
 
         let expected_ast = vec![
             ASTNode::Assign {
@@ -710,19 +668,10 @@ mod tests {
 
     #[test]
     fn test_function_call() {
-        let mut parser = Parser::new(vec![
-            Token::Pipe,
-            Token::Identifier("x".into()),
-            Token::Comma,
-            Token::Identifier("y".into()),
-            Token::Comma,
-            Token::Number(Fraction::from(1)),
-            Token::Pipe,
-            Token::RArrow,
-            Token::Identifier("f1".into()),
-            Token::Eof,
-        ]);
-
+        let input = "|x, y, 1| -> f1";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::FunctionCall {
@@ -747,17 +696,10 @@ mod tests {
     #[test]
     #[should_panic(expected = "It is an immutable variable and cannot be reassigned")]
     fn test_reassign_to_immutable_variable_should_panic() {
-        let mut parser = Parser::new(vec![
-            Token::Immutable,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(10)),
-            Token::Eof,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(20)),
-            Token::Eof,
-        ]);
+        let input = "val x = 1\n x = 2";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         // 最初のparseで変数定義
         let _ = parser.parse();
         parser.line += 1;
@@ -768,18 +710,10 @@ mod tests {
     #[test]
     #[should_panic(expected = "Return type mismatch Expected type: Void, Actual type: Number")]
     fn test_function_without_arguments_and_void_return() {
-        let mut parser = Parser::new(vec![
-            Token::Function,
-            Token::Identifier("no_args".into()),
-            Token::LParen,
-            Token::RParen, // 引数なし
-            // 戻り値の型指定なし → void
-            Token::LBrace,
-            Token::Return,
-            Token::Number(Fraction::from(42)),
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = "fun no_args() { return 42 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Function {
@@ -794,13 +728,10 @@ mod tests {
     }
     #[test]
     fn test_function_call_with_no_arguments() {
-        let mut parser = Parser::new(vec![
-            Token::Pipe,
-            Token::Pipe,
-            Token::RArrow,
-            Token::Identifier("func".into()),
-            Token::Eof,
-        ]);
+        let input = "|| -> func()";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::FunctionCall {
@@ -812,30 +743,22 @@ mod tests {
 
     #[test]
     fn test_nested_block_scope() {
-        let mut parser = Parser::new(vec![
-            Token::LBrace,
-            Token::Mutable,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(10)),
-            Token::Eof,
-            Token::LBrace,
-            Token::Immutable,
-            Token::Identifier("y".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(20)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Return,
-            Token::Identifier("x".into()),
-            Token::Plus,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = r#"
+        {
+            val mut x = 10
+            {
+                val y = 20
+            }
+            return x + 1
+        }
+        return x + 1
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
+
         assert_eq!(
-            parser.parse_block(),
+            parser.parse_lines()[0],
             ASTNode::Block(vec![
                 ASTNode::Assign {
                     name: "x".into(),
@@ -856,7 +779,7 @@ mod tests {
                         name: "x".into(),
                         value_type: Some(ValueType::Number)
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
                 }))
             ])
@@ -865,15 +788,14 @@ mod tests {
 
     #[test]
     fn test_prefix_operator_only() {
-        let mut parser = Parser::new(vec![
-            Token::Minus,
-            Token::Number(Fraction::from(5)),
-            Token::Eof,
-        ]);
+        let input = "-5";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::PrefixOp {
-                op: Token::Minus,
+                op: TokenKind::Minus,
                 expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5))))
             }
         )
@@ -881,16 +803,10 @@ mod tests {
 
     #[test]
     fn test_list() {
-        let mut parser = Parser::new(vec![
-            Token::LBrancket,
-            Token::Number(Fraction::from(1)),
-            Token::Comma,
-            Token::Number(Fraction::from(2)),
-            Token::Comma,
-            Token::Number(Fraction::from(3)),
-            Token::RBrancket,
-            Token::Eof,
-        ]);
+        let input = "[1, 2, 3]";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Literal(Value::List(vec![
@@ -903,51 +819,48 @@ mod tests {
 
     #[test]
     fn test_fraction_and_decimal_operations() {
-        // 小数のテスト
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::new(5u64, 2u64)), // 2.5
-            Token::Plus,
-            Token::Number(Fraction::new(3u64, 2u64)), // 1.5
-            Token::Eof,
-        ]);
+        let input = "5.2 + 3.2";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins.clone());
 
         assert_eq!(
             parser.parse(),
             ASTNode::BinaryOp {
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(5u64, 2u64)))),
-                op: Token::Plus,
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(3u64, 2u64))))
+                left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(26u64, 5u64)))),
+                op: TokenKind::Plus,
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(16u64, 5u64))))
             }
         );
 
+        let input = "1/3 * 2/5";
         // 分数の演算テスト
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::new(1u64, 3u64)), // 1/3
-            Token::Mul,
-            Token::Number(Fraction::new(2u64, 5u64)), // 2/5
-            Token::Eof,
-        ]);
-
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtins.clone());
         assert_eq!(
             parser.parse(),
             ASTNode::BinaryOp {
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(1u64, 3u64)))),
-                op: Token::Mul,
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(2u64, 5u64))))
+                left: Box::new(ASTNode::BinaryOp{
+                    left: Box::new(ASTNode::BinaryOp{
+                        left: Box::new(ASTNode::Literal(Value::Number(Fraction::new(1u64, 1u64)))),
+                        op: TokenKind::Div,
+                        right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(3u64, 1u64))))
+                    }),
+                    op: TokenKind::Mul,
+                    right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(2u64, 1u64))))
+                }),
+                op: TokenKind::Div,
+                right: Box::new(ASTNode::Literal(Value::Number(Fraction::new(5u64, 1u64))))
             }
         );
     }
 
     #[test]
     fn test_function_call_chain() {
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::from(1)),
-            Token::RArrow,
-            Token::Identifier("f1".into()),
-            Token::RArrow,
-            Token::Identifier("f2".into()),
-            Token::Eof,
-        ]);
+        let input = "1 -> f1 -> f2";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::FunctionCall {
@@ -964,22 +877,10 @@ mod tests {
 
     #[test]
     fn test_lambda() {
-        let mut parser = Parser::new(vec![
-            Token::Immutable,
-            Token::Identifier("inc".into()),
-            Token::Equal,
-            Token::BackSlash,
-            Token::Pipe,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Pipe,
-            Token::RRocket,
-            Token::Identifier("x".into()),
-            Token::Plus,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-        ]);
+        let input = "val inc = \\|x: number| => x + 1";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Assign {
@@ -997,7 +898,7 @@ mod tests {
                             name: "x".into(),
                             value_type: Some(ValueType::Number)
                         }),
-                        op: Token::Plus,
+                        op: TokenKind::Plus,
                         right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
                     })
                 }),
@@ -1007,20 +908,10 @@ mod tests {
 
     #[test]
     fn test_if() {
-        let mut parser = Parser::new(vec![
-            Token::If,
-            Token::LParen,
-            Token::Identifier("x".into()),
-            Token::Eq,
-            Token::Number(Fraction::from(1)),
-            Token::RParen,
-            Token::LBrace,
-            Token::Eof,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = "if (x == 1) { 1 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::If {
@@ -1043,21 +934,10 @@ mod tests {
     #[test]
     #[should_panic(expected = "if expressions without else")]
     fn test_partial_return_if() {
-        let mut parser = Parser::new(vec![
-            Token::If,
-            Token::LParen,
-            Token::Identifier("x".into()),
-            Token::Eq,
-            Token::Number(Fraction::from(1)),
-            Token::RParen,
-            Token::LBrace,
-            Token::Eof,
-            Token::Return,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = "if (x == 1) { return 1 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::If {
@@ -1079,19 +959,10 @@ mod tests {
 
     #[test]
     fn test_non_return_if() {
-        let mut parser = Parser::new(vec![
-            Token::If,
-            Token::LParen,
-            Token::Identifier("x".into()),
-            Token::Eq,
-            Token::Number(Fraction::from(1)),
-            Token::RParen,
-            Token::LBrace,
-            Token::Eof,
-            Token::Number(Fraction::from(1)),
-            Token::RBrace,
-            Token::Eof,
-        ]);
+        let input = "if (x == 1) { 1 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::If {
@@ -1111,30 +982,10 @@ mod tests {
 
     #[test]
     fn test_else() {
-        let tokens = vec![
-            Token::If,
-            Token::LParen,
-            Token::Identifier("x".into()),
-            Token::Eq,
-            Token::Number(Fraction::from(1)),
-            Token::RParen,
-            Token::LBrace,
-            Token::Eof,
-            Token::Return,
-            Token::Number(Fraction::from(1)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-            Token::Else,
-            Token::LBrace,
-            Token::Eof,
-            Token::Return,
-            Token::Number(Fraction::from(0)),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof
-        ];
-        let mut parser = Parser::new(tokens);
+        let input = "if (x == 1) { return 1 } else { return 0 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         let condition = Box::new(ASTNode::Eq {
             left: Box::new(ASTNode::Variable {
                 name: "x".into(),
@@ -1158,58 +1009,10 @@ mod tests {
     }
     #[test]
     fn test_else_if() {
-        let tokens = vec![
-           Token::If,
-           Token::LParen,
-           Token::Identifier("x".into()),
-           Token::Eq,
-           Token::Number(Fraction::from(1)),
-           Token::RParen,
-           Token::LBrace,
-           Token::Eof,
-           Token::Return,
-           Token::Number(Fraction::from(1)),
-           Token::Eof,
-           Token::RBrace,
-           Token::Eof,
-           Token::Else,
-           Token::If,
-           Token::LParen,
-           Token::Identifier("x".into()),
-           Token::Eq,
-           Token::Number(Fraction::from(2)),
-           Token::RParen,
-           Token::LBrace,
-           Token::Eof,
-           Token::Return,
-           Token::Number(Fraction::from(2)),
-           Token::Eof,
-           Token::RBrace,
-           Token::Eof,
-           Token::Else,
-           Token::If,
-           Token::LParen,
-           Token::Identifier("x".into()),
-           Token::Eq,
-           Token::Number(Fraction::from(3)),
-           Token::RParen,
-           Token::LBrace,
-           Token::Eof,
-           Token::Return,
-           Token::Number(Fraction::from(3)),
-           Token::Eof,
-           Token::RBrace,
-           Token::Eof,
-           Token::Else,
-           Token::LBrace,
-           Token::Eof,
-           Token::Return,
-           Token::Number(Fraction::from(0)),
-           Token::Eof,
-           Token::RBrace,
-           Token::Eof
-        ];
-        let mut parser = Parser::new(tokens);
+        let input = "if (x == 1) { return 1 } else if (x == 2) { return 2 } else { return 0 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         let condition = Box::new(ASTNode::Eq {
             left: Box::new(ASTNode::Variable {
                 name: "x".into(),
@@ -1256,55 +1059,45 @@ mod tests {
 
     #[test]
     fn test_comparison_operations() {
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::from(1)),
-            Token::Eq,
-            Token::Number(Fraction::from(1)),
-            Token::Eof
-        ]);
+        let input = "1 == 1";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins.clone());
         assert_eq!(parser.parse(), ASTNode::Eq {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
         });
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::from(2)),
-            Token::Gt,
-            Token::Number(Fraction::from(1)),
-            Token::Eof
-        ]);
+        let input = "2 > 1";
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtins.clone());
+
         assert_eq!(parser.parse(), ASTNode::Gt {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
         });
 
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::from(3)),
-            Token::Gte,
-            Token::Number(Fraction::from(3)),
-            Token::Eof
-        ]);
+        let input = "3 >= 3";
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtins.clone());
+
         assert_eq!(parser.parse(), ASTNode::Gte {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3))))
         });
 
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::from(1)),
-            Token::Lt,
-            Token::Number(Fraction::from(2)),
-            Token::Eof
-        ]);
+        let input = "1 < 2";
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtins.clone());
+
         assert_eq!(parser.parse(), ASTNode::Lt {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2))))
         });
 
-        let mut parser = Parser::new(vec![
-            Token::Number(Fraction::from(4)),
-            Token::Lte,
-            Token::Number(Fraction::from(4)),
-            Token::Eof
-        ]);
+        let input = "4 <= 4";
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtins.clone());
+
         assert_eq!(parser.parse(), ASTNode::Lte {
             left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4)))),
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(4))))
@@ -1313,24 +1106,10 @@ mod tests {
 
     #[test]
     fn test_struct() {
-        let tokens = vec![
-            Token::Struct,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Eof,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Comma,
-            Token::Eof,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof
-        ];
-        let mut parser = Parser::new(tokens);
+        let input = "struct Point { x: number, y: number }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::Struct {
@@ -1351,20 +1130,10 @@ mod tests {
 
     #[test]
     fn test_struct_instance() {
-        let tokens = vec![
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Number(Fraction::from(1)),
-            Token::Comma,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Number(Fraction::from(2)),
-            Token::RBrace,
-            Token::Eof
-        ];
-        let mut parser = Parser::new(tokens);
+        let input = "Point { x: 1, y: 2 }";
+        let tokens = tokenize(&input.to_string());
+        let builtins = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(
             parser.parse(),
             ASTNode::StructInstance {
@@ -1380,50 +1149,17 @@ mod tests {
 
     #[test]
     fn test_struct_field_access() {
-        let tokens = vec![
-            Token::Pub,
-            Token::Struct,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Eof,
-            Token::Pub,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Comma,
-            Token::Eof,
-            Token::Pub,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Identifier("number".into()),
-            Token::Eof,
-            Token::RBrace,
-            Token::Eof,
-            Token::Immutable,
-            Token::Identifier("point".into()),
-            Token::Equal,
-            Token::Identifier("Point".into()),
-            Token::LBrace,
-            Token::Identifier("x".into()),
-            Token::Colon,
-            Token::Number(Fraction::from(1)),
-            Token::Comma,
-            Token::Identifier("y".into()),
-            Token::Colon,
-            Token::Number(Fraction::from(2)),
-            Token::RBrace,
-            Token::Eof,
-            Token::Identifier("point".into()),
-            Token::Dot,
-            Token::Identifier("x".into()),
-            Token::Eof,
-            Token::Identifier("point".into()),
-            Token::Dot,
-            Token::Identifier("x".into()),
-            Token::Equal,
-            Token::Number(Fraction::from(3)),
-        ];
-        let mut parser = Parser::new(tokens);
+        let input = r#"
+          pub struct Point {
+              x: number,
+              y: number
+          }
+          val point = Point {x: 1, y: 2}
+          point.x
+          point.x = 3
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut Env::new()));
         assert_eq!(
             parser.parse_lines(),
             vec![
@@ -1433,11 +1169,11 @@ mod tests {
                         fields: HashMap::from_iter(vec![
                             ("x".into(), ASTNode::StructField {
                                 value_type: ValueType::Number,
-                                is_public: true
+                                is_public: false
                             }),
                             ("y".into(), ASTNode::StructField {
                                 value_type: ValueType::Number,
-                                is_public: true
+                                is_public: false
                             })
                         ])
                     }
@@ -1488,8 +1224,17 @@ mod tests {
 
     #[test]
     fn test_impl() {
-        let tokens = vec![Token::Impl, Token::Identifier("Point".into()), Token::LBrace, Token::Eof, Token::Function, Token::Identifier("move".into()), Token::LParen, Token::Identifier("self".into()), Token::Comma, Token::Identifier("dx".into()), Token::Colon, Token::Identifier("number".into()), Token::RParen, Token::LBrace, Token::Eof, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Equal, Token::Identifier("self".into()), Token::Dot, Token::Identifier("x".into()), Token::Plus, Token::Identifier("dx".into()), Token::Eof, Token::RBrace, Token::Eof, Token::RBrace, Token::Eof];
-        let mut parser = Parser::new(tokens);
+        let input = r#"
+        impl Point {
+            fn move(self, dx: number) {
+                self.x = self.x + dx
+            }
+        }
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut env = Env::new();
+        let builtins = register_builtins(&mut env);
+        let mut parser = Parser::new(tokens, builtins);
         let base_struct = ASTNode::Struct {
             name: "Point".into(),
             fields: HashMap::from_iter(vec![
@@ -1579,7 +1324,9 @@ mod tests {
             Token{kind: TokenKind::RBrace, line: 1, column: 28},
             Token{kind: TokenKind::Eof, line: 1, column: 29},
         ];
-        let mut parser = Parser::new(tokens);
+        let mut env = Env::new();
+        let builtins = register_builtins(&mut env);
+        let mut parser = Parser::new(tokens, builtins);
         assert_eq!(parser.parse(), ASTNode::For {
             variable: "i".into(),
             iterable: Box::new(ASTNode::Literal(Value::List(vec![

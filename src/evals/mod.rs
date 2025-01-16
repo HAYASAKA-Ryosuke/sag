@@ -167,13 +167,13 @@ mod tests {
         let mut env = Env::new();
         let ast = ASTNode::BinaryOp {
             left: Box::new(ASTNode::PrefixOp {
-                op: Token::Minus,
+                op: TokenKind::Minus,
                 expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
             }),
-            op: Token::Plus,
+            op: TokenKind::Plus,
             right: Box::new(ASTNode::BinaryOp {
                 left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(2)))),
-                op: Token::Mul,
+                op: TokenKind::Mul,
                 right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
             }),
         };
@@ -223,7 +223,7 @@ mod tests {
             name: "y".to_string(),
             value: Box::new(ASTNode::BinaryOp {
                 left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(10)))),
-                op: Token::Plus,
+                op: TokenKind::Plus,
                 right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(20)))),
             }),
             variable_type: EnvVariableType::Mutable,
@@ -311,7 +311,7 @@ mod tests {
                         name: "x".into(),
                         value_type: Some(ValueType::Number),
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "y".into(),
                         value_type: Some(ValueType::Number),
@@ -337,7 +337,7 @@ mod tests {
     fn test_unsupported_prefix_operation() {
         let mut env = Env::new();
         let ast = ASTNode::PrefixOp {
-            op: Token::Plus,
+            op: TokenKind::Plus,
             expr: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
         };
         eval(ast, &mut env);
@@ -349,7 +349,7 @@ mod tests {
         let mut env = Env::new();
         let ast = ASTNode::BinaryOp {
             left: Box::new(ASTNode::Literal(Value::String("hello".to_string()))),
-            op: Token::Mul,
+            op: TokenKind::Mul,
             right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(5)))),
         };
         eval(ast, &mut env);
@@ -440,7 +440,7 @@ mod tests {
                         name: "a".into(),
                         value_type: Some(ValueType::Number),
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "local_var".into(),
                         value_type: Some(ValueType::Number),
@@ -531,13 +531,13 @@ mod tests {
                             name: "x".into(),
                             value_type: Some(ValueType::Number),
                         }),
-                        op: Token::Plus,
+                        op: TokenKind::Plus,
                         right: Box::new(ASTNode::Variable {
                             name: "y".into(),
                             value_type: Some(ValueType::Number),
                         }),
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "z".into(),
                         value_type: Some(ValueType::Number),
@@ -567,13 +567,13 @@ mod tests {
                         name: "x".into(),
                         value_type: Some(ValueType::Number),
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "y".into(),
                         value_type: Some(ValueType::Number),
                     }),
                 }),
-                op: Token::Plus,
+                op: TokenKind::Plus,
                 right: Box::new(ASTNode::Variable {
                     name: "z".into(),
                     value_type: Some(ValueType::Number),
@@ -686,13 +686,13 @@ mod tests {
                             name: "x".into(),
                             value_type: Some(ValueType::Number),
                         }),
-                        op: Token::Plus,
+                        op: TokenKind::Plus,
                         right: Box::new(ASTNode::Variable {
                             name: "y".into(),
                             value_type: Some(ValueType::Number),
                         }),
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "z".into(),
                         value_type: Some(ValueType::Number),

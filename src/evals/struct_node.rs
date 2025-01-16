@@ -260,9 +260,9 @@ mod tests {
         "#;
 
         let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
         let mut env = Env::new();
-        register_builtins(&mut env);
+        let builtins = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtins).parse_lines();
         let result = evals(asts, &mut env);
         assert_eq!(result.last(), Some(&Value::Number(Fraction::from(3))));
     }
@@ -287,9 +287,9 @@ mod tests {
         "#;
 
         let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
         let mut env = Env::new();
-        register_builtins(&mut env);
+        let builtins = register_builtins(&mut env);
+        let asts = Parser::new(tokens.to_vec(), builtins).parse_lines();
         evals(asts, &mut env);
     }
 
@@ -313,9 +313,9 @@ mod tests {
         "#;
 
         let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
         let mut env = Env::new();
-        register_builtins(&mut env);
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens.to_vec(), builtin).parse_lines();
         evals(asts, &mut env);
     }
 
@@ -349,9 +349,9 @@ point.clear()
 "#;
 
         let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
         let mut env = Env::new();
-        register_builtins(&mut env);
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtin).parse_lines();
         let result = evals(asts, &mut env);
         let base_struct = Value::Struct {
             name: "Point".into(),

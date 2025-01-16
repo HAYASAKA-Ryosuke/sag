@@ -40,21 +40,16 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::value::Value;
+    use crate::environment::Env;
+    use crate::builtin::register_builtins;
+    use crate::tokenizer::tokenize;
     
     #[test]
     fn test_parse_import() {
-        let input = vec![
-            Token::Import,
-            Token::Identifier("foo1".into()),
-            Token::Comma,
-            Token::Identifier("foo2".into()),
-            Token::Comma,
-            Token::Identifier("foo3".into()),
-            Token::From,
-            Token::Identifier("Foo".into()),
-            Token::Eof
-        ];
-        let mut parser = Parser::new(input);
+        let input = "import foo1, foo2, foo3 from Foo";
+        let builtin = register_builtins(&mut Env::new());
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse();
         match ast {
             ASTNode::Import { module_name, symbols } => {
@@ -67,16 +62,10 @@ mod tests {
 
     #[test]
     fn test_parse_public() {
-        let input = vec![
-            Token::Pub,
-            Token::Immutable,
-            Token::Identifier("foo".into()),
-            Token::Equal,
-            Token::String("hello".into()),
-            Token::Eof
-        ];
-
-        let mut parser = Parser::new(input);
+        let input = "pub let foo = \"hello\"";
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut Env::new());
+        let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse();
         match ast {
             ASTNode::Public { node } => {

@@ -61,7 +61,7 @@ pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, env: &mut
 mod tests {
     use super::*;
     use fraction::Fraction;
-    use crate::token::Token;
+    use crate::token::TokenKind;
 
     #[test]
     fn test_lambda_expression() {
@@ -82,7 +82,7 @@ mod tests {
                     name: "x".into(),
                     value_type: Some(ValueType::Number),
                 }),
-                op: Token::Plus,
+                op: TokenKind::Plus,
                 right: Box::new(ASTNode::Variable {
                     name: "y".into(),
                     value_type: Some(ValueType::Number),
@@ -108,7 +108,7 @@ mod tests {
                         name: "x".into(),
                         value_type: Some(ValueType::Number),
                     }),
-                    op: Token::Plus,
+                    op: TokenKind::Plus,
                     right: Box::new(ASTNode::Variable {
                         name: "y".into(),
                         value_type: Some(ValueType::Number),

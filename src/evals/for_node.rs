@@ -39,7 +39,8 @@ mod tests {
         sum
         "#;
         let tokens = tokenize(&input.to_string());
-        let asts = Parser::new(tokens.to_vec()).parse_lines();
+        let builtin = register_builtins(&mut Env::new());
+        let asts = Parser::new(tokens, builtin).parse_lines();
         let mut env = Env::new();
         register_builtins(&mut env);
         let result = evals(asts, &mut env);
