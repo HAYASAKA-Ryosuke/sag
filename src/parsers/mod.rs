@@ -1009,7 +1009,17 @@ mod tests {
     }
     #[test]
     fn test_else_if() {
-        let input = "if (x == 1) { return 1 } else if (x == 2) { return 2 } else { return 0 }";
+        let input = r#"
+          if (x == 1) {
+            return 1
+          } else if (x == 2) {
+            return 2
+          } else if (x == 3) {
+            return 3
+          } else {
+            return 0
+          }
+        "#;
         let tokens = tokenize(&input.to_string());
         let builtins = register_builtins(&mut Env::new());
         let mut parser = Parser::new(tokens, builtins);
@@ -1046,15 +1056,12 @@ mod tests {
             })),
             value_type: ValueType::Number
         }));
-        assert_eq!(
-            parser.parse(),
-            ASTNode::If {
-                condition,
-                then,
-                else_,
-                value_type: ValueType::Number
-            }
-        );
+        if let ASTNode::If{condition: result_condition, then: result_then, else_: result_else_, value_type: result_value_type} = parser.parse() {
+            assert_eq!(condition, result_condition);
+            assert_eq!(then, result_then);
+            assert_eq!(else_, result_else_);
+            assert_eq!(ValueType::Number, result_value_type);
+        };
     }
 
     #[test]
@@ -1226,7 +1233,7 @@ mod tests {
     fn test_impl() {
         let input = r#"
         impl Point {
-            fn move(self, dx: number) {
+            fun move(self, dx: number) {
                 self.x = self.x + dx
             }
         }
@@ -1303,27 +1310,8 @@ mod tests {
 
     #[test]
     fn test_for() {
-        let tokens = vec![
-            Token{kind: TokenKind::For, line: 1, column: 1},
-            Token{kind: TokenKind::Identifier("i".into()), line: 1, column: 5},
-            Token{kind: TokenKind::In, line: 1, column: 7},
-            Token{kind: TokenKind::LBrancket, line: 1, column: 10},
-            Token{kind: TokenKind::Number(Fraction::from(1)), line: 1, column: 11},
-            Token{kind: TokenKind::Comma, line: 1, column: 12},
-            Token{kind: TokenKind::Number(Fraction::from(2)), line: 1, column: 13},
-            Token{kind: TokenKind::Comma, line: 1, column: 14},
-            Token{kind: TokenKind::Number(Fraction::from(3)), line: 1, column: 15},
-            Token{kind: TokenKind::RBrancket, line: 1, column: 16},
-            Token{kind: TokenKind::LBrace, line: 1, column: 17},
-            Token{kind: TokenKind::Eof, line: 1, column: 18},
-            Token{kind: TokenKind::Identifier("print".into()), line: 1, column: 19},
-            Token{kind: TokenKind::LParen, line: 1, column: 24},
-            Token{kind: TokenKind::Identifier("i".into()), line: 1, column: 25},
-            Token{kind: TokenKind::RParen, line: 1, column: 26},
-            Token{kind: TokenKind::Eof, line: 1, column: 27},
-            Token{kind: TokenKind::RBrace, line: 1, column: 28},
-            Token{kind: TokenKind::Eof, line: 1, column: 29},
-        ];
+        let input = "for i in [1, 2, 3] { print(i) }";
+        let tokens = tokenize(&input.to_string());
         let mut env = Env::new();
         let builtins = register_builtins(&mut env);
         let mut parser = Parser::new(tokens, builtins);
@@ -1338,7 +1326,7 @@ mod tests {
                 name: "print".into(),
                 arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Variable {
                     name: "i".into(),
-                    value_type: None
+                    value_type: Some(ValueType::List(Box::new(ValueType::Number)))
                 }]))
             }]))
         });

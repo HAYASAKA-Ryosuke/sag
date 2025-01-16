@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_parse_public() {
-        let input = "pub let foo = \"hello\"";
+        let input = "pub val foo = \"hello\"";
         let tokens = tokenize(&input.to_string());
         let builtin = register_builtins(&mut Env::new());
         let mut parser = Parser::new(tokens, builtin);

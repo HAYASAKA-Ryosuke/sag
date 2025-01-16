@@ -104,6 +104,7 @@ impl Parser {
                         ValueType::SelfType
                     } else if name == "mut" && current_token_kind == TokenKind::Identifier("self".to_string()) {
                         self.consume_token();
+                        let current_token_kind = self.get_current_token().unwrap().kind.clone();
                         if current_token_kind == TokenKind::Comma || current_token_kind == TokenKind::RParen {
                             variable_name = "self".to_string();
                             ValueType::MutSelfType
