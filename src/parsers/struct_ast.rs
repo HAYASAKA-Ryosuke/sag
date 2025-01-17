@@ -3,9 +3,10 @@ use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
 use crate::environment::ValueType;
 use std::collections::HashMap;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_struct(&mut self) -> ASTNode {
+    pub fn parse_struct(&mut self) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
@@ -59,10 +60,10 @@ impl Parser {
         let scope = self.get_current_scope().clone();
         self.register_struct(scope, result.clone());
         self.leave_struct();
-        result
+        Ok(result)
     }
 
-    pub fn parse_struct_instance_access(&mut self, name: String) -> ASTNode {
+    pub fn parse_struct_instance_access(&mut self, name: String) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let field_name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
@@ -79,27 +80,27 @@ impl Parser {
                 .get_struct(scope.clone(), current_struct.to_string())
                 .expect("undefined struct for self");
 
-            return ASTNode::StructFieldAccess {
+            return Ok(ASTNode::StructFieldAccess {
                 instance: Box::new(ASTNode::Variable {
                     name: "self".to_string(),
                     value_type: Some(struct_type.clone()),
                 }),
                 field_name,
-            };
+            });
         }
 
         match self.find_variables(scope.clone(), name.clone()) {
             Some((ValueType::StructInstance { name: instance_name, ref fields }, _)) => {
-                ASTNode::StructFieldAccess {
+                Ok(ASTNode::StructFieldAccess {
                     instance: Box::new(ASTNode::Variable { name: name.clone(), value_type: Some(ValueType::StructInstance {name: instance_name, fields: fields.clone()}) }),
                     field_name,
-                }
+                })
             }
             _ => panic!("undefined struct: {:?}", name),
         }
     }
 
-    pub fn parse_impl(&mut self) -> ASTNode {
+    pub fn parse_impl(&mut self) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let scope = self.get_current_scope().clone();
         let struct_name = match self.get_current_token() {
@@ -109,7 +110,10 @@ impl Parser {
 
         self.enter_struct(struct_name.clone());
 
-        let base_struct = self.get_struct(scope.clone(),struct_name.to_string()).expect("undefined struct");
+        let base_struct = self.get_struct(scope.clone(),struct_name.to_string());
+        if base_struct.is_none() {
+            return Err(ParseError::new(format!("undefined struct: {:?}", struct_name).as_str(), &self.get_current_token().unwrap()));
+        }
         self.current_struct = Some(struct_name.clone());
         self.consume_token();
         self.extract_token(TokenKind::LBrace);
@@ -129,17 +133,17 @@ impl Parser {
                 continue;
             }
             if token.kind == TokenKind::Function {
-                let method = self.parse_method();
+                let method = self.parse_method()?;
                 methods.push(method);
                 continue;
             }
         }
         self.current_struct = None;
         self.leave_struct();
-        ASTNode::Impl {
-            base_struct: Box::new(base_struct),
+        Ok(ASTNode::Impl {
+            base_struct: Box::new(base_struct.unwrap()),
             methods,
-        }
+        })
     }
 }
 

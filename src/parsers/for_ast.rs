@@ -2,9 +2,10 @@ use crate::ast::ASTNode;
 use crate::environment::{EnvVariableType, ValueType};
 use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_for(&mut self) -> ASTNode {
+    pub fn parse_for(&mut self) -> Result<ASTNode, ParseError> {
         match self.get_current_token() {
             Some(Token{kind: TokenKind::For, ..}) => self.consume_token(),
             _ => panic!("unexpected token"),
@@ -15,15 +16,15 @@ impl Parser {
         };
         self.consume_token();
         self.extract_token(TokenKind::In);
-        let iterable = self.parse_expression(0);
+        let iterable = self.parse_expression(0)?;
         let variable_value_type = self.infer_type(&iterable).unwrap_or(ValueType::Any);
         self.register_variables(self.get_current_scope().clone(), &variable, &variable_value_type, &EnvVariableType::Mutable);
-        let body = self.parse_expression(0);
-        ASTNode::For {
+        let body = self.parse_expression(0)?;
+        Ok(ASTNode::For {
             variable,
             iterable: Box::new(iterable),
             body: Box::new(body),
-        }
+        })
     }
 }
 

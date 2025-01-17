@@ -1,9 +1,10 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
 use crate::token::{Token, TokenKind};
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_function_call_arguments(&mut self) -> ASTNode {
+    pub fn parse_function_call_arguments(&mut self) -> Result<ASTNode, ParseError> {
         match self.get_current_token() {
             Some(Token{kind: TokenKind::Pipe, ..}) => self.consume_token(),
             _ => None,
@@ -18,9 +19,9 @@ impl Parser {
                 self.pos += 1;
                 break;
             }
-            let value = self.parse_expression(0);
+            let value = self.parse_expression(0)?;
             arguments.push(value);
         }
-        ASTNode::FunctionCallArgs(arguments)
+        Ok(ASTNode::FunctionCallArgs(arguments))
     }
 }

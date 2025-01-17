@@ -2,12 +2,13 @@ use crate::ast::ASTNode;
 use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
 use crate::environment::ValueType;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_return(&mut self) -> ASTNode {
+    pub fn parse_return(&mut self) -> Result<ASTNode, ParseError> {
         self.pos += 1;
-        let value = self.parse_expression(0);
-        ASTNode::Return(Box::new(value))
+        let value = self.parse_expression(0)?;
+        Ok(ASTNode::Return(Box::new(value)))
     }
 
     pub fn parse_return_type(&mut self) -> ValueType {

@@ -2,9 +2,10 @@ use crate::ast::ASTNode;
 use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
 use crate::environment::EnvVariableType;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_lambda(&mut self) -> ASTNode {
+    pub fn parse_lambda(&mut self) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let mut arguments = vec![];
 
@@ -70,14 +71,14 @@ impl Parser {
 
         let result = match self.get_current_token() {
             Some(Token{kind: TokenKind::LBrace, ..}) => {
-                let statement = self.parse_block();
+                let statement = self.parse_block()?;
                 ASTNode::Lambda {
                     arguments,
                     body: Box::new(statement),
                 }
             }
             _ => {
-                let statement = self.parse_expression(0);
+                let statement = self.parse_expression(0)?;
                 ASTNode::Lambda {
                     arguments,
                     body: Box::new(statement),
@@ -85,20 +86,20 @@ impl Parser {
             }
         };
         self.leave_scope();
-        result
+        Ok(result)
     }
 
-    pub fn parse_lambda_call(&mut self, left: ASTNode) -> ASTNode {
+    pub fn parse_lambda_call(&mut self, left: ASTNode) -> Result<ASTNode, ParseError> {
         self.consume_token();
-        let lambda = self.parse_lambda();
+        let lambda = self.parse_lambda()?;
         let arguments = match left {
             ASTNode::FunctionCallArgs(arguments) => arguments,
             _ => vec![left],
         };
-        ASTNode::LambdaCall {
+        Ok(ASTNode::LambdaCall {
             lambda: Box::new(lambda),
             arguments,
-        }
+        })
     }
 
     pub fn is_lambda_call(&mut self) -> bool {

@@ -107,9 +107,12 @@ impl Env {
         let builtins = register_builtins(self);
         let mut parser = Parser::new(tokens, builtins);
         let ast_nodes = parser.parse_lines();
+        if let Err(e) = ast_nodes {
+            return Err(format!("Error: {:?}", e));
+        }
 
         let mut module_env = Env::new();
-        evals(ast_nodes, &mut module_env);
+        evals(ast_nodes.unwrap(), &mut module_env);
         self.modules.insert(module_name.to_string(), module_env);
         Ok(())
     }

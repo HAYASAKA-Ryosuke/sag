@@ -2,9 +2,10 @@ use crate::ast::ASTNode;
 use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
 use crate::environment::{EnvVariableType, ValueType};
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_function(&mut self) -> ASTNode {
+    pub fn parse_function(&mut self) -> Result<ASTNode, ParseError> {
         self.pos += 1;
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
@@ -15,7 +16,7 @@ impl Parser {
         self.pos += 1;
         self.extract_token(TokenKind::LParen);
 
-        let arguments = self.parse_function_arguments();
+        let arguments = self.parse_function_arguments()?;
         let return_type = self.parse_return_type();
         self.register_functions(
             function_scope,
@@ -23,7 +24,7 @@ impl Parser {
             &arguments,
             &return_type,
         );
-        let body = self.parse_block();
+        let body = self.parse_block()?;
 
         self.leave_scope();
 
@@ -48,15 +49,15 @@ impl Parser {
             panic!("Missing return statement");
         }
 
-        ASTNode::Function {
+        Ok(ASTNode::Function {
             name,
             arguments,
             body: Box::new(body),
             return_type,
-        }
+        })
     }
 
-    pub fn parse_function_call_arguments_paren(&mut self) -> ASTNode {
+    pub fn parse_function_call_arguments_paren(&mut self) -> Result<ASTNode, ParseError> {
         match self.get_current_token() {
             Some(Token{kind: TokenKind::LParen, ..}) => self.consume_token(),
             _ => None,
@@ -76,13 +77,13 @@ impl Parser {
                 self.line += 1;
                 continue;
             }
-            let value = self.parse_expression(0);
+            let value = self.parse_expression(0)?;
             arguments.push(value);
         }
-        ASTNode::FunctionCallArgs(arguments)
+        Ok(ASTNode::FunctionCallArgs(arguments))
     }
 
-    pub fn parse_function_arguments(&mut self) -> Vec<ASTNode> {
+    pub fn parse_function_arguments(&mut self) -> Result<Vec<ASTNode>, ParseError> {
         let scope = self.get_current_scope();
         let mut arguments = Vec::new();
         while let Some(token) = self.get_current_token() {
@@ -138,19 +139,17 @@ impl Parser {
             };
         }
         self.extract_token(TokenKind::RParen);
-        arguments
+        Ok(arguments)
     }
 
-    pub fn parse_function_call_front(&mut self, name: String, arguments: ASTNode) -> ASTNode {
-
-        let function_call = ASTNode::FunctionCall {
+    pub fn parse_function_call_front(&mut self, name: String, arguments: ASTNode) -> Result<ASTNode, ParseError> {
+        Ok(ASTNode::FunctionCall {
             name,
             arguments: Box::new(arguments),
-        };
-        function_call
+        })
     }
 
-    pub fn parse_function_call(&mut self, left: ASTNode) -> ASTNode {
+    pub fn parse_function_call(&mut self, left: ASTNode) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
@@ -164,10 +163,9 @@ impl Parser {
 
         self.consume_token();
 
-        let function_call = ASTNode::FunctionCall {
+        Ok(ASTNode::FunctionCall {
             name,
             arguments: Box::new(arguments),
-        };
-        function_call
+        })
     }
 }

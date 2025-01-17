@@ -20,7 +20,10 @@ pub fn evaluate(input: &str) -> String {
     let builtins = register_builtins(&mut env);
     let mut parser = Parser::new(tokens, builtins.clone());
     let ast_nodes = parser.parse_lines();
-    let result = evals(ast_nodes, &mut env);
+    if let Err(e) = ast_nodes {
+        return format!("Error: {:?}", e);
+    }
+    let result = evals(ast_nodes.unwrap(), &mut env);
 
     let output = CONSOLE_OUTPUT.with(|output| output.borrow().clone());
     let result_str = format!("{}", result.last().unwrap_or(&Value::Void));

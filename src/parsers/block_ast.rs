@@ -1,9 +1,10 @@
 use crate::ast::ASTNode;
 use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_block(&mut self) -> ASTNode {
+    pub fn parse_block(&mut self) -> Result<ASTNode, ParseError> {
         let mut statements = Vec::new();
         match self.get_current_token() {
             Some(Token{kind: TokenKind::LBrace, ..}) => {},
@@ -36,10 +37,10 @@ impl Parser {
                 self.line += 1;
                 continue;
             }
-            let statement = self.parse_expression(0);
+            let statement = self.parse_expression(0)?;
             statements.push(statement);
         }
 
-        ASTNode::Block(statements)
+        Ok(ASTNode::Block(statements))
     }
 }

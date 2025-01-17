@@ -3,10 +3,11 @@ use crate::parsers::Parser;
 use crate::token::{Token, TokenKind};
 use crate::environment::ValueType;
 use crate::value::Value;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
 
-    pub fn parse_method(&mut self) -> ASTNode {
+    pub fn parse_method(&mut self) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
@@ -15,7 +16,7 @@ impl Parser {
         self.enter_scope(name.to_string());
         self.consume_token();
         self.extract_token(TokenKind::LParen);
-        let arguments = self.parse_function_arguments();
+        let arguments = self.parse_function_arguments()?;
         let mut is_mut = false;
         if arguments.len() > 0 {
             match arguments.first() {
@@ -34,7 +35,7 @@ impl Parser {
             }
         }
         let return_type = self.parse_return_type();
-        let body = self.parse_block();
+        let body = self.parse_block()?;
         self.leave_scope();
         let method = ASTNode::Method {
             name: name.clone(),
@@ -44,7 +45,7 @@ impl Parser {
             is_mut,
         };
         self.register_method(self.get_current_scope(), self.current_struct.clone().unwrap(), method.clone());
-        method
+        Ok(method)
     }
 
     fn is_builtin_method(&self, caller: &ASTNode) -> bool {
@@ -101,13 +102,13 @@ impl Parser {
         builtin
     }
 
-    pub fn parse_method_call(&mut self, caller: ASTNode, method_name: String, arguments: ASTNode) -> ASTNode {
+    pub fn parse_method_call(&mut self, caller: ASTNode, method_name: String, arguments: ASTNode) -> Result<ASTNode, ParseError> {
         let builtin = self.is_builtin_method(&caller);
-        ASTNode::MethodCall {
+        Ok(ASTNode::MethodCall {
             method_name,
             caller: Box::new(caller),
             arguments: Box::new(arguments),
             builtin
-        }
+        })
     }
 }

@@ -2,18 +2,19 @@ use crate::ast::ASTNode;
 use crate::parsers::Parser;
 use crate::token::{Token, TokenKind};
 use crate::environment::ValueType;
+use crate::parsers::parse_error::ParseError;
 
 impl Parser {
-    pub fn parse_if(&mut self) -> ASTNode {
+    pub fn parse_if(&mut self) -> Result<ASTNode, ParseError> {
         match self.get_current_token() {
             Some(Token{kind: TokenKind::If, ..}) => self.consume_token(),
             _ => panic!("unexpected token"),
         };
         let condition = match self.get_current_token() {
-            Some(Token{kind: TokenKind::LParen, ..}) => self.parse_expression(0),
+            Some(Token{kind: TokenKind::LParen, ..}) => self.parse_expression(0)?,
             _ => panic!("unexpected token missing ("),
         };
-        let then = self.parse_expression(0);
+        let then = self.parse_expression(0)?;
         match self.get_current_token() {
             Some(Token{kind: TokenKind::Eof, ..}) => {
                 self.pos = 0;
@@ -25,8 +26,8 @@ impl Parser {
             Some(Token{kind: TokenKind::Else, ..}) => {
                 self.consume_token();
                 match self.get_current_token() {
-                    Some(Token{kind: TokenKind::If, ..}) => Some(Box::new(self.parse_if())),
-                    _ => Some(Box::new(self.parse_expression(0))),
+                    Some(Token{kind: TokenKind::If, ..}) => Some(Box::new(self.parse_if()?)),
+                    _ => Some(Box::new(self.parse_expression(0)?)),
                 }
             }
             _ => None,
@@ -78,11 +79,11 @@ impl Parser {
             panic!("{}", value_type.err().unwrap());
         }
 
-        ASTNode::If {
+        Ok(ASTNode::If {
             condition: Box::new(condition),
             then: Box::new(then),
             else_,
             value_type: value_type.unwrap(),
-        }
+        })
     }
 }

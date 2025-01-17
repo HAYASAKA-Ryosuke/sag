@@ -1,10 +1,11 @@
 use crate::ast::ASTNode;
 use crate::parsers::Parser;
+use crate::parsers::parse_error::ParseError;
 use crate::token::{Token, TokenKind};
 
 
 impl Parser {
-    pub fn parse_import(&mut self) -> ASTNode {
+    pub fn parse_import(&mut self) -> Result<ASTNode, ParseError> {
         self.extract_token(TokenKind::Import);
         let mut symbols = vec![];
         while let Some(token) = self.get_current_token() {
@@ -27,12 +28,12 @@ impl Parser {
         let module_name = match self.get_current_token() { Some(Token{kind: TokenKind::Identifier(module_name), ..}) => module_name.clone(),
             _ => panic!("Expected module name"),
         };
-        ASTNode::Import { module_name, symbols }
+        Ok(ASTNode::Import { module_name, symbols })
     }
 
-    pub fn parse_public(&mut self) -> ASTNode {
+    pub fn parse_public(&mut self) -> Result<ASTNode, ParseError> {
         self.extract_token(TokenKind::Pub);
-        ASTNode::Public {node: Box::new(self.parse_expression(0))}
+        Ok(ASTNode::Public {node: Box::new(self.parse_expression(0)?)})
     }
 }
 

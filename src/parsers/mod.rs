@@ -15,11 +15,14 @@ pub mod block_ast;
 pub mod prefix_op_ast;
 pub mod string_to_value_type;
 pub mod import_ast;
+pub mod parse_error;
+
 
 use crate::environment::{EnvVariableType, ValueType, MethodInfo};
 use crate::token::{Token, TokenKind};
 use crate::ast::ASTNode;
 use crate::value::Value;
+use crate::parsers::parse_error::ParseError;
 use std::collections::HashMap;
 
 pub struct Parser {
@@ -287,7 +290,7 @@ impl Parser {
     }
 
 
-    fn parse_primary(&mut self) -> ASTNode {
+    fn parse_primary(&mut self) -> Result<ASTNode, ParseError> {
         let token = match self.get_current_token() {
             Some(token) => token,
             _ => panic!("token not found!"),
@@ -307,7 +310,7 @@ impl Parser {
             TokenKind::For => self.parse_for(),
             TokenKind::Import => self.parse_import(),
             TokenKind::If => {
-                let ast_if = self.parse_if();
+                let ast_if = self.parse_if()?;
                 match ast_if {
                     ASTNode::If {
                         condition: _,
@@ -323,7 +326,7 @@ impl Parser {
                     }
                     _ => {}
                 }
-                ast_if
+                Ok(ast_if)
             },
             TokenKind::LParen => {
                 self.pos += 1;
@@ -336,13 +339,13 @@ impl Parser {
             TokenKind::Identifier(name) => {
                 self.parse_identifier(name)
             }
-            TokenKind::CommentBlock(comment) => {ASTNode::CommentBlock(comment.to_string())},
+            TokenKind::CommentBlock(comment) => Ok(ASTNode::CommentBlock(comment.to_string())),
             _ => panic!("undefined token: {:?}", token),
         }
     }
 
-    fn parse_expression(&mut self, min_priority: u8) -> ASTNode {
-        let mut lhs = self.parse_primary();
+    fn parse_expression(&mut self, min_priority: u8) -> Result<ASTNode, ParseError> {
+        let mut lhs = self.parse_primary()?;
         loop {
             let token = match self.get_current_token() {
                 Some(token) => token,
@@ -354,7 +357,7 @@ impl Parser {
                     self.pos -= 1;
                     if let TokenKind::Identifier(method_name) = self.get_current_token().unwrap().kind {
                         self.pos += 1;
-                        let args = self.parse_function_call_arguments_paren();
+                        let args = self.parse_function_call_arguments_paren()?;
 
                         let builtin = match lhs {
                             ASTNode::Literal(Value::Number(_)) => true,
@@ -409,7 +412,7 @@ impl Parser {
             if token.kind == TokenKind::RArrow {
                 if self.is_lparen_call() {
                     self.pos += 1;
-                    let rhs = self.parse_primary();
+                    let rhs = self.parse_primary()?;
                     lhs = ASTNode::LambdaCall {
                         lambda: Box::new(rhs),
                         arguments: vec![lhs],
@@ -417,9 +420,9 @@ impl Parser {
                     continue;
                 }
                 if self.is_lambda_call() {
-                    lhs = self.parse_lambda_call(lhs);
+                    lhs = self.parse_lambda_call(lhs)?;
                 } else {
-                    lhs = self.parse_function_call(lhs);
+                    lhs = self.parse_function_call(lhs)?;
                 }
                 continue;
             }
@@ -430,7 +433,7 @@ impl Parser {
                 }
                 self.pos += 1;
 
-                let rhs = self.parse_expression(right_priority);
+                let rhs = self.parse_expression(right_priority)?;
                 if let TokenKind::Eq = token.kind {
                     lhs = ASTNode::Eq {
                         left: Box::new(lhs),
@@ -467,7 +470,7 @@ impl Parser {
                 break;
             }
         }
-        lhs
+        Ok(lhs)
     }
     fn get_priority(&self, token: &Token) -> Option<(u8, u8)> {
         match token.kind {
@@ -478,21 +481,21 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> ASTNode {
+    pub fn parse(&mut self) -> Result<ASTNode, ParseError> {
         self.parse_expression(0)
     }
 
-    pub fn parse_lines(&mut self) -> Vec<ASTNode> {
+    pub fn parse_lines(&mut self) -> Result<Vec<ASTNode>, ParseError> {
         let mut ast_nodes = vec![];
         for _ in 0..self.tokens.len() {
-            ast_nodes.push(self.parse());
+            ast_nodes.push(self.parse()?);
             self.line += 1;
             if self.line >= self.tokens.len() {
                 break;
             }
             self.pos = 0;
         }
-        ast_nodes
+        Ok(ast_nodes)
     }
 }
 
