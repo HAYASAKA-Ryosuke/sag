@@ -51,6 +51,13 @@ impl Parser {
         }
     }
 
+    fn get_line_column(&self) -> (usize, usize) {
+        match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        }
+    }
+
     fn enter_struct(&mut self, struct_name: String) {
         self.current_struct = Some(struct_name);
     }
@@ -75,9 +82,9 @@ impl Parser {
     }
 
     fn register_struct(&mut self, scope: String, struct_value: ASTNode) {
-        if let ASTNode::Struct { name, fields } = &struct_value {
+        if let ASTNode::Struct { name, fields, .. } = &struct_value {
             let field_types = fields.iter().map(|(name, field)| {
-                if let ASTNode::StructField { value_type, is_public } = field {
+                if let ASTNode::StructField { value_type, is_public, .. } = field {
                     (name.clone(), ValueType::StructField { value_type: Box::new(value_type.clone()), is_public: is_public.clone() })
                 } else {
                     panic!("invalid struct field")
@@ -93,7 +100,7 @@ impl Parser {
     }
 
     fn register_method(&mut self, scope: String, struct_name: String, method: ASTNode) {
-        if let ASTNode::Method { name: method_name, arguments, body, return_type, is_mut } = method.clone() {
+        if let ASTNode::Method { name: method_name, arguments, body, return_type, is_mut, .. } = method.clone() {
             for scope in vec![scope.to_string(), "global".to_string()] {
                 if let Some((value_type, _, _)) = self.structs.get_mut(&(scope.to_string(), struct_name.to_string())) {
                     match value_type {
@@ -317,6 +324,7 @@ impl Parser {
                         then: _,
                         ref else_,
                         ref value_type,
+                        ..
                     } => {
                         if *value_type != ValueType::Void {
                             if else_.is_none() {
@@ -339,8 +347,8 @@ impl Parser {
             TokenKind::Identifier(name) => {
                 self.parse_identifier(name)
             }
-            TokenKind::CommentBlock(comment) => Ok(ASTNode::CommentBlock(comment.to_string())),
-            _ => panic!("undefined token: {:?}", token),
+            TokenKind::CommentBlock(comment) => Ok(ASTNode::CommentBlock{comment: comment.to_string(), line: token.line, column: token.column}),
+            _ => Err(ParseError::new(format!("unexpected token: {:?}", token.kind).as_str(), &token)),
         }
     }
 
@@ -360,11 +368,11 @@ impl Parser {
                         let args = self.parse_function_call_arguments_paren()?;
 
                         let builtin = match lhs {
-                            ASTNode::Literal(Value::Number(_)) => true,
-                            ASTNode::Literal(Value::String(_)) => true,
-                            ASTNode::Literal(Value::Bool(_)) => true,
-                            ASTNode::Literal(Value::Void) => true,
-                            ASTNode::Literal(Value::List(_)) => true,
+                            ASTNode::Literal{value: Value::Number(_), ..} => true,
+                            ASTNode::Literal{value: Value::String(_), ..} => true,
+                            ASTNode::Literal{value: Value::Bool(_), ..} => true,
+                            ASTNode::Literal{value: Value::Void, ..} => true,
+                            ASTNode::Literal{value: Value::List(_), ..} => true,
                             ASTNode::FunctionCall { ref name, .. } => {
                                 match self.get_function(self.get_current_scope(), name.clone()) {
                                     Some(value_type) => {
@@ -398,11 +406,21 @@ impl Parser {
                             method_name,
                             builtin,
                             arguments: match args {
-                                ASTNode::FunctionCallArgs(args) => {
-                                    Box::new(ASTNode::FunctionCallArgs(vec![lhs].into_iter().chain(args.into_iter()).collect()))
+                                ASTNode::FunctionCallArgs{args, line, column} => {
+                                    Box::new(ASTNode::FunctionCallArgs{
+                                        args: vec![lhs].into_iter().chain(args.into_iter()).collect(),
+                                        line,
+                                        column,
+                                    })
                                 }
-                                _ => Box::new(ASTNode::FunctionCallArgs(vec![lhs])),
-                            }
+                                _ => Box::new(ASTNode::FunctionCallArgs{
+                                    args: vec![lhs],
+                                    line: token.line,
+                                    column: token.column,
+                                }),
+                            },
+                            line: token.line,
+                            column: token.column,
                         };
                         continue;
                     }
@@ -416,6 +434,8 @@ impl Parser {
                     lhs = ASTNode::LambdaCall {
                         lambda: Box::new(rhs),
                         arguments: vec![lhs],
+                        line: token.line,
+                        column: token.column,
                     };
                     continue;
                 }
@@ -438,32 +458,44 @@ impl Parser {
                     lhs = ASTNode::Eq {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
+                        line: token.line,
+                        column: token.column,
                     }
                 } else if let TokenKind::Gte = token.kind {
                     lhs = ASTNode::Gte {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
+                        line: token.line,
+                        column: token.column,
                     }
                 } else if let TokenKind::Gt = token.kind {
                     lhs = ASTNode::Gt {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
+                        line: token.line,
+                        column: token.column,
                     }
                 } else if let TokenKind::Lte = token.kind {
                     lhs = ASTNode::Lte {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
+                        line: token.line,
+                        column: token.column,
                     }
                 } else if let TokenKind::Lt = token.kind {
                     lhs = ASTNode::Lt {
                         left: Box::new(lhs),
                         right: Box::new(rhs),
+                        line: token.line,
+                        column: token.column,
                     }
                 } else {
                     lhs = ASTNode::BinaryOp {
                         left: Box::new(lhs),
                         op: token.kind,
                         right: Box::new(rhs),
+                        line: token.line,
+                        column: token.column,
                     }
                 }
             } else {

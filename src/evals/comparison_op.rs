@@ -3,16 +3,17 @@ use crate::value::Value;
 use crate::token::TokenKind;
 use crate::environment::Env;
 use crate::evals::eval;
+use crate::evals::runtime_error::RuntimeError;
 
-pub fn comparison_op_node(op: TokenKind, left: Box<ASTNode>, right: Box<ASTNode>, env: &mut Env) -> Value {
-    let left_value = eval(*left, env);
-    let right_value = eval(*right, env);
+pub fn comparison_op_node(op: TokenKind, left: Box<ASTNode>, right: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+    let left_value = eval(*left, env)?;
+    let right_value = eval(*right, env)?;
     match (left_value, right_value, op) {
-        (Value::Number(l), Value::Number(r), TokenKind::Eq) => Value::Bool(l == r),
-        (Value::Number(l), Value::Number(r), TokenKind::Gte) => Value::Bool(l >= r),
-        (Value::Number(l), Value::Number(r), TokenKind::Gt) => Value::Bool(l > r),
-        (Value::Number(l), Value::Number(r), TokenKind::Lte) => Value::Bool(l <= r),
-        (Value::Number(l), Value::Number(r), TokenKind::Lt) => Value::Bool(l < r),
-        _ => panic!("Unsupported operation"),
+        (Value::Number(l), Value::Number(r), TokenKind::Eq) => Ok(Value::Bool(l == r)),
+        (Value::Number(l), Value::Number(r), TokenKind::Gte) => Ok(Value::Bool(l >= r)),
+        (Value::Number(l), Value::Number(r), TokenKind::Gt) => Ok(Value::Bool(l > r)),
+        (Value::Number(l), Value::Number(r), TokenKind::Lte) => Ok(Value::Bool(l <= r)),
+        (Value::Number(l), Value::Number(r), TokenKind::Lt) => Ok(Value::Bool(l < r)),
+        _ => Err(RuntimeError::new("Unsupported operation", line, column)),
     }
 }

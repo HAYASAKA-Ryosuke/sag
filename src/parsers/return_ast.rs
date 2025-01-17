@@ -8,7 +8,8 @@ impl Parser {
     pub fn parse_return(&mut self) -> Result<ASTNode, ParseError> {
         self.pos += 1;
         let value = self.parse_expression(0)?;
-        Ok(ASTNode::Return(Box::new(value)))
+        let (line, column) = self.get_line_column();
+        Ok(ASTNode::Return{expr: Box::new(value), line, column})
     }
 
     pub fn parse_return_type(&mut self) -> ValueType {

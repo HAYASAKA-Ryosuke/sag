@@ -41,6 +41,12 @@ impl Parser {
             statements.push(statement);
         }
 
-        Ok(ASTNode::Block(statements))
+        let current_token = self.get_current_token();
+        let (line, column) = match current_token {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
+
+        Ok(ASTNode::Block{nodes: statements, line, column})
     }
 }

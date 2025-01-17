@@ -3,9 +3,10 @@ use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, ValueType, EnvVariableType};
 use crate::evals::eval;
+use crate::evals::runtime_error::RuntimeError;
 
-pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariableType, is_new: bool, env: &mut Env) -> Value {
-    let value = eval(*value, env);
+pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariableType, is_new: bool, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+    let value = eval(*value, env)?;
     let value_type = match value {
         Value::Number(_) => ValueType::Number,
         Value::String(_) => ValueType::String,
@@ -28,7 +29,7 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
                 let value_type = first_element.value_type();
                 for e in elements {
                     if e.value_type() != value_type {
-                        panic!("List value type mismatch");
+                        return Err(RuntimeError::new("List value type mismatch", line, column));
                     }
                 }
                 ValueType::List(Box::new(value_type))
@@ -39,14 +40,14 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
                 Some(Value::Struct { name: _, fields, methods: _ }) => {
                     for (field_name, value_type) in instance_fields {
                         if !fields.contains_key(&field_name.to_string()) {
-                            panic!("Struct field not found: {:?}", field_name);
+                            return Err(RuntimeError::new(format!("Struct field not found: {:?}", field_name).as_str(), line, column));
                         }
                         if fields.get(&field_name.to_string()).unwrap().value_type() != value_type.value_type() {
-                            panic!("Struct field type mismatch: {:?}", field_name);
+                            return Err(RuntimeError::new(format!("Struct field type mismatch: {:?}", field_name).as_str(), line, column));
                         }
                     }
                 },
-                _ => panic!("Unexpected value type"),
+                _ => return Err(RuntimeError::new(format!("Struct not found: {:?}", name).as_str(), line, column)),
             };
             let mut field_types = HashMap::new();
             for (field_name, field_value) in instance_fields {
@@ -54,7 +55,7 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
             }
             ValueType::StructInstance { name: name.to_string(), fields: field_types }
         },
-        _ => panic!("Unsupported value type, {:?}", value),
+        _ => return Err(RuntimeError::new("Unsupported value type", line, column)),
     };
     let result = env.set(
         name.to_string(),
@@ -66,5 +67,5 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
     if result.is_err() {
         panic!("{}", result.unwrap_err());
     }
-    value
+    Ok(value)
 }

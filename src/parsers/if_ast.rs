@@ -38,12 +38,12 @@ impl Parser {
             let mut else_type = None;
 
             match then {
-                ASTNode::Return(ref value) => {
+                ASTNode::Return{expr: ref value, ..} => {
                     then_type = Some(self.infer_type(&value));
                 },
-                ASTNode::Block(ref statements) => {
+                ASTNode::Block{nodes: ref statements, ..} => {
                     for statement in statements {
-                        if let ASTNode::Return(ref value) = statement {
+                        if let ASTNode::Return{expr: ref value, ..} = statement {
                             then_type = Some(self.infer_type(&value));
                         }
                     }
@@ -53,12 +53,12 @@ impl Parser {
 
             if let Some(else_node) = &else_ {
                 match &**else_node {
-                    ASTNode::Return(ref value) => {
+                    ASTNode::Return{expr: ref value, ..} => {
                         else_type = Some(self.infer_type(&value));
                     },
-                    ASTNode::Block(ref statements) => {
+                    ASTNode::Block{nodes: ref statements, ..} => {
                         for statement in statements {
-                            if let ASTNode::Return(ref value) = statement { 
+                            if let ASTNode::Return{expr: ref value, ..} = statement { 
                                 else_type = Some(self.infer_type(&value));
                             }
                         }
@@ -79,11 +79,18 @@ impl Parser {
             panic!("{}", value_type.err().unwrap());
         }
 
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
+
         Ok(ASTNode::If {
             condition: Box::new(condition),
             then: Box::new(then),
             else_,
             value_type: value_type.unwrap(),
+            line,
+            column
         })
     }
 }

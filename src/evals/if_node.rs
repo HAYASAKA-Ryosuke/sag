@@ -2,19 +2,20 @@ use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::Env;
 use crate::evals::eval;
+use crate::evals::runtime_error::RuntimeError;
 
-pub fn if_node(condition: Box<ASTNode>, then: Box<ASTNode>, else_: Option<Box<ASTNode>>, env: &mut Env) -> Value {
-    let condition = eval(*condition, env);
+pub fn if_node(condition: Box<ASTNode>, then: Box<ASTNode>, else_: Option<Box<ASTNode>>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+    let condition = eval(*condition, env)?;
     match condition {
         Value::Bool(true) => eval(*then, env),
         Value::Bool(false) => {
             if let Some(else_) = else_{
                 eval(*else_, env)
             } else {
-                Value::Void
+                Ok(Value::Void)
             }
         }
-        _ => panic!("Unexpected condition: {:?}", condition),
+        _ => Err(RuntimeError::new(format!("Condition must be a boolean: {}", condition).as_str(), line, column)),
     }
 }
 

@@ -7,6 +7,10 @@ use crate::parsers::parse_error::ParseError;
 impl Parser {
     pub fn parse_function(&mut self) -> Result<ASTNode, ParseError> {
         self.pos += 1;
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
             _ => panic!("undefined function name"),
@@ -30,9 +34,9 @@ impl Parser {
 
         let mut include_return = false;
         match body.clone() {
-            ASTNode::Block(statements) => {
+            ASTNode::Block{nodes: statements, ..} => {
                 for statement in statements {
-                    if let ASTNode::Return(value) = statement {
+                    if let ASTNode::Return{expr: value, ..} = statement {
                         include_return = true;
                         if let Ok(return_value_type) = self.infer_type(&value.clone()) {
                             if return_value_type != return_type {
@@ -54,10 +58,16 @@ impl Parser {
             arguments,
             body: Box::new(body),
             return_type,
+            line,
+            column,
         })
     }
 
     pub fn parse_function_call_arguments_paren(&mut self) -> Result<ASTNode, ParseError> {
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
         match self.get_current_token() {
             Some(Token{kind: TokenKind::LParen, ..}) => self.consume_token(),
             _ => None,
@@ -80,7 +90,7 @@ impl Parser {
             let value = self.parse_expression(0)?;
             arguments.push(value);
         }
-        Ok(ASTNode::FunctionCallArgs(arguments))
+        Ok(ASTNode::FunctionCallArgs{args: arguments, line, column})
     }
 
     pub fn parse_function_arguments(&mut self) -> Result<Vec<ASTNode>, ParseError> {
@@ -126,9 +136,15 @@ impl Parser {
                     &arg_type,
                     &EnvVariableType::Immutable,
                 );
+                let (line, column) = match self.get_current_token() {
+                    Some(token) => (token.line, token.column),
+                    None => (self.line, self.pos),
+                };
                 arguments.push(ASTNode::Variable {
                     name: variable_name,
                     value_type: Some(arg_type),
+                    line,
+                    column,
                 });
             }
             match self.get_current_token() {
@@ -143,9 +159,15 @@ impl Parser {
     }
 
     pub fn parse_function_call_front(&mut self, name: String, arguments: ASTNode) -> Result<ASTNode, ParseError> {
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
         Ok(ASTNode::FunctionCall {
             name,
             arguments: Box::new(arguments),
+            line,
+            column,
         })
     }
 
@@ -156,16 +178,24 @@ impl Parser {
             _ => panic!("failed take function name: {:?}", self.get_current_token()),
         };
 
-        let arguments = ASTNode::FunctionCallArgs(match left {
-            ASTNode::FunctionCallArgs(arguments) => arguments,
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
+
+        let arguments = ASTNode::FunctionCallArgs{args: match left {
+            ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
             _ => vec![left],
-        });
+        }, line, column};
 
         self.consume_token();
+
 
         Ok(ASTNode::FunctionCall {
             name,
             arguments: Box::new(arguments),
+            line,
+            column,
         })
     }
 }

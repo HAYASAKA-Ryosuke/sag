@@ -22,16 +22,17 @@ impl Parser {
                 TokenKind::String(value) => Value::String(value),
                 _ => panic!("unexpected token: {:?}", token),
             };
-            list.push(ASTNode::Literal(value));
+            list.push(ASTNode::Literal{value, line: token.line, column: token.column});
             self.consume_token();
         }
-        Ok(ASTNode::Literal(Value::List(
-            list.iter()
-                .map(|x| match x {
-                    ASTNode::Literal(value) => value.clone(),
-                    _ => panic!("unexpected node"),
-                })
-                .collect(),
-        )))
+        let (line, column) = self.get_line_column();
+        Ok(ASTNode::Literal{
+            value:Value::List(list.iter().map(|x| match x {
+                ASTNode::Literal{value, ..} => value.clone(),
+                _ => panic!("unexpected node"),
+            }).collect()),
+            line,
+            column,
+        })
     }
 }

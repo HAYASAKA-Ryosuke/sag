@@ -10,116 +10,124 @@ pub mod binary_op;
 pub mod for_node;
 pub mod import_node;
 pub mod method_call_node;
+pub mod runtime_error;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::token::TokenKind;
+use crate::evals::runtime_error::RuntimeError;
 
-pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Vec<Value> {
+pub fn evals(asts: Vec<ASTNode>, env: &mut Env) -> Result<Vec<Value>, RuntimeError> {
     let mut values = vec![];
     for ast in asts {
-        values.push(eval(ast, env));
+        values.push(eval(ast, env)?);
     }
-    values
+    Ok(values)
 }
 
-pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
+pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
     match ast {
         ASTNode::Import {
             module_name,
             symbols,
-        } => {
-            import_node::import_node(module_name, symbols, env)
-        }
-        ASTNode::Public { node } => {
-            import_node::public_node(node, env)
-        }
-        ASTNode::Literal(value) => value.clone(),
-        ASTNode::PrefixOp { op, expr } => {
-            prefix_op::prefix_op(op, expr, env)
-        }
+            line,
+            column,
+        } => import_node::import_node(module_name, symbols, line, column, env),
+        ASTNode::Public { node, line, column } => import_node::public_node(node, line, column, env),
+        ASTNode::Literal{value, ..} => Ok(value.clone()),
+        ASTNode::PrefixOp { op, expr, line, column } => prefix_op::prefix_op(op, expr, line, column, env),
         ASTNode::Struct {
             name,
             fields,
-        } => {
-            struct_node::struct_node(name, fields, env)
-        }
+            line,
+            column,
+        } => struct_node::struct_node(name, fields, line, column, env),
         ASTNode::Impl {
             base_struct,
             methods,
+            line,
+            column,
         } => {
-            struct_node::impl_node(base_struct, methods, env)
+            struct_node::impl_node(base_struct, methods, line, column, env)
         }
-        ASTNode::MethodCall { method_name, caller, arguments, builtin } => {
+        ASTNode::MethodCall { method_name, caller, arguments, builtin, line, column } => {
             if builtin {
-                method_call_node::builtin_method_call_node(method_name, caller, arguments, env)
+                method_call_node::builtin_method_call_node(method_name, caller, arguments, line, column, env)
             } else {
                 match caller {
-                    _ => method_call_node::method_call_node(method_name, caller, arguments, env)
+                    _ => method_call_node::method_call_node(method_name, caller, arguments, line, column, env)
                 }
             }
         }
         ASTNode::StructInstance {
             name,
             fields,
+            line,
+            column,
         } => {
-            struct_node::struct_instance_node(name, fields, env)
+            struct_node::struct_instance_node(name, fields, line, column, env)
         }
-        ASTNode::StructFieldAssign { instance, field_name: updated_field_name, value: updated_value_ast } => {
-            struct_node::struct_field_assign_node(instance, updated_field_name, updated_value_ast, env)
+        ASTNode::StructFieldAssign { instance, field_name: updated_field_name, value: updated_value_ast, line, column } => {
+            struct_node::struct_field_assign_node(instance, updated_field_name, updated_value_ast, line, column, env)
         }
-        ASTNode::StructFieldAccess { instance, field_name } => {
-            struct_node::struct_field_access_node(instance, field_name, env)
+        ASTNode::StructFieldAccess { instance, field_name, line, column } => {
+            struct_node::struct_field_access_node(instance, field_name, line, column, env)
         }
         ASTNode::Function {
             name,
             arguments,
             body,
             return_type,
+            line,
+            column,
         } => {
-            function_node::function_node(name, arguments, body, return_type, env)
+            function_node::function_node(name, arguments, body, return_type, line, column, env)
         }
-        ASTNode::Lambda { arguments, body } => Value::Lambda {
+        ASTNode::Lambda { arguments, body, .. } => Ok(Value::Lambda {
             arguments,
             body: body.clone(),
             env: env.clone(),
-        },
-        ASTNode::Block(statements) => {
-            function_node::block_node(statements, env)
+        }),
+        ASTNode::Block{nodes: statements, line, column} => {
+            function_node::block_node(statements, line, column, env)
         }
-        ASTNode::Return(value) => {
-            Value::Return(Box::new(eval(*value, env)))
+        ASTNode::Return{expr: value, line, column} => {
+            Ok(Value::Return(Box::new(eval(*value, env)?)))
         }
-        ASTNode::Eq { left, right } => {
-            comparison_op::comparison_op_node(TokenKind::Eq, left, right, env)
+        ASTNode::Eq { left, right, line, column } => {
+            comparison_op::comparison_op_node(TokenKind::Eq, left, right, line, column, env)
         }
-        ASTNode::Gte { left, right } => {
-            comparison_op::comparison_op_node(TokenKind::Gte, left, right, env)
+        ASTNode::Gte { left, right, line, column, } => {
+            comparison_op::comparison_op_node(TokenKind::Gte, left, right, line, column, env)
         }
-        ASTNode::Gt { left, right } => {
-            comparison_op::comparison_op_node(TokenKind::Gt, left, right, env)
+        ASTNode::Gt { left, right, line, column, } => {
+            comparison_op::comparison_op_node(TokenKind::Gt, left, right, line, column, env)
         }
-        ASTNode::Lte { left, right } => {
-            comparison_op::comparison_op_node(TokenKind::Lte, left, right, env)
+        ASTNode::Lte { left, right, line, column, } => {
+            comparison_op::comparison_op_node(TokenKind::Lte, left, right, line, column, env)
         }
-        ASTNode::Lt { left, right } => {
-            comparison_op::comparison_op_node(TokenKind::Lt, left, right, env)
+        ASTNode::Lt { left, right, line, column, } => {
+            comparison_op::comparison_op_node(TokenKind::Lt, left, right, line, column, env)
         }
         ASTNode::For {
             variable,
             iterable,
             body,
+            line,
+            column
         } => {
-            for_node::for_node(variable, iterable, body, env)
+            for_node::for_node(variable, iterable, body, line, column, env)
         }
         ASTNode::If {
             condition,
             then,
             else_,
             value_type: _,
+            line,
+            column
         } => {
-            if_node::if_node(condition, then, else_, env)
+            if_node::if_node(condition, then, else_, line, column, env)
         }
         ASTNode::Assign {
             name,
@@ -127,26 +135,30 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Value {
             variable_type,
             value_type: _,
             is_new,
+            line,
+            column
         } => {
-            assign_node::assign_node(name, value, variable_type, is_new, env)
+            assign_node::assign_node(name, value, variable_type, is_new, line, column, env)
         }
-        ASTNode::LambdaCall { lambda, arguments } => {
-            lambda_node::lambda_call_node(lambda, arguments, env)
+        ASTNode::LambdaCall { lambda, arguments, line, column } => {
+            lambda_node::lambda_call_node(lambda, arguments, line, column, env)
         }
-        ASTNode::FunctionCall { name, arguments } => {
-            function_node::function_call_node(name, arguments, env)
+        ASTNode::FunctionCall { name, arguments, line, column } => {
+            function_node::function_call_node(name, arguments, line, column, env)
         }
         ASTNode::Variable {
             name,
             value_type,
+            line,
+            column,
         } => {
-            variable_node::variable_node(name, value_type, env)
+            variable_node::variable_node(name, value_type, line, column, env)
         }
-        ASTNode::BinaryOp { left, op, right } => {
-            binary_op::binary_op(op, left, right, env)
+        ASTNode::BinaryOp { left, op, right, line, column } => {
+            binary_op::binary_op(op, left, right, line, column, env)
         }
-        ASTNode::CommentBlock(_) => Value::Void,
-        _ => panic!("Unsupported ast node: {:?}", ast),
+        ASTNode::CommentBlock{..} => Ok(Value::Void),
+        _ => Err(RuntimeError::new(format!("Unsupported ast node: {:?}", ast).as_str(), 0, 0)),
     }
 }
 

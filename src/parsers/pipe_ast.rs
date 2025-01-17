@@ -22,6 +22,7 @@ impl Parser {
             let value = self.parse_expression(0)?;
             arguments.push(value);
         }
-        Ok(ASTNode::FunctionCallArgs(arguments))
+        let (line, column) = self.get_line_column();
+        Ok(ASTNode::FunctionCallArgs{args: arguments, line, column})
     }
 }

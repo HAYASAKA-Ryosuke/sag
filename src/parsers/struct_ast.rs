@@ -47,16 +47,20 @@ impl Parser {
                     Some(Token{kind: TokenKind::Identifier(type_name), ..}) => self.string_to_value_type(type_name),
                     _ => panic!("undefined type"),
                 };
+                let (line, column) = self.get_line_column();
                 fields.insert(name, ASTNode::StructField {
                     value_type,
                     is_public: field_is_public,
+                    line,
+                    column
                 });
                 self.consume_token();
                 field_is_public = false;
                 continue;
             }
         }
-        let result = ASTNode::Struct { name, fields };
+        let (line, column) = self.get_line_column();
+        let result = ASTNode::Struct { name, fields, line, column };
         let scope = self.get_current_scope().clone();
         self.register_struct(scope, result.clone());
         self.leave_struct();
@@ -80,20 +84,33 @@ impl Parser {
                 .get_struct(scope.clone(), current_struct.to_string())
                 .expect("undefined struct for self");
 
+            let (line, column) = self.get_line_column();
             return Ok(ASTNode::StructFieldAccess {
                 instance: Box::new(ASTNode::Variable {
                     name: "self".to_string(),
                     value_type: Some(struct_type.clone()),
+                    line,
+                    column
                 }),
                 field_name,
+                line,
+                column,
             });
         }
 
+        let (line, column) = self.get_line_column();
         match self.find_variables(scope.clone(), name.clone()) {
             Some((ValueType::StructInstance { name: instance_name, ref fields }, _)) => {
                 Ok(ASTNode::StructFieldAccess {
-                    instance: Box::new(ASTNode::Variable { name: name.clone(), value_type: Some(ValueType::StructInstance {name: instance_name, fields: fields.clone()}) }),
+                    instance: Box::new(ASTNode::Variable {
+                        name: name.clone(),
+                        value_type: Some(ValueType::StructInstance {name: instance_name, fields: fields.clone()}),
+                        line,
+                        column
+                    }),
                     field_name,
+                    line,
+                    column,
                 })
             }
             _ => panic!("undefined struct: {:?}", name),
@@ -140,9 +157,12 @@ impl Parser {
         }
         self.current_struct = None;
         self.leave_struct();
+        let (line, column) = self.get_line_column();
         Ok(ASTNode::Impl {
             base_struct: Box::new(base_struct.unwrap()),
             methods,
+            line,
+            column
         })
     }
 }

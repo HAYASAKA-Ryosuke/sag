@@ -21,7 +21,6 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
     for line in std::io::stdin().lines() {
         let line = line?;
         let tokens = tokenize(&line);
-        println!("{:?}", tokens);
         let mut parser = Parser::new(tokens.to_vec(), builtins.clone());
         let ast_node = parser.parse();
         if let Err(e) = ast_node {

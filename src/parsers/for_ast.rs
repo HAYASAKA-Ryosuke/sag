@@ -6,6 +6,10 @@ use crate::parsers::parse_error::ParseError;
 
 impl Parser {
     pub fn parse_for(&mut self) -> Result<ASTNode, ParseError> {
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
         match self.get_current_token() {
             Some(Token{kind: TokenKind::For, ..}) => self.consume_token(),
             _ => panic!("unexpected token"),
@@ -24,6 +28,8 @@ impl Parser {
             variable,
             iterable: Box::new(iterable),
             body: Box::new(body),
+            line,
+            column,
         })
     }
 }

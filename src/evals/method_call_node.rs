@@ -3,96 +3,97 @@ use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, ValueType, MethodInfo, EnvVariableType, EnvVariableValueInfo};
 use crate::evals::eval;
+use crate::evals::runtime_error::RuntimeError;
 
-pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, env: &mut Env) -> Value {
+pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     match *caller.clone() {
-        ASTNode::FunctionCall { name: _, arguments } => {
-            let arguments = match *arguments { ASTNode::FunctionCallArgs(arguments) => arguments,
+        ASTNode::FunctionCall { name: _, arguments, line, column } => {
+            let arguments = match *arguments { ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],
             };
             match method_name.as_str() {
                 "to_string" => {
-                    let value = eval(*caller.clone(), env);
-                    match value {
+                    let value = eval(*caller.clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::String(value.to_string()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "round" => {
-                    let value = eval(*caller.clone(), env);
-                    match value {
+                    let value = eval(*caller.clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::Number(value.round()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "push" => {
-                    let mut list = match eval(*caller.clone(), env) {
+                    let mut list = match eval(*caller.clone(), env)? {
                         Value::List(list) => list,
                         _ => vec![],
                     };
-                    let value = eval(arguments[1].clone(), env);
+                    let value = eval(arguments[1].clone(), env)?;
                     list.push(value);
-                    Value::List(list)
+                    Ok(Value::List(list))
                 },
-                _ => Value::Void,
+                _ => Ok(Value::Void),
             }
         }
-        ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _ } => {
+        ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _, line, column } => {
             let method_name = method_name.clone();
-            let arguments = match *arguments { ASTNode::FunctionCallArgs(arguments) => arguments,
+            let arguments = match *arguments { ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],
             };
             match method_name.as_str() {
                 "to_string" => {
-                    let value = eval(arguments[0].clone(), env);
-                    match value {
+                    let value = eval(arguments[0].clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::String(value.to_string()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "round" => {
-                    let value = eval(arguments[0].clone(), env);
-                    match value {
+                    let value = eval(arguments[0].clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::Number(value.round()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "push" => {
-                    let mut list = match eval(arguments[0].clone(), env) {
+                    let mut list = match eval(arguments[0].clone(), env)? {
                         Value::List(list) => list,
                         _ => vec![],
                     };
-                    let value = eval(arguments[1].clone(), env);
+                    let value = eval(arguments[1].clone(), env)?;
                     list.push(value);
-                    Value::List(list)
+                    Ok(Value::List(list))
                 },
-                _ => Value::Void,
+                _ => Ok(Value::Void),
             }
         }
-        ASTNode::Literal(Value::Number(_)) => {
+        ASTNode::Literal{value: Value::Number(_), ..} => {
             let method_name = method_name.clone();
             let arguments = match *arguments {
-                ASTNode::FunctionCallArgs(arguments) => arguments,
+                ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],
             };
             match method_name.as_str() {
                 "to_string" => {
-                    let value = eval(arguments[0].clone(), env);
-                    match value {
+                    let value = eval(arguments[0].clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::String(value.to_string()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "round" => {
-                    let value = eval(arguments[0].clone(), env);
-                    match value {
+                    let value = eval(arguments[0].clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::Number(value.round()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "push" => {
                     let mut list = match *caller {
-                        ASTNode::Variable { name, value_type: _ } => {
+                        ASTNode::Variable { name, value_type: _, .. } => {
                             let variable = env.get(&name, None).unwrap();
                             match variable.value.clone() {
                                 Value::List(list) => list,
@@ -101,28 +102,28 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
                         },
                         _ => vec![],
                     };
-                    let value = eval(arguments[1].clone(), env);
+                    let value = eval(arguments[1].clone(), env)?;
                     list.push(value);
-                    Value::List(list)
+                    Ok(Value::List(list))
                 },
-                _ => Value::Void,
+                _ => Ok(Value::Void),
             }
         }
-        ASTNode::Variable { ref name, ref value_type } => {
+        ASTNode::Variable { ref name, ref value_type, .. } => {
             match method_name.as_str() {
                 "to_string" => {
-                    let value = eval(*caller.clone(), env);
-                    match value {
+                    let value = eval(*caller.clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::String(value.to_string()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "round" => {
-                    let value = eval(*caller.clone(), env);
-                    match value {
+                    let value = eval(*caller.clone(), env)?;
+                    Ok(match value {
                         Value::Number(value) => Value::Number(value.round()),
                         _ => Value::Void,
-                    }
+                    })
                 },
                 "push" => {
                     let variable_info = env.get(&name, value_type.as_ref()).unwrap().clone();
@@ -131,33 +132,33 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
                         _ => vec![],
                     };
                     let value = match *arguments {
-                        ASTNode::FunctionCallArgs(arguments) => eval(arguments[0].clone(), env),
+                        ASTNode::FunctionCallArgs{args: arguments, ..} => eval(arguments[0].clone(), env)?,
                         _ => Value::Void,
                     };
                     variable.push(value);
                     let _ = env.set(name.to_string(), Value::List(variable.clone()), variable_info.variable_type.clone(), variable_info.value_type.clone(), false);
-                    Value::List(variable)
+                    Ok(Value::List(variable))
                 }
-                _ => Value::Void,
+                _ => Ok(Value::Void),
             }
         }
-        _ => Value::Void,
+        _ => Ok(Value::Void),
     }
 }
 
-pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, env: &mut Env) -> Value {
+pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
             let mut args_vec = vec![];
             match *arguments {
-               ASTNode::FunctionCallArgs(arguments) => {
+               ASTNode::FunctionCallArgs{args: arguments, ..} => {
                    args_vec = arguments
                }
                _ => {}
             }
             let caller_name = match *caller {
-                ASTNode::Variable { name, value_type: _ } => {
+                ASTNode::Variable { name, value_type: _, .. } => {
                     name
                 },
-                _ => panic!("Unexpected caller: {:?}", caller),
+                _ => return Err(RuntimeError::new(format!("Unexpected caller: {:?}", caller).as_str(), line, column)),
             };
             match env.get(&caller_name, None) {
                 Some(EnvVariableValueInfo{value, value_type, variable_type}) => {
@@ -166,21 +167,21 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                         ValueType::StructInstance { name: struct_name, ..} => {
                             local_env.get_struct(&struct_name).cloned()
                         },
-                        _ => panic!("missing struct: {}", value)
+                        _ => return Err(RuntimeError::new(format!("missing struct: {:?}", value).as_str(), line, column)),
                     };
 
                     let methods = match struct_info {
                         Some(Value::Struct{ref methods, ..}) => methods,
-                        _ => panic!("failed get methods")
+                        _ => return Err(RuntimeError::new(format!("failed get methods: {:?}", struct_info).as_str(), line, column)),
                     };
                     match methods.get(&method_name) {
                         Some(MethodInfo{arguments: define_arguments, return_type: _, body, is_mut: _}) => {
 
                             if *variable_type == EnvVariableType::Immutable {
-                                panic!("{} is not mutable", caller_name);
+                                return Err(RuntimeError::new(format!("{} is not mutable", caller_name).as_str(), line, column));
                             }
                             if args_vec.len() != define_arguments.len() - 1 {
-                                panic!("does not match arguments length");
+                                return Err(RuntimeError::new(format!("does not match arguments length: {:?}", args_vec).as_str(), line, column));
                             }
                             local_env.enter_scope(method_name);
                             let _ = local_env.set(
@@ -189,7 +190,7 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                                     Some(Value::Struct{..}) => {
                                         value.clone()
                                     },
-                                    _ => panic!("failed struct")
+                                    _ => return Err(RuntimeError::new(format!("failed struct: {:?}", struct_info).as_str(), line, column)),
                                 },
                                 EnvVariableType::Mutable,
                                 match struct_info {
@@ -200,14 +201,14 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                                         }
                                         ValueType::Struct{name: name.to_string(), fields: field_types, methods: methods.clone()}
                                     },
-                                    _ => panic!("failed struct")
+                                    _ => return Err(RuntimeError::new(format!("failed struct: {:?}", struct_info).as_str(), line, column)),
                                 },
                                 true
                             );
                             // set struct_instance fields
                             for (field_name, field_value) in match value.clone() {
                                 Value::StructInstance { name: _, fields } => fields,
-                                _ => panic!("missing struct instance")
+                                _ => return Err(RuntimeError::new(format!("missing struct instance: {:?}", value).as_str(), line, column)),
                             } {
                                 let _ = local_env.set(
                                     field_name.to_string(),
@@ -219,35 +220,38 @@ pub fn method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Bo
                             }
                             let mut i = 0;
                             for define_arg in define_arguments {
-                                if let ASTNode::Variable {name, value_type} = define_arg {
+                                if let ASTNode::Variable {name, value_type, ..} = define_arg {
                                     if name == "self" {
                                         continue
                                     }
-                                    let arg_value = eval(args_vec[i].clone(), &mut local_env.clone());
+                                    let arg_value = eval(args_vec[i].clone(), &mut local_env.clone())?;
                                     let _ = local_env.set(name.to_string(), arg_value, EnvVariableType::Immutable, value_type.clone().unwrap_or(ValueType::Any), true);
                                     i += 1;
                                 }
                             }
-                            let result = eval(body.clone().unwrap(), &mut local_env);
+                            let result = eval(body.clone().unwrap(), &mut local_env)?;
                             if let Some(self_value) = local_env.get(&"self".to_string(), None) {
                                 if let Value::StructInstance { .. } = self_value.value.clone() {
-                                    local_env.set(
+                                    let set_result = local_env.set(
                                         caller_name.to_string(),
                                         self_value.value.clone(),
                                         variable_type.clone(),
                                         value_type.clone(),
                                         false,
-                                    ).expect("Failed to update self in global environment");
+                                    );
+                                    if set_result.is_err() {
+                                        return Err(RuntimeError::new(format!("Failed to update self in global environment").as_str(), line, column));
+                                    }
                                 }
                             }
                             env.update_global_env(&local_env);
                             env.leave_scope();
-                            result
+                            Ok(result)
                         },
-                        _ => panic!("call failed method: {}", method_name)
+                        _ => Err(RuntimeError::new(format!("call failed method: {:?}", method_name).as_str(), line, column)),
                     }
                 },
-                None => panic!("missing struct: {}", caller_name)
+                None => Err(RuntimeError::new(format!("missing struct: {:?}", caller_name).as_str(), line, column)),
             }
 }
 

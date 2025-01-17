@@ -33,6 +33,8 @@ impl Parser {
                     variable_type,
                     value_type,
                     is_new: true,
+                    line: mutable_or_immutable.line,
+                    column: mutable_or_immutable.column,
                 })
             }
             Some(Token{kind: TokenKind::Colon, ..}) => {
@@ -66,6 +68,8 @@ impl Parser {
                             variable_type,
                             value_type,
                             is_new: true,
+                            line: mutable_or_immutable.line,
+                            column: mutable_or_immutable.column,
                         })
                     }
                     _ => panic!("No valid statement found on the right-hand side"),

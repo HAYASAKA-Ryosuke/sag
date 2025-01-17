@@ -28,12 +28,20 @@ impl Parser {
         let module_name = match self.get_current_token() { Some(Token{kind: TokenKind::Identifier(module_name), ..}) => module_name.clone(),
             _ => panic!("Expected module name"),
         };
-        Ok(ASTNode::Import { module_name, symbols })
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
+        Ok(ASTNode::Import { module_name, symbols, line, column })
     }
 
     pub fn parse_public(&mut self) -> Result<ASTNode, ParseError> {
         self.extract_token(TokenKind::Pub);
-        Ok(ASTNode::Public {node: Box::new(self.parse_expression(0)?)})
+        let (line, column) = match self.get_current_token() {
+            Some(token) => (token.line, token.column),
+            None => (self.line, self.pos),
+        };
+        Ok(ASTNode::Public {node: Box::new(self.parse_expression(0)?), line, column})
     }
 }
 

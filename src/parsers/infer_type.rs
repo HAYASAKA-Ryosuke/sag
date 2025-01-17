@@ -7,7 +7,7 @@ use std::collections::HashMap;
 impl Parser {
     pub fn infer_type(&self, ast: &ASTNode) -> Result<ValueType, String> {
         match ast {
-            ASTNode::Literal(ref v) => match v {
+            ASTNode::Literal{value: ref v, ..} => match v {
                 Value::Number(_) => Ok(ValueType::Number),
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
@@ -32,12 +32,12 @@ impl Parser {
                 _ => Ok(ValueType::Any),
             },
             ASTNode::Lambda { .. } => Ok(ValueType::Lambda),
-            ASTNode::PrefixOp { op: _, expr } => {
+            ASTNode::PrefixOp { op: _, expr, .. } => {
                 let value_type = self.infer_type(&expr)?;
                 Ok(value_type)
             }
 
-            ASTNode::StructInstance { name, fields } => {
+            ASTNode::StructInstance { name, fields, .. } => {
                 let mut field_types = HashMap::new();
                 for (field_name, field_value) in fields.iter() {
                     field_types.insert(field_name.clone(), self.infer_type(field_value)?);
@@ -47,7 +47,7 @@ impl Parser {
                     fields: field_types,
                 })
             }
-            ASTNode::FunctionCall { name, arguments: _ } => {
+            ASTNode::FunctionCall { name, arguments: _, .. } => {
                 let function = self.get_function(self.get_current_scope(), name.clone());
                 if function.is_none() {
                     return Err(format!("undefined function: {:?}", name));
@@ -55,7 +55,7 @@ impl Parser {
                 let value_type = function.unwrap();
                 Ok(value_type.clone())
             }
-            ASTNode::MethodCall { method_name, caller, arguments: _, builtin: _ } => {
+            ASTNode::MethodCall { method_name, caller, arguments: _, builtin: _, .. } => {
                 let caller_type = self.infer_type(&caller)?;
                 let method = self.get_method(self.get_current_scope(), caller_type, method_name.clone());
                 if method.is_none() {
@@ -65,7 +65,7 @@ impl Parser {
                 let return_type = method.return_type.clone();
                 Ok(return_type)
             }
-            ASTNode::BinaryOp { left, op, right } => {
+            ASTNode::BinaryOp { left, op, right, .. } => {
                 let left_type = self.infer_type(&left)?;
                 let right_type = self.infer_type(&right)?;
 
@@ -79,7 +79,7 @@ impl Parser {
                     ),
                 }
             },
-            ASTNode::If { condition, then, else_, value_type: _ } => {
+            ASTNode::If { condition, then, else_, value_type: _, .. } => {
                 let condition_type = self.infer_type(&condition)?;
                 if condition_type != ValueType::Bool {
                     return Err("condition must be bool".to_string());
@@ -98,7 +98,7 @@ impl Parser {
                     Err("type mismatch in if statement".to_string())
                 }
             }
-            ASTNode::Variable { name, value_type } => {
+            ASTNode::Variable { name, value_type, .. } => {
                 if let Some(value_type) = value_type {
                     Ok(value_type.clone())
                 } else {

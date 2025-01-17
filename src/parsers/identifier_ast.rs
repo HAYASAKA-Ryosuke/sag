@@ -39,7 +39,9 @@ impl Parser {
                         None => None
                     }
                 };
-                Ok(ASTNode::Variable { name, value_type })
+                let line = self.line;
+                let column = self.pos;
+                Ok(ASTNode::Variable { name, value_type, line, column })
             }
 
         }
@@ -65,7 +67,8 @@ impl Parser {
                 continue;
             }
         }
-        Ok(ASTNode::StructInstance { name, fields })
+        let (line, column) = self.get_line_column();
+        Ok(ASTNode::StructInstance { name, fields, line, column })
     }
 
     fn create_function_call(&mut self, name: String) -> Result<ASTNode, ParseError> {
@@ -90,12 +93,15 @@ impl Parser {
             );
         }
         let value = self.parse_expression(0)?;
+        let (line, column) = self.get_line_column();
         Ok(ASTNode::Assign {
             name,
             value: Box::new(value),
             variable_type,
             value_type,
             is_new: false,
+            line,
+            column,
         })
     }
     fn create_variable_declaration(&mut self, name: String) -> Result<ASTNode, ParseError> {
@@ -106,7 +112,8 @@ impl Parser {
             } else {
                 panic!("undefined type")
             };
-        Ok(ASTNode::Variable { name, value_type })
+        let (line, column) = self.get_line_column();
+        Ok(ASTNode::Variable { name, value_type, line, column })
     }
 
     fn create_struct_field_access(&mut self, name: String) -> Result<ASTNode, ParseError> {
@@ -120,9 +127,12 @@ impl Parser {
                 };
                 self.pos += 1;
                 let arguments = self.parse_function_call_arguments_paren()?;
+                let (line, column) = self.get_line_column();
                 let caller_variable_ast = ASTNode::Variable {
                     name: name.clone(),
                     value_type: None,
+                    line,
+                    column,
                 };
                 return Ok(self.parse_method_call(caller_variable_ast, method_name.to_string(), arguments)?);
             }
@@ -140,14 +150,17 @@ impl Parser {
                 ASTNode::StructFieldAccess { field_name, .. } => field_name,
                 _ => panic!("unexpected token"),
             };
+            let (line, column) = self.get_line_column();
             Ok(ASTNode::StructFieldAssign {
                 instance: Box::new(struct_instance_access),
                 field_name: field_name.clone(),
                 value: Box::new(value),
+                line,
+                column,
             })
         } else if let Some(Token{kind: TokenKind::Dot, ..}) = self.get_current_token() {
             match struct_instance_access.clone() {
-                ASTNode::StructFieldAccess { field_name, instance: _ } => {
+                ASTNode::StructFieldAccess { field_name, instance: _, .. } => {
                     self.parse_identifier(field_name)
                 },
                 _ => panic!("unexpected token"),
