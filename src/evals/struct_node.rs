@@ -38,8 +38,7 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, line: usize
                 body,
                 return_type,
                 is_mut,
-                line,
-                column
+                ..
             } => {
                 let method_info = MethodInfo {
                     arguments,
@@ -60,7 +59,7 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, line: usize
     Ok(result)
 }
 
-pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+pub fn struct_instance_node(name: String, fields: HashMap<String, ASTNode>, _line: usize, _column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     let mut struct_fields = HashMap::new();
     for (field_name, field_value) in fields {
         struct_fields.insert(field_name, eval(field_value, env)?);

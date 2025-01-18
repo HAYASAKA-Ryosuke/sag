@@ -5,9 +5,9 @@ use crate::environment::{Env, ValueType, MethodInfo, EnvVariableType, EnvVariabl
 use crate::evals::eval;
 use crate::evals::runtime_error::RuntimeError;
 
-pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, _line: usize, _column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     match *caller.clone() {
-        ASTNode::FunctionCall { name: _, arguments, line, column } => {
+        ASTNode::FunctionCall { name: _, arguments, line: _, column: _ } => {
             let arguments = match *arguments { ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],
             };
@@ -38,7 +38,7 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
                 _ => Ok(Value::Void),
             }
         }
-        ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _, line, column } => {
+        ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _, line: _, column: _ } => {
             let method_name = method_name.clone();
             let arguments = match *arguments { ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],

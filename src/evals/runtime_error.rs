@@ -1,6 +1,3 @@
-use crate::token::Token;
-
-
 #[derive(Debug, Clone)]
 pub struct RuntimeError {
     pub message: String,

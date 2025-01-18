@@ -92,7 +92,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         ASTNode::Block{nodes: statements, line, column} => {
             function_node::block_node(statements, line, column, env)
         }
-        ASTNode::Return{expr: value, line, column} => {
+        ASTNode::Return{expr: value, line: _, column: _} => {
             Ok(Value::Return(Box::new(eval(*value, env)?)))
         }
         ASTNode::Eq { left, right, line, column } => {
