@@ -5,7 +5,7 @@ use crate::evals::eval;
 use crate::evals::runtime_error::RuntimeError;
 
 
-pub fn function_node(name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+pub fn function_node(name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, return_type: ValueType, _line: usize, _column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     let function_info = FunctionInfo {
         arguments,
         body: Some(*body),
@@ -16,7 +16,7 @@ pub fn function_node(name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, 
     Ok(Value::Function)
 }
 
-pub fn block_node(statements: Vec<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+pub fn block_node(statements: Vec<ASTNode>, _line: usize, _column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     for statement in statements {
         if let Value::Return(v) = eval(statement, env)? {
             return Ok(*v);

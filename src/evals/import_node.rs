@@ -58,15 +58,15 @@ pub fn import_node(module_name: String, symbols: Vec<String>, line: usize, colum
 pub fn public_node(node: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     match *node.clone() {
         ASTNode::Function{name, ..} => {
-            eval(*node, env);
+            eval(*node, env)?;
             env.register_exported_symbol(name);
         },
         ASTNode::Struct{name, ..} => {
-            eval(*node, env);
+            eval(*node, env)?;
             env.register_exported_symbol(name);
         },
         ASTNode::Assign{name, ..} => {
-            eval(*node, env);
+            eval(*node, env)?;
             env.register_exported_symbol(name);
         },
         _ => return Err(RuntimeError::new(format!("Only variables, struct and functions can be exported").as_str(), line, column))

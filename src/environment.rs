@@ -112,7 +112,10 @@ impl Env {
         }
 
         let mut module_env = Env::new();
-        evals(ast_nodes.unwrap(), &mut module_env);
+        let result = evals(ast_nodes.unwrap(), &mut module_env);
+        if let Err(e) = result {
+            return Err(format!("Error: {:?}", e));
+        }
         self.modules.insert(module_name.to_string(), module_env);
         Ok(())
     }
