@@ -24,7 +24,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         let mut parser = Parser::new(tokens.to_vec(), builtins.clone());
         let ast_node = parser.parse();
         if let Err(e) = ast_node {
-            e.display_with_source(&line);
+            eprint!("{}", e.message_with_source(&line));
             continue;
         }
         println!("ast: {:?}", ast_node);
@@ -45,11 +45,15 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     let mut parser = Parser::new(tokens.to_vec(), builtins.clone());
     let ast_nodes = parser.parse_lines();
     if let Err(e) = ast_nodes {
-        e.display_with_source(&file);
+        eprint!("{}", e.message_with_source(&file));
         return Ok(());
     }
     println!("ast: {:?}", ast_nodes);
     let result = evals(ast_nodes.unwrap(), &mut env);
+    if let Err(e) = result {
+        eprint!("{}", e.message_with_source(&file));
+        return Ok(());
+    }
     println!("result: {:?}", result);
     Ok(())
 }

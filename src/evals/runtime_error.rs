@@ -14,16 +14,12 @@ impl RuntimeError {
         }
     }
 
-    pub fn display_with_source(&self, source: &str) {
+    pub fn message_with_source(&self, source: &str) -> String {
         let lines: Vec<&str> = source.lines().collect();
         let error_line = lines.get(self.line - 1).unwrap_or(&"");
-        eprintln!("Runtime Error: {}", self.message);
-        eprintln!(" --> line {}, column {}", self.line, self.column);
-        eprintln!(" | {}", error_line);
-        eprint!(" | ");
-        for _ in 1..self.column {
-            eprint!(" ");
-        }
-        eprintln!("^");
+        format!(
+            "Runtime Error: {}\n --> line {}, column {}\n | {}\n | {}^",
+            self.message, self.line, self.column, error_line, " ".repeat(self.column)
+        )
     }
 }
