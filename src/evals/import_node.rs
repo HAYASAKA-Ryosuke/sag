@@ -3,12 +3,13 @@ use crate::environment::Env;
 use crate::ast::ASTNode;
 use crate::evals::eval;
 use crate::environment::ExportedSymbolType;
+use crate::evals::runtime_error::RuntimeError;
 
-pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> Value {
+pub fn import_node(module_name: String, symbols: Vec<String>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     let module_path = format!("./{}.sag", module_name);
     match env.register_module(&module_name, &module_path) {
         Ok(_) => {}
-        Err(e) => panic!("Failed to import module {}: {:?}", module_name, e),
+        Err(e) => return Err(RuntimeError::new(format!("Failed to import module {}: {:?}", module_name, e).as_str(), line, column)),
     }
     
     if let Some(module_env) = env.clone().get_module(&module_name) {
@@ -47,14 +48,14 @@ pub fn import_node(module_name: String, symbols: Vec<String>, env: &mut Env) -> 
                     }
                 };
             } else {
-                panic!("Symbol {} not found in module {}", symbol, module_name);
+                return Err(RuntimeError::new(format!("Symbol {} not found in module {}", symbol, module_name).as_str(), line, column));
             }
         }
     }
-    Value::Void
+    Ok(Value::Void)
 }
 
-pub fn public_node(node: Box<ASTNode>, env: &mut Env) -> Value {
+pub fn public_node(node: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     match *node.clone() {
         ASTNode::Function{name, ..} => {
             eval(*node, env);
@@ -68,9 +69,9 @@ pub fn public_node(node: Box<ASTNode>, env: &mut Env) -> Value {
             eval(*node, env);
             env.register_exported_symbol(name);
         },
-        _ => panic!("Only variables, struct and functions can be exported")
+        _ => return Err(RuntimeError::new(format!("Only variables, struct and functions can be exported").as_str(), line, column))
     }
-    Value::Void
+    Ok(Value::Void)
 }
 
 #[cfg(test)]
@@ -86,9 +87,11 @@ mod tests {
         let _ = std::fs::write(file_path, "pub val a = 0\npub fun f() {{\n}}\npub struct Ham {\nx: number\n}\nimpl Ham {\n fun egg(self) {\n }\n }");
         let ast = ASTNode::Import {
             module_name: "test_foo".to_string(),
-            symbols: vec!["a".to_string(), "f".to_string(), "Ham".to_string()]
+            symbols: vec!["a".to_string(), "f".to_string(), "Ham".to_string()],
+            line: 0,
+            column: 0,
         };
-        assert_eq!(Value::Void, eval(ast, &mut env));
+        assert_eq!(Value::Void, eval(ast, &mut env).unwrap());
         let module = env.get_module(&"test_foo".to_string()).unwrap();
         assert_eq!(match module.get_exported_symbol(&"a".to_string()) {
             Some(_) => true,

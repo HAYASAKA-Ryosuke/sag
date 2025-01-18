@@ -16,14 +16,20 @@ pub fn evaluate(input: &str) -> String {
     CONSOLE_OUTPUT.with(|output| output.borrow_mut().clear());
 
     let tokens = tokenize(&input.to_string());
-    let mut parser = Parser::new(tokens);
-    let ast_nodes = parser.parse_lines();
     let mut env = Env::new();
-    register_builtins(&mut env);
-    let result = evals(ast_nodes, &mut env);
+    let builtins = register_builtins(&mut env);
+    let mut parser = Parser::new(tokens, builtins.clone());
+    let ast_nodes = parser.parse_lines();
+    if let Err(ref e) = ast_nodes {
+        e.display_with_source(&input);
+    }
+    let result = evals(ast_nodes.unwrap(), &mut env);
+    if let Err(ref e) = result {
+        e.display_with_source(&input);
+    }
 
     let output = CONSOLE_OUTPUT.with(|output| output.borrow().clone());
-    let result_str = format!("{}", result.last().unwrap_or(&Value::Void));
+    let result_str = format!("{}", result.unwrap().last().unwrap_or(&Value::Void));
     format!(
         "__ConsoleOutput__{}__Result__{}",
         output.trim_end(),
