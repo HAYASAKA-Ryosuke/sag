@@ -266,12 +266,11 @@ mod tests {
         let mut env = Env::new();
         let builtins = register_builtins(&mut env);
         let asts = Parser::new(tokens, builtins).parse_lines();
-        let result = evals(asts, &mut env);
+        let result = evals(asts.unwrap(), &mut env).unwrap();
         assert_eq!(result.last(), Some(&Value::Number(Fraction::from(3))));
     }
 
     #[test]
-    #[should_panic(expected = "set is not mut self argument")]
     fn test_not_mut_set_impl() {
         let input = r#"
             struct Foo {
@@ -293,11 +292,11 @@ mod tests {
         let mut env = Env::new();
         let builtins = register_builtins(&mut env);
         let asts = Parser::new(tokens.to_vec(), builtins).parse_lines();
-        evals(asts, &mut env);
+        let result = evals(asts.unwrap(), &mut env);
+        assert_eq!(result.is_err(), true);
     }
 
     #[test]
-    #[should_panic(expected = "foo is not mutable")]
     fn test_not_mut_instance_impl() {
         let input = r#"
             struct Foo {
@@ -319,7 +318,8 @@ mod tests {
         let mut env = Env::new();
         let builtin = register_builtins(&mut env);
         let asts = Parser::new(tokens.to_vec(), builtin).parse_lines();
-        evals(asts, &mut env);
+        let result = evals(asts.unwrap(), &mut env);
+        assert_eq!(result.is_err(), true);
     }
 
     #[test]
@@ -355,7 +355,7 @@ point.clear()
         let mut env = Env::new();
         let builtin = register_builtins(&mut env);
         let asts = Parser::new(tokens, builtin).parse_lines();
-        let result = evals(asts, &mut env);
+        let result = evals(asts.unwrap(), &mut env).unwrap();
         let base_struct = Value::Struct {
             name: "Point".into(),
             fields: HashMap::from_iter(vec![
@@ -375,228 +375,79 @@ point.clear()
     }
 
     #[test]
-    #[should_panic(expected = "Struct field type mismatch: point.x:Number = String")]
     fn test_struct_other_type_assign() {
-        let asts = vec![
-            ASTNode::Struct {
-                name: "Point".into(),
-                fields: HashMap::from_iter(vec![
-                    ("x".into(), ASTNode::StructField {
-                        value_type: ValueType::Number,
-                        is_public: true
-                    }),
-                    ("y".into(), ASTNode::StructField {
-                        value_type: ValueType::Number,
-                        is_public: true
-                    })
-                ])
-            },
-            ASTNode::Assign {
-                name: "point".into(),
-                variable_type: EnvVariableType::Mutable,
-                is_new: true,
-                value_type: ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
-                    ("x".into(), ValueType::Number),
-                    ("y".into(), ValueType::Number)
-                ])},
-                value: Box::new(ASTNode::StructInstance {
-                    name: "Point".into(),
-                    fields: HashMap::from_iter(vec![
-                        ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                        ("y".into(), ASTNode::Literal(Value::Number(Fraction::from(2)))),
-                    ]),
-                }),
-            },
-            ASTNode::StructFieldAssign {
-                instance: Box::new(ASTNode::StructFieldAccess {
-                    instance: Box::new(ASTNode::Variable {
-                        name: "point".into(),
-                        value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
-                            ("x".into(), ValueType::Number),
-                            ("y".into(), ValueType::Number)
-                        ])})
-                    }),
-                    field_name: "x".into()
-                }),
-                value: Box::new(ASTNode::Literal(Value::String("hello".into()))),
-                field_name: "x".into()
-            },
-        ];
+        let input = r#"
+            struct Point {
+                x: number,
+                y: number
+            }
+            val mut point = Point{x: 1, y: 2}
+            point.x = "hello"
+        "#;
         let mut env = Env::new();
-        evals(asts, &mut env);
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        assert_eq!(evals(asts, &mut env).is_err(), true);
     }
 
     #[test]
     fn test_struct_access() {
-        let asts = vec![
-            ASTNode::Struct {
-                name: "Point".into(),
-                fields: HashMap::from_iter(vec![
-                    ("x".into(), ASTNode::StructField {
-                        value_type: ValueType::Number,
-                        is_public: true
-                    }),
-                    ("y".into(), ASTNode::StructField {
-                        value_type: ValueType::Number,
-                        is_public: true
-                    })
-                ])
-            },
-            ASTNode::Assign {
-                name: "point".into(),
-                variable_type: EnvVariableType::Mutable,
-                is_new: true,
-                value_type: ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
-                    ("x".into(), ValueType::Number),
-                    ("y".into(), ValueType::Number)
-                ])},
-                value: Box::new(ASTNode::StructInstance {
-                    name: "Point".into(),
-                    fields: HashMap::from_iter(vec![
-                        ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                        ("y".into(), ASTNode::Literal(Value::Number(Fraction::from(2)))),
-                    ]),
-                }),
-            },
-            ASTNode::StructFieldAccess {
-                instance: Box::new(ASTNode::Variable {
-                    name: "point".into(),
-                    value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
-                        ("x".into(), ValueType::Number),
-                        ("y".into(), ValueType::Number)
-                    ])})
-                }),
-                field_name: "x".into()
-            },
-            ASTNode::StructFieldAssign {
-                instance: Box::new(ASTNode::StructFieldAccess {
-                    instance: Box::new(ASTNode::Variable {
-                        name: "point".into(),
-                        value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
-                            ("x".into(), ValueType::Number),
-                            ("y".into(), ValueType::Number)
-                        ])})
-                    }),
-                    field_name: "x".into()
-                }),
-                value: Box::new(ASTNode::Literal(Value::Number(Fraction::from(3)))),
-                field_name: "x".into()
-            },
-            ASTNode::StructFieldAccess {
-                instance: Box::new(ASTNode::Variable {
-                    name: "point".into(),
-                    value_type: Some(ValueType::StructInstance{name: "Point".into(), fields: HashMap::from_iter(vec![
-                        ("x".into(), ValueType::Number),
-                        ("y".into(), ValueType::Number)
-                    ])})
-                }),
-                field_name: "x".into()
-            },
-        ];
+        let input = r#"
+            struct Point {
+                x: number,
+                y: number
+            }
+            val mut point = Point{x: 1, y: 2}
+            point.x
+            point.x = 3
+            point.x
+        "#;
         let mut env = Env::new();
-        let result = evals(asts, &mut env);
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        let result = evals(asts, &mut env).unwrap();
         assert_eq!(result[4], Value::Number(Fraction::from(3)));
     }
 
     #[test]
     fn test_assign_struct() {
         let mut env = Env::new();
-        let ast = vec![
-            ASTNode::Struct {
-                name: "Point".into(),
-                fields: HashMap::from_iter(vec![
-                    ("y".into(), ASTNode::StructField {
-                        value_type: ValueType::String,
-                        is_public: false
-                    }),
-                    ("x".into(), ASTNode::StructField {
-                        value_type: ValueType::Number,
-                        is_public: false
-                    })
-                ]),
-            },
-            ASTNode::Assign {
-                name: "point".into(),
-                value: Box::new(ASTNode::StructInstance {
-                    name: "Point".into(),
-                    fields: HashMap::from_iter(vec![
-                        ("x".into(), ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                        ("y".into(), ASTNode::Literal(Value::String("hello".into())))
-                    ])
-                }),
-                variable_type: EnvVariableType::Immutable,
-                value_type: ValueType::StructInstance {
-                    name: "Point".into(),
-                    fields: HashMap::from_iter(vec![
-                        ("x".into(), ValueType::Number),
-                        ("y".into(), ValueType::String)
-                    ])
-                },
-                is_new: true
+        let input = r#"
+            struct Point {
+                x: number,
+                y: number
             }
-        ];
-        let result = evals(ast, &mut env);
-        assert_eq!(
-            result,
-            vec![
-                Value::Struct {
-                    name: "Point".into(),
-                    fields: HashMap::from_iter(vec![
-                        ("y".into(), Value::StructField {
-                            value_type: ValueType::String,
-                            is_public: false
-                        }),
-                        ("x".into(), Value::StructField {
-                            value_type: ValueType::Number,
-                            is_public: false
-                        })
-                    ]),
-                    methods: HashMap::new()
-                },
-                Value::StructInstance {
-                    name: "Point".into(),
-                    fields: HashMap::from_iter(vec![
-                        ("x".into(), Value::Number(Fraction::from(1))),
-                        ("y".into(), Value::String("hello".into()))
-                    ])
-                }
-            ]
-        );
+            val mut point = Point{x: 1, y: 2}
+            point
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        let result = evals(asts, &mut env).unwrap();
+        assert_eq!(result.last(), Some(&Value::StructInstance {
+            name: "Point".to_string(),
+            fields: HashMap::from_iter(vec![
+                ("x".to_string(), Value::Number(Fraction::from(1))),
+                ("y".to_string(), Value::Number(Fraction::from(2))),
+            ])
+        }));
     }
 
     #[test]
     fn test_struct() {
         let mut env = Env::new();
-        let ast = ASTNode::Struct {
-            name: "Point".into(),
-            fields: HashMap::from_iter(vec![
-                ("x".into(), ASTNode::StructField {
-                    value_type: ValueType::Number,
-                    is_public: true }),
-                ("y".into(), ASTNode::StructField {
-                    value_type: ValueType::Number,
-                    is_public: false
-                })
-            ])
-        };
-        let result = eval(ast, &mut env);
-        assert_eq!(
-            result,
-            Value::Struct {
-                name: "Point".into(),
-                methods: HashMap::new(),
-                fields: HashMap::from_iter(vec![
-                    ("x".into(), Value::StructField {
-                        value_type: ValueType::Number,
-                        is_public: true
-                    }),
-                    ("y".into(), Value::StructField {
-                        value_type: ValueType::Number,
-                        is_public: false
-                    })
-                ])
+        let input = r#"
+            struct Point {
+                x: number,
+                y: number
             }
-        );
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        evals(asts, &mut env);
         assert_eq!(env.get_struct(&"Point".to_string()).is_some(), true);
         assert_eq!(env.get_struct(&"DummuStruct".to_string()).is_some(), false);
     }

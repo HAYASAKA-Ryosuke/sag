@@ -41,10 +41,10 @@ mod tests {
         "#;
         let tokens = tokenize(&input.to_string());
         let builtin = register_builtins(&mut Env::new());
-        let asts = Parser::new(tokens, builtin).parse_lines();
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
         let mut env = Env::new();
         register_builtins(&mut env);
-        let result = evals(asts, &mut env);
+        let result = evals(asts, &mut env).unwrap();
         assert_eq!(result, vec![
             Value::Number(Fraction::from(0)),
             Value::Void,

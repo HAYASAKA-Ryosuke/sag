@@ -61,7 +61,7 @@ mod tests {
         let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse();
         match ast {
-            ASTNode::Import { module_name, symbols } => {
+            Ok(ASTNode::Import { module_name, symbols, .. }) => {
                 assert_eq!(module_name, "Foo");
                 assert_eq!(symbols, vec!["foo1", "foo2", "foo3"]);
             }
@@ -77,11 +77,14 @@ mod tests {
         let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse();
         match ast {
-            ASTNode::Public { node } => {
+            Ok(ASTNode::Public { node, .. }) => {
                 match *node {
                     ASTNode::Assign { name, value, ..} => {
                         assert_eq!(name, "foo");
-                        assert_eq!(*value, ASTNode::Literal(Value::String("hello".into())));
+                        match value.as_ref() {
+                            ASTNode::Literal{value: Value::String(v), ..} => assert_eq!(v, "hello"),
+                            _ => panic!("Expected String"),
+                        }
                     }
                     _ => panic!("Expected Assignment"),
                 }

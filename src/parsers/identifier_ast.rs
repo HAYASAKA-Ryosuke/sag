@@ -83,14 +83,19 @@ impl Parser {
         // 再代入
         self.consume_token();
         if variable_info.is_none() {
-            panic!("missing variable: {:?}", name);
+            let current_token = self.get_current_token().unwrap();
+            return Err(ParseError::new(
+                format!("undefined variable: {:?}", name).as_str(),
+                &current_token,
+            ));
         }
         let (value_type, variable_type) = variable_info.clone().unwrap();
         if variable_type == EnvVariableType::Immutable {
-            panic!(
-                "It is an immutable variable and cannot be reassigned: {:?}",
-                name
-            );
+            let current_token = self.get_current_token().unwrap();
+            return Err(ParseError::new(
+                format!("It is an immutable variable and cannot be reassigned: {:?}", name).as_str(),
+                &current_token,
+            ));
         }
         let value = self.parse_expression(0)?;
         let (line, column) = self.get_line_column();
@@ -110,7 +115,11 @@ impl Parser {
             if let Some(Token{kind: TokenKind::Identifier(type_name), ..}) = self.get_current_token() {
                 Some(self.string_to_value_type(type_name))
             } else {
-                panic!("undefined type")
+                let current_token = self.get_current_token().unwrap();
+                return Err(ParseError::new(
+                    format!("undefined type").as_str(),
+                    &current_token,
+                ));
             };
         let (line, column) = self.get_line_column();
         Ok(ASTNode::Variable { name, value_type, line, column })

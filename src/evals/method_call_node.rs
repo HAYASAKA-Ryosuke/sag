@@ -269,8 +269,8 @@ mod tests {
         let input = "1.to_string()".to_string();
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
-        let ast = parser.parse();
-        let result = evals(vec![ast], &mut env);
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result[0], Value::String("1".to_string()));
     }
 
@@ -281,7 +281,7 @@ mod tests {
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse();
-        let result = eval(ast, &mut env);
+        let result = eval(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result, Value::Number(2.into()));
     }
     #[test]
@@ -292,7 +292,7 @@ mod tests {
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse_lines();
-        let result = evals(ast, &mut env);
+        let result = evals(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result[1], Value::List(vec![Value::Number(1.into())]));
     }
 
@@ -304,7 +304,7 @@ mod tests {
         let builtin = register_builtins(&mut env);
         let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse_lines();
-        let result = evals(ast, &mut env);
+        let result = evals(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result[2], Value::List(vec![Value::Number(1.into()), Value::Number(2.into()), Value::Number(3.into())]));
     }
     #[test]
@@ -314,7 +314,7 @@ mod tests {
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse_lines();
-        let result = evals(ast, &mut env);
+        let result = evals(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result[1], Value::String("3".to_string()));
     }
 }

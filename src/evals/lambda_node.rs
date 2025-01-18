@@ -62,72 +62,21 @@ pub fn lambda_call_node(lambda: Box<ASTNode>, arguments: Vec<ASTNode>, line: usi
 mod tests {
     use super::*;
     use fraction::Fraction;
-    use crate::token::TokenKind;
+    use crate::tokenizer::tokenize;
+    use crate::parsers::Parser;
+    use crate::builtin::register_builtins;
+    use crate::evals::evals;
 
     #[test]
     fn test_lambda_expression() {
         let mut env = Env::new();
-        let lambda_ast = ASTNode::Lambda {
-            arguments: vec![
-                ASTNode::Variable {
-                    name: "x".into(),
-                    value_type: Some(ValueType::Number),
-                },
-                ASTNode::Variable {
-                    name: "y".into(),
-                    value_type: Some(ValueType::Number),
-                },
-            ],
-            body: Box::new(ASTNode::BinaryOp {
-                left: Box::new(ASTNode::Variable {
-                    name: "x".into(),
-                    value_type: Some(ValueType::Number),
-                }),
-                op: TokenKind::Plus,
-                right: Box::new(ASTNode::Variable {
-                    name: "y".into(),
-                    value_type: Some(ValueType::Number),
-                }),
-            }),
-        };
-        let lambda = eval(lambda_ast.clone(), &mut env);
-        assert_eq!(
-            lambda,
-            Value::Lambda {
-                arguments: vec![
-                    ASTNode::Variable {
-                        name: "x".into(),
-                        value_type: Some(ValueType::Number),
-                    },
-                    ASTNode::Variable {
-                        name: "y".into(),
-                        value_type: Some(ValueType::Number),
-                    },
-                ],
-                body: Box::new(ASTNode::BinaryOp {
-                    left: Box::new(ASTNode::Variable {
-                        name: "x".into(),
-                        value_type: Some(ValueType::Number),
-                    }),
-                    op: TokenKind::Plus,
-                    right: Box::new(ASTNode::Variable {
-                        name: "y".into(),
-                        value_type: Some(ValueType::Number),
-                    }),
-                }),
-                env: env.clone(),
-            }
-        );
-
-        // ラムダの呼び出し
-        let call_ast = ASTNode::LambdaCall {
-            lambda: Box::new(lambda_ast),
-            arguments: vec![
-                ASTNode::Literal(Value::Number(Fraction::from(3))),
-                ASTNode::Literal(Value::Number(Fraction::from(4))),
-            ],
-        };
-        let result = eval(call_ast, &mut env);
-        assert_eq!(result, Value::Number(Fraction::from(7)));
+        let input = r#"
+        |3, 4| -> \|x: number, y: number| => x + y
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut env);
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        let result = evals(asts, &mut env).unwrap();
+        assert_eq!(*result.last().unwrap(), Value::Number(Fraction::from(7)));
     }
 }

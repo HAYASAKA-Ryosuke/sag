@@ -12,7 +12,10 @@ impl Parser {
         };
         let condition = match self.get_current_token() {
             Some(Token{kind: TokenKind::LParen, ..}) => self.parse_expression(0)?,
-            _ => panic!("unexpected token missing ("),
+            _ => {
+                let current_token = self.get_current_token().unwrap();
+                return Err(ParseError::new("unexpected token missing (", &current_token))
+            }
         };
         let then = self.parse_expression(0)?;
         match self.get_current_token() {

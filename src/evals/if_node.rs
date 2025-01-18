@@ -23,39 +23,44 @@ pub fn if_node(condition: Box<ASTNode>, then: Box<ASTNode>, else_: Option<Box<AS
 mod tests {
     use super::*;
     use fraction::Fraction;
-    use crate::environment::ValueType;
+    use crate::tokenizer::tokenize;
+    use crate::parsers::Parser;
+    use crate::builtin::register_builtins;
+    use crate::evals::evals;
 
     #[test]
     fn test_if() {
         let mut env = Env::new();
-        let ast = ASTNode::If {
-            condition: Box::new(ASTNode::Eq {
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-            }),
-            then: Box::new(ASTNode::Block(vec![
-                ASTNode::Literal(Value::Number(Fraction::from(1)))
-            ])),
-            else_: None,
-            value_type: ValueType::Void
-        };
-        assert_eq!(Value::Void, eval(ast, &mut env));
+        let input = r#"
+        if (1 == 1) {
+            1
+        }
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut Env::new());
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        let result = evals(asts, &mut env).unwrap();
+        assert_eq!(result, vec![
+            Value::Void
+        ]);
     }
 
     #[test]
     fn test_if_return() {
         let mut env = Env::new();
-        let ast = ASTNode::If {
-            condition: Box::new(ASTNode::Eq {
-                left: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1)))),
-                right: Box::new(ASTNode::Literal(Value::Number(Fraction::from(1))))
-            }),
-            then: Box::new(ASTNode::Block(vec![
-                ASTNode::Literal(Value::Number(Fraction::from(1)))
-            ])),
-            else_: None,
-            value_type: ValueType::Void
-        };
-        assert_eq!(Value::Void, eval(ast, &mut env));
+        let input = r#"
+        if (1 == 1) {
+            return 1
+        } else {
+            return 2
+        }
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut Env::new());
+        let asts = Parser::new(tokens, builtin).parse_lines();
+        let result = evals(asts.unwrap(), &mut env).unwrap();
+        assert_eq!(result, vec![
+            Value::Number(Fraction::from(1)),
+        ]);
     }
 }

@@ -87,9 +87,11 @@ mod tests {
         let _ = std::fs::write(file_path, "pub val a = 0\npub fun f() {{\n}}\npub struct Ham {\nx: number\n}\nimpl Ham {\n fun egg(self) {\n }\n }");
         let ast = ASTNode::Import {
             module_name: "test_foo".to_string(),
-            symbols: vec!["a".to_string(), "f".to_string(), "Ham".to_string()]
+            symbols: vec!["a".to_string(), "f".to_string(), "Ham".to_string()],
+            line: 0,
+            column: 0,
         };
-        assert_eq!(Value::Void, eval(ast, &mut env));
+        assert_eq!(Value::Void, eval(ast, &mut env).unwrap());
         let module = env.get_module(&"test_foo".to_string()).unwrap();
         assert_eq!(match module.get_exported_symbol(&"a".to_string()) {
             Some(_) => true,

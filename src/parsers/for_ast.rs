@@ -37,7 +37,6 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::value::Value;
     use crate::tokenizer::tokenize;
     use crate::environment::Env;
     use crate::builtin::register_builtins;
@@ -49,16 +48,25 @@ mod tests {
         let builtin = register_builtins(&mut Env::new());
         let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse_for();
-        assert_eq!(
-            ast,
-            ASTNode::For {
-                variable: "i".into(),
-                iterable: Box::new(ASTNode::FunctionCall {
-                    name: "range".into(),
-                    arguments: Box::new(ASTNode::FunctionCallArgs(vec![ASTNode::Literal(Value::Number(10.into()))])),
-                }),
-                body: Box::new(ASTNode::Block(vec![ASTNode::Variable{name: "i".into(), value_type: Some(ValueType::Number)}])),
-            }
-        );
+        match ast {
+            Ok(ASTNode::For { variable, iterable, body, .. }) => {
+                assert_eq!(variable, "i");
+                match iterable.as_ref() {
+                    ASTNode::FunctionCall { name, .. } => assert_eq!(name, "range"),
+                    _ => panic!("unexpected ast"),
+                }
+                match body.as_ref() {
+                    ASTNode::Block { nodes, .. } => {
+                        assert_eq!(nodes.len(), 1);
+                        match &nodes[0] {
+                            ASTNode::Variable { name, .. } => assert_eq!(name, "i"),
+                            _ => panic!("unexpected ast"),
+                        }
+                    },
+                    _ => panic!("unexpected ast"),
+                }
+            },
+            _ => panic!("unexpected ast"),
+        }
     }
 }
