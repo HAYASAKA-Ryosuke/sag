@@ -21,12 +21,20 @@ impl Parser {
                     self.consume_token();
                     symbols.push(name);
                 },
-                _ => panic!("Expected identifier"),
+                _ => return Err(ParseError::new("Expected identifier", &token)),
             };
         }
         self.extract_token(TokenKind::From);
-        let module_name = match self.get_current_token() { Some(Token{kind: TokenKind::Identifier(module_name), ..}) => module_name.clone(),
-            _ => panic!("Expected module name"),
+        let module_name = match self.get_current_token() {
+            Some(Token{kind: TokenKind::Identifier(module_name), ..}) => module_name.clone(),
+            Some(token) => return Err(ParseError::new("Expected module name", &token)),
+            None => {
+                let (line, column) = match self.get_current_token() {
+                    Some(token) => (token.line, token.column),
+                    None => (self.line, self.pos),
+                };
+                return Err(ParseError::new("Expected module name", &Token{kind: TokenKind::Eof, line, column}))
+            },
         };
         let (line, column) = match self.get_current_token() {
             Some(token) => (token.line, token.column),

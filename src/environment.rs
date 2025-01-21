@@ -6,6 +6,7 @@ use crate::tokenizer::tokenize;
 use crate::parsers::Parser;
 use crate::evals::evals;
 use crate::builtin::register_builtins;
+use crate::evals::runtime_error::RuntimeError;
 
 
 #[wasm_bindgen]
@@ -141,22 +142,23 @@ impl Env {
         self.exported_symbols.get(name)
     }
 
-    pub fn register_struct(&mut self, struct_value: Value) {
+    pub fn register_struct(&mut self, struct_value: Value) -> Result<(), RuntimeError> {
         let name = match struct_value {
             Value::Struct { ref name, .. } => name.clone(),
-            _ => panic!("Invalid struct value"),
+            _ => { return Err(RuntimeError::new("Invalid struct value", 0, 0)); }
         };
         if self.structs.contains_key(&name) {
-            panic!("Struct {} already exists", name);
+            return Err(RuntimeError::new(format!("Struct '{}' already exists", name).as_str(), 0, 0));
         }
         self.structs.insert(name.clone(), struct_value.clone());
+        Ok(())
     }
 
     pub fn get_struct(&self, name: &String) -> Option<&Value> {
         self.structs.get(name)
     }
 
-    pub fn register_impl(&mut self, impl_value: Value) {
+    pub fn register_impl(&mut self, impl_value: Value) -> Result<(), RuntimeError> {
         match impl_value {
             Value::Impl { base_struct, methods } => {
                 if let ValueType::Struct { name, .. } = base_struct {
@@ -164,14 +166,15 @@ impl Env {
                         for (method_name, method_info) in methods {
                             struct_methods.insert(method_name.clone(), method_info.clone());
                         }
+                        Ok(())
                     } else {
-                        panic!("Struct '{}' not found for Impl", name);
+                        Err(RuntimeError::new(format!("Struct '{}' not found for Impl", name).as_str(), 0, 0))
                     }
                 } else {
-                    panic!("Invalid base_struct in Impl");
+                    Err(RuntimeError::new("Invalid base_struct in Impl", 0, 0))
                 }
             }
-            _ => panic!("Invalid impl value"),
+            _ => Err(RuntimeError::new("Invalid Impl value", 0, 0)),
         }
     }
 

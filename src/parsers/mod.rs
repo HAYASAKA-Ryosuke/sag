@@ -916,7 +916,6 @@ mod tests {
         }
     }
     #[test]
-    #[should_panic(expected = "Return type mismatch Expected type: Void, Actual type: Number")]
     fn test_function_without_arguments_and_void_return() {
         let input = "fun no_args() { return 42 }";
         let tokens = tokenize(&input.to_string());
@@ -951,6 +950,9 @@ mod tests {
                 }
                 assert_eq!(return_type, ValueType::Void);
             }
+            Err(ParseError{message, ..}) => {
+                assert_eq!(message, "Return type mismatch Expected type: Void, Actual type: Number");
+            },
             _ => assert!(false, "Invalid ASTNode"),
         }
     }

@@ -24,7 +24,7 @@ pub fn struct_node(name: String, fields: HashMap<String, ASTNode>, line: usize, 
         fields: struct_fields,
         methods: HashMap::new()
     };
-    env.register_struct(result.clone());
+    env.register_struct(result.clone())?;
     Ok(result)
 }
 
@@ -55,7 +55,7 @@ pub fn impl_node(base_struct: Box<ValueType>, methods: Vec<ASTNode>, line: usize
         base_struct: *base_struct,
         methods: impl_methods,
     };
-    env.register_impl(result.clone());
+    env.register_impl(result.clone())?;
     Ok(result)
 }
 
@@ -84,7 +84,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                         Some(MethodInfo {arguments, ..}) => {
                                             let first_argument = arguments.first();
                                             if first_argument.is_none() {
-                                                panic!("missing self argument");
+                                                return Err(RuntimeError::new(format!("{} is missing self argument", scope).as_str(), line, column));
                                             }
                                             match first_argument.unwrap() {
                                                 ASTNode::Variable { name: self_argument, value_type: self_type, line, column } => {
@@ -92,17 +92,23 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                                         return Err(RuntimeError::new(format!("{} is not mut self argument", scope).as_str(), *line, *column));
                                                     }
                                                 },
-                                                _ => panic!("missing self argument"),
+                                                _ => {
+                                                    return Err(RuntimeError::new(format!("{} is missing self argument", scope).as_str(), line, column));
+                                                }
                                             }
                                         },
-                                        _ => panic!("missing method info")
+                                        _ => {
+                                            return Err(RuntimeError::new(format!("{} is missing self argument", scope).as_str(), line, column));
+                                        }
                                     }
                                 },
-                                _ => panic!("Unexpected value type"),
+                                _ => {
+                                    return Err(RuntimeError::new(format!("Struct not found: {:?}", name).as_str(), line, column));
+                                }
                             };
                             let obj = env.get(&variable_name, None);
                             if obj.is_none() {
-                                panic!("Variable not found: {:?}", variable_name);
+                                return Err(RuntimeError::new(format!("Variable not found: {:?}", variable_name).as_str(), line, column));
                             }
                             let mut struct_fields = HashMap::new();
                             match obj.unwrap().value.clone() {
@@ -115,7 +121,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                             *updated_fields.entry(updated_field_name.to_string()).or_insert(updated_value.clone()) = updated_value.clone();
                                             Value::StructInstance{name, fields: updated_fields}
                                         },
-                                        _ => panic!("missing struct instance value: {:?}", instance_value)
+                                        _ => return Err(RuntimeError::new(format!("Unexpected value type: {:?}", instance_value).as_str(), line, column)),
                                     };
                                     env.set(variable_name.to_string(), updated_value.clone(), EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false).expect("update variable");
                                     Ok(updated_value)
@@ -125,7 +131,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                         if field_name == updated_field_name {
                                             let updated_value = eval(*updated_value_ast.clone(), env)?;
                                             if field_value.value_type() != updated_value.value_type() {
-                                                panic!("Struct field type mismatch: {}.{}:{:?} = {:?}", variable_name, field_name, field_value.value_type(), updated_value.value_type());
+                                                return Err(RuntimeError::new(format!("Struct field type mismatch: {}.{}:{:?} = {:?}", variable_name, field_name, field_value.value_type(), updated_value.value_type()).as_str(), line, column));
                                             }
                                             struct_fields.insert(field_name, updated_value);
                                         } else {
@@ -137,7 +143,7 @@ pub fn struct_field_assign_node(instance: Box<ASTNode>, updated_field_name: Stri
                                         fields: struct_fields.clone(),
                                     }, EnvVariableType::Mutable, ValueType::StructInstance { name: name.to_string(), fields: fields.clone() }, false);
                                     if env_updated_result.is_err() {
-                                        panic!("{}", env_updated_result.unwrap_err());
+                                        return Err(RuntimeError::new(format!("{}", env_updated_result.unwrap_err()).as_str(), line, column));
                                     }
                                     Ok(Value::StructInstance {
                                         name: variable_name.to_string(),
@@ -212,7 +218,9 @@ pub fn struct_field_access_node(instance: Box<ASTNode>, field_name: String, line
                 _ => return Err(RuntimeError::new(format!("Unexpected value type: {:?}", value_type).as_str(), line, column)),
             }
         },
-        _ => panic!("Unexpected value type"),
+        _ => {
+            return Err(RuntimeError::new(format!("Unexpected value type: {:?}", instance).as_str(), line, column));
+        }
     };
     match struct_obj {
         Value::Struct {fields, ..} => {

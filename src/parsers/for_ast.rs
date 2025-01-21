@@ -12,11 +12,17 @@ impl Parser {
         };
         match self.get_current_token() {
             Some(Token{kind: TokenKind::For, ..}) => self.consume_token(),
-            _ => panic!("unexpected token"),
+            _ => {
+                let current_token = self.get_current_token().unwrap();
+                return Err(ParseError::new("unexpected token missing for", &current_token))
+            }
         };
         let variable = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
-            _ => panic!("unexpected token"),
+            _ => {
+                let current_token = self.get_current_token().unwrap();
+                return Err(ParseError::new("unexpected token missing variable name", &current_token))
+            }
         };
         self.consume_token();
         self.extract_token(TokenKind::In);

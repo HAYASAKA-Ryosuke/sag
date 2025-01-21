@@ -11,7 +11,10 @@ impl Parser {
         let mutable_or_immutable = self.consume_token().unwrap();
         let name = match self.consume_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
-            _ => panic!("unexpected token"),
+            _ => {
+                let current_token = self.get_current_token().unwrap();
+                return Err(ParseError::new("unexpected token missing variable name", &current_token))
+            }
         };
         match self.consume_token() {
             Some(Token{kind: TokenKind::Equal, ..}) => {

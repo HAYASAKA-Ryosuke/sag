@@ -99,7 +99,7 @@ pub fn function_call_node(name: String, arguments: Box<ASTNode>, line: usize, co
                 body,
                 env: lambda_env,
             } => (arguments, body, lambda_env),
-            _ => panic!("Unexpected value type"),
+            _ => return Err(RuntimeError::new(format!("Function is missing: {:?}", name).as_str(), line, column)),
         };
 
         let mut params_vec = vec![];

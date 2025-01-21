@@ -8,7 +8,10 @@ impl Parser {
     pub fn parse_if(&mut self) -> Result<ASTNode, ParseError> {
         match self.get_current_token() {
             Some(Token{kind: TokenKind::If, ..}) => self.consume_token(),
-            _ => panic!("unexpected token"),
+            _ => {
+                let current_token = self.get_current_token().unwrap();
+                return Err(ParseError::new("unexpected token missing if", &current_token))
+            }
         };
         let condition = match self.get_current_token() {
             Some(Token{kind: TokenKind::LParen, ..}) => self.parse_expression(0)?,
@@ -79,7 +82,9 @@ impl Parser {
             }
         };
         if value_type.is_err() {
-            panic!("{}", value_type.err().unwrap());
+            if let Some(token) = self.get_current_token() {
+                return Err(ParseError::new(&value_type.err().unwrap(), &token));
+            }
         }
 
         let (line, column) = match self.get_current_token() {

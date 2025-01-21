@@ -65,7 +65,7 @@ pub fn assign_node(name: String, value: Box<ASTNode>, variable_type: EnvVariable
         is_new,
     );
     if result.is_err() {
-        panic!("{}", result.unwrap_err());
+        return Err(RuntimeError::new(&result.err().unwrap(), line, column));
     }
     Ok(value)
 }

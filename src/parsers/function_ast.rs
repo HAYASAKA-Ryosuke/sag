@@ -13,7 +13,7 @@ impl Parser {
         };
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
-            _ => panic!("undefined function name"),
+            _ => Err(ParseError::new("Expected function name", &self.get_current_token().unwrap()))?,
         };
         let function_scope = self.get_current_scope();
         self.enter_scope(name.to_string());
@@ -40,7 +40,11 @@ impl Parser {
                         include_return = true;
                         if let Ok(return_value_type) = self.infer_type(&value.clone()) {
                             if return_value_type != return_type {
-                                panic!("Return type mismatch Expected type: {:?}, Actual type: {:?}", return_type, return_value_type);
+                                return Err(ParseError::new(
+                                    format!("Return type mismatch Expected type: {:?}, Actual type: {:?}", return_type, return_value_type).as_str(),
+                                    &self.get_current_token().unwrap()
+                                    )
+                                );
                             }
                         }
                     }
@@ -50,7 +54,8 @@ impl Parser {
         };
 
         if !include_return && return_type != ValueType::Void {
-            panic!("Missing return statement");
+            let token = self.get_current_token().unwrap();
+            Err(ParseError::new("Expected return statement", &token))?;
         }
 
         Ok(ASTNode::Function {
@@ -107,7 +112,7 @@ impl Parser {
                     self.extract_token(TokenKind::Colon);
                     match self.consume_token() {
                         Some(Token{kind: TokenKind::Identifier(type_name), ..}) => self.string_to_value_type(type_name),
-                        _ => panic!("Expected type for argument"),
+                        _ => Err(ParseError::new("Expected type for argument", &self.get_current_token().unwrap()))?,
                     }
                 } else {
                     let current_token_kind = current_token.unwrap().kind.clone();
@@ -120,13 +125,13 @@ impl Parser {
                             variable_name = "self".to_string();
                             ValueType::MutSelfType
                         } else {
-                            panic!("Expected self after mut")
+                            Err(ParseError::new("Expected type for argument", &self.get_current_token().unwrap()))?
                         }
                     } else {
                         self.extract_token(TokenKind::Colon);
                         match self.consume_token() {
                             Some(Token{kind: TokenKind::Identifier(type_name), ..}) => self.string_to_value_type(type_name),
-                            _ => panic!("Expected type for argument"),
+                            _ => Err(ParseError::new("Expected type for argument", &self.get_current_token().unwrap()))?,
                         }
                     }
                 };
@@ -175,7 +180,7 @@ impl Parser {
         self.consume_token();
         let name = match self.get_current_token() {
             Some(Token{kind: TokenKind::Identifier(name), ..}) => name,
-            _ => panic!("failed take function name: {:?}", self.get_current_token()),
+            _ => Err(ParseError::new("Expected function name", &self.get_current_token().unwrap()))?,
         };
 
         let (line, column) = match self.get_current_token() {

@@ -27,7 +27,7 @@ pub fn import_node(module_name: String, symbols: Vec<String>, line: usize, colum
                     ExportedSymbolType::Struct => {
                         match module_env.clone().get_struct(&symbol) {
                             Some(s) => {
-                                env.register_struct(s.clone());
+                                env.register_struct(s.clone())?;
                             },
                             None => {}
                         }
