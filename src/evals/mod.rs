@@ -119,6 +119,34 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         } => {
             for_node::for_node(variable, iterable, body, line, column, env)
         }
+        ASTNode::Match {
+            expression,
+            cases,
+            line,
+            column
+        } => {
+            let expression_value = eval(*expression, env)?;
+            for (pattern, body) in cases.clone() {
+                match pattern {
+                    ASTNode::Literal{value, ..} => {
+                        if value == expression_value {
+                            let result = eval(body, env)?;
+                            return Ok(result);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            for (pattern, body) in cases {
+                match pattern {
+                    ASTNode::Variable{name, ..} if name == "_" => {
+                        return Ok(eval(body, env)?);
+                    },
+                    _ => {}
+                }
+            }
+            Err(RuntimeError::new("No match found", line, column))
+        }
         ASTNode::OptionSome { value, line: _, column: _ } => {
             let value = eval(*value, env)?;
             Ok(Value::Option(Some(value.into())))
@@ -416,5 +444,33 @@ mod tests {
             column: 0,
         };
         assert_eq!(Value::Bool(false), eval(ast, &mut env).unwrap());
+    }
+
+    #[test]
+    fn test_pattern_matching() {
+        let input = r#"
+        match 1 {
+            1 => {return 2}
+            _ => {return 3}
+        }
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse().unwrap();
+        let result = eval(ast, &mut env).unwrap();
+        assert_eq!(result, Value::Number(Fraction::from(2)));
+
+        let input = r#"
+        match 2 {
+            1 => { return 2 }
+            _ => { return 3 }
+        }
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse().unwrap();
+        let result = eval(ast, &mut env).unwrap();
+        assert_eq!(result, Value::Number(Fraction::from(3)));
     }
 }
