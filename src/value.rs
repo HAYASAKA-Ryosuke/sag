@@ -100,7 +100,6 @@ impl Value {
                 }
             },
             Value::Lambda { .. } => ValueType::Lambda,
-            _ => ValueType::Any,
         }
     }
     pub fn to_number(&self) -> Fraction {
