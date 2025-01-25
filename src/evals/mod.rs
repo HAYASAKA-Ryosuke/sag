@@ -504,5 +504,41 @@ mod tests {
         let ast = parser.parse().unwrap();
         let result = eval(ast, &mut env).unwrap();
         assert_eq!(result, Value::Number(Fraction::from(3)));
+        let input = r#"
+        match Some(2) {
+            Some(2) => { return 2 }
+            _ => { return 3 }
+        }
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse().unwrap();
+        let result = eval(ast, &mut env).unwrap();
+        assert_eq!(result, Value::Number(Fraction::from(2)));
+        let input = r#"
+        val x:Option<number> = Some(2)
+        match (x) {
+            Some(v) => { return (v + 10) }
+            None => { return 3 }
+            _ => { return 4 }
+        }
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        let result = evals(ast, &mut env).unwrap();
+        assert_eq!(result[1], Value::Number(Fraction::from(12)));
+        let input = r#"
+        match None {
+            Some(2) => { return 2 }
+            None => { return 3 }
+            _ => { return 4 }
+        }
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse().unwrap();
+        let result = eval(ast, &mut env).unwrap();
+        assert_eq!(result, Value::Number(Fraction::from(3)));
     }
 }
