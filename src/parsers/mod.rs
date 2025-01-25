@@ -17,6 +17,7 @@ pub mod string_to_value_type;
 pub mod import_ast;
 pub mod parse_error;
 pub mod option_ast;
+pub mod match_ast;
 
 
 use crate::environment::{EnvVariableType, ValueType, MethodInfo};
@@ -306,6 +307,7 @@ impl Parser {
             _ => panic!("token not found!"),
         };
         match token.kind {
+            TokenKind::Match => self.parse_match(),
             TokenKind::Struct => self.parse_struct(),
             TokenKind::Pub => self.parse_public(),
             TokenKind::Impl => self.parse_impl(),

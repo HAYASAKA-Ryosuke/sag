@@ -11,6 +11,7 @@ pub mod for_node;
 pub mod import_node;
 pub mod method_call_node;
 pub mod runtime_error;
+pub mod match_node;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -118,6 +119,14 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
             column
         } => {
             for_node::for_node(variable, iterable, body, line, column, env)
+        }
+        ASTNode::Match {
+            expression,
+            cases,
+            line,
+            column
+        } => {
+            match_node::match_node(expression, cases, line, column, env)
         }
         ASTNode::OptionSome { value, line: _, column: _ } => {
             let value = eval(*value, env)?;

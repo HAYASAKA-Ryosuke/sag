@@ -454,7 +454,7 @@ point.clear()
         let tokens = tokenize(&input.to_string());
         let builtin = register_builtins(&mut env);
         let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
-        evals(asts, &mut env);
+        let _ = evals(asts, &mut env);
         assert_eq!(env.get_struct(&"Point".to_string()).is_some(), true);
         assert_eq!(env.get_struct(&"DummuStruct".to_string()).is_some(), false);
     }
