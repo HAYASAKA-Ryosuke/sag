@@ -16,6 +16,7 @@ pub mod prefix_op_ast;
 pub mod string_to_value_type;
 pub mod import_ast;
 pub mod parse_error;
+pub mod option_ast;
 
 
 use crate::environment::{EnvVariableType, ValueType, MethodInfo};
@@ -219,6 +220,8 @@ impl Parser {
         scope: String,
         name: String,
     ) -> Option<(ValueType, EnvVariableType)> {
+        println!("find_variables: {:?}", name);
+        println!("variables: {:?}", self.variables);
         for checked_scope in vec![scope.to_string(), "global".to_string()] {
             match self
                 .variables
@@ -233,6 +236,8 @@ impl Parser {
                         return Some((ValueType::StructInstance{name: name.to_string(), fields: fields.clone()}, value.1.clone()))
                     },
                     &ValueType::List(ref value_type) => return Some((ValueType::List(Box::new(*value_type.clone())), value.1.clone())),
+                    &ValueType::OptionType(ref value_type) => return Some((ValueType::OptionType(value_type.clone()), value.1.clone())),
+                    &ValueType::Any => return Some((ValueType::Any, value.1.clone())),
                     _ => return None,
                 },
                 None => {}
@@ -316,6 +321,8 @@ impl Parser {
             TokenKind::Mutable | TokenKind::Immutable => self.parse_assign(),
             TokenKind::For => self.parse_for(),
             TokenKind::Import => self.parse_import(),
+            TokenKind::Some => self.parse_option_some(),
+            TokenKind::None => self.parse_option_none(),
             TokenKind::If => {
                 let ast_if = self.parse_if()?;
                 match ast_if {

@@ -54,4 +54,7 @@ pub enum TokenKind {
     In,
     Import,
     From,
+    Option,
+    Some,
+    None,
 }

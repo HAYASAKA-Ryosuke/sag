@@ -199,4 +199,13 @@ pub enum ASTNode {
         line: usize,
         column: usize,
     },
+    OptionSome {
+        value: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
+    OptionNone {
+        line: usize,
+        column: usize,
+    },
 }

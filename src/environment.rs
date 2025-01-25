@@ -73,6 +73,7 @@ pub enum ValueType {
     StructField{value_type: Box<ValueType>, is_public: bool},
     StructInstance{name: String, fields: HashMap<String, ValueType>},
     Impl{base_struct: Box<ValueType>, methods: HashMap<String, MethodInfo>},
+    OptionType(Box<ValueType>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

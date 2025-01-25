@@ -109,6 +109,13 @@ impl Parser {
                     }
                 }
             }
+            ASTNode::OptionNone { .. } => {
+                Ok(ValueType::OptionType(Box::new(ValueType::Any)))
+            },
+            ASTNode::OptionSome { value, .. } => {
+                let value_type = self.infer_type(&value)?;
+                Ok(ValueType::OptionType(Box::new(value_type)))
+            }
             _ => Ok(ValueType::Any),
         }
     }
