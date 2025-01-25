@@ -1275,8 +1275,12 @@ mod tests {
 
     #[test]
     fn test_option() {
-        let result = vec![TokenKind::Immutable, TokenKind::Identifier("foo".into()), TokenKind::Option, TokenKind::Equal, TokenKind::Some, TokenKind::LParen, TokenKind::String("hello".into()), TokenKind::RParen, TokenKind::Eof];
-        for (i, token) in tokenize(&"Option".to_string()).into_iter().enumerate() {
+        let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Option, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::Some, TokenKind::LParen, TokenKind::String("hello".into()), TokenKind::RParen, TokenKind::Eof];
+        for (i, token) in tokenize(&"val mut foo: Option<number> = Some(\"hello\")".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+        let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Option, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::None, TokenKind::Eof];
+        for (i, token) in tokenize(&"val mut foo: Option<number> = None".to_string()).into_iter().enumerate() {
             assert_eq!(token.kind, result[i]);
         }
     }

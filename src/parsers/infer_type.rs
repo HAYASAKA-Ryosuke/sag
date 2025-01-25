@@ -116,6 +116,9 @@ impl Parser {
                 let value_type = self.infer_type(&value)?;
                 Ok(ValueType::OptionType(Box::new(value_type)))
             }
+            ASTNode::Assign { name: _, value: _, variable_type: _, value_type, is_new: _, .. } => {
+                Ok(value_type.clone())
+            }
             _ => Ok(ValueType::Any),
         }
     }

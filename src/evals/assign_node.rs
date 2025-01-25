@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::environment::{Env, ValueType, EnvVariableType};
@@ -7,8 +6,6 @@ use crate::evals::runtime_error::RuntimeError;
 
 pub fn assign_node(name: String, value: Box<ASTNode>, value_type: ValueType, variable_type: EnvVariableType, is_new: bool, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     let value = eval(*value, env)?;
-    println!("assign_node: name: {:?}, value: {:?}", name, value);
-    let value_type = value_type;
     //let value_type = match value {
     //    Value::Number(_) => ValueType::Number,
     //    Value::String(_) => ValueType::String,

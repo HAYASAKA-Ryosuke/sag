@@ -28,6 +28,10 @@ impl Parser {
         self.extract_token(TokenKind::In);
         let iterable = self.parse_expression(0)?;
         let variable_value_type = self.infer_type(&iterable).unwrap_or(ValueType::Any);
+        let variable_value_type = match variable_value_type {
+            ValueType::List(value_type) => *value_type,
+            _ => variable_value_type,
+        };
         self.register_variables(self.get_current_scope().clone(), &variable, &variable_value_type, &EnvVariableType::Mutable);
         let body = self.parse_expression(0)?;
         Ok(ASTNode::For {
