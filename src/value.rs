@@ -7,6 +7,7 @@ use crate::environment::Env;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
+    Option(Option<Box<Value>>),
     Number(Fraction),
     String(String),
     Bool(bool),
@@ -45,6 +46,13 @@ impl Value {
             Value::String(_) => ValueType::String,
             Value::Bool(_) => ValueType::Bool,
             Value::Void => ValueType::Void,
+            Value::Option(v) => {
+                if v.is_none() {
+                    ValueType::OptionType(Box::new(ValueType::Any))
+                } else {
+                    ValueType::OptionType(Box::new(v.as_ref().unwrap().value_type()))
+                }
+            },
             Value::Impl { base_struct, methods } => {
                 ValueType::Impl { base_struct: Box::new(base_struct.clone()), methods: methods.clone() }
             },
@@ -92,6 +100,7 @@ impl Value {
                 }
             },
             Value::Lambda { .. } => ValueType::Lambda,
+            _ => ValueType::Any,
         }
     }
     pub fn to_number(&self) -> Fraction {
@@ -130,6 +139,10 @@ impl fmt::Display for Value {
             Value::Function => write!(f, "Function"),
             Value::Lambda { .. } => write!(f, "Lambda"),
             Value::Return(value) => write!(f, "{}", value),
+            Value::Option(option) => match option {
+                Some(value) => write!(f, "{}", value),
+                None => write!(f, "None"),
+            },
             Value::Impl { base_struct, methods } => {
                 let mut result = String::new();
                 result.push_str(&format!("Impl {{\n"));

@@ -98,6 +98,47 @@ impl Parser {
             ));
         }
         let value = self.parse_expression(0)?;
+        let infer_type = self.infer_type(&value);
+        if infer_type.is_err() {
+            let current_token = self.get_current_token().unwrap();
+            return Err(ParseError::new(
+                format!("undefined type").as_str(),
+                &current_token,
+            ));
+        }
+        match value_type {
+            ValueType::Any => {}
+            ValueType::OptionType(_) => {
+                match value {
+                    ASTNode::OptionNone { .. } => {},
+                    ASTNode::OptionSome { value: _, .. } => {
+                        if value_type != infer_type.unwrap() {
+                            let current_token = self.get_current_token().unwrap();
+                            return Err(ParseError::new(
+                                format!("type mismatch").as_str(),
+                                &current_token,
+                            ));
+                        }
+                    },
+                    _ => {
+                        let current_token = self.get_current_token().unwrap();
+                        return Err(ParseError::new(
+                            format!("type mismatch").as_str(),
+                            &current_token,
+                        ));
+                    }
+                }
+            }
+            _ => {
+                if value_type != infer_type.unwrap() {
+                    let current_token = self.get_current_token().unwrap();
+                    return Err(ParseError::new(
+                        format!("type mismatch").as_str(),
+                        &current_token,
+                    ));
+                }
+            }
+        };
         let (line, column) = self.get_line_column();
         Ok(ASTNode::Assign {
             name,

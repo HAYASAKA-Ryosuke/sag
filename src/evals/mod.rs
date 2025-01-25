@@ -119,6 +119,13 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         } => {
             for_node::for_node(variable, iterable, body, line, column, env)
         }
+        ASTNode::OptionSome { value, line: _, column: _ } => {
+            let value = eval(*value, env)?;
+            Ok(Value::Option(Some(value.into())))
+        }
+        ASTNode::OptionNone { line: _, column: _ } => {
+            Ok(Value::Option(None))
+        }
         ASTNode::If {
             condition,
             then,
@@ -133,12 +140,12 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
             name,
             value,
             variable_type,
-            value_type: _,
+            value_type,
             is_new,
             line,
             column
         } => {
-            assign_node::assign_node(name, value, variable_type, is_new, line, column, env)
+            assign_node::assign_node(name, value, value_type, variable_type, is_new, line, column, env)
         }
         ASTNode::LambdaCall { lambda, arguments, line, column } => {
             lambda_node::lambda_call_node(lambda, arguments, line, column, env)
@@ -349,6 +356,22 @@ mod tests {
         let ast = parser.parse_lines().unwrap();
         let results = evals(ast, &mut env).unwrap();
         assert_eq!(*results.last().unwrap(), Value::Number(Fraction::from(6))); // 2 + 0 + 4 = 6
+    }
+
+    #[test]
+    fn test_option_type() {
+        let input = r#"
+        val mut x:Option<number> = None
+        x = Some(5)
+        val mut y = None
+        x
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        let results = evals(ast, &mut env).unwrap();
+        assert_eq!(*results.last().unwrap(), Value::Option(Some(Box::new(Value::Number(Fraction::from(5))))));
     }
 
     #[test]

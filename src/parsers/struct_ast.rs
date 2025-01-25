@@ -207,6 +207,6 @@ point.clear()
         let builtin = register_builtins(&mut Env::new());
         let mut parser = Parser::new(tokens, builtin);
         let ast = parser.parse_lines();
-        println!("{:?}", ast);
+        assert!(ast.is_ok());
     }
 }

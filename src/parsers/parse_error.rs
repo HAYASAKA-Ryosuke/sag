@@ -21,7 +21,7 @@ impl ParseError {
         let lines: Vec<&str> = source.lines().collect();
         let error_line = lines.get(self.line - 1).unwrap_or(&"");
         format!(
-            "Error: {}\n --> line {}, column {}\n | {}\n | {}^",
+            "Parse Error: {}\n --> line {}, column {}\n | {}\n | {}^",
             self.message, self.line, self.column, error_line, " ".repeat(self.column)
         )
     }

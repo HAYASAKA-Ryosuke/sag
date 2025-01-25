@@ -52,9 +52,21 @@ impl Parser {
                                 self.string_to_value_type(value_type)
                             }
                         },
-                        _ => panic!("undefined type"),
+                        TokenKind::Option => {
+                            self.extract_token(TokenKind::Lt);
+                            let value_type = match self.consume_token() {
+                                Some(token) => match token.kind {
+                                    TokenKind::Identifier(value_type) => self.string_to_value_type(value_type),
+                                    _ => return Err(ParseError::new("unexpected token", &token)),
+                                },
+                                _ => return Err(ParseError::new("unexpected token", &token)),
+                            };
+                            self.extract_token(TokenKind::Gt);
+                            ValueType::OptionType(Box::new(value_type))
+                        },
+                        _ => return Err(ParseError::new("unexpected token", &token)),
                     },
-                    _ => panic!("undefined type"),
+                    _ => panic!("missing token"),
                 };
                 match self.consume_token() {
                     Some(Token{kind: TokenKind::Equal, ..}) => {
