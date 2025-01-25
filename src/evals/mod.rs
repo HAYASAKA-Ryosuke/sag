@@ -126,6 +126,7 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
             column
         } => {
             let expression_value = eval(*expression, env)?;
+            println!("Expression value: {:?}", expression_value);
             for (pattern, body) in cases.clone() {
                 match pattern {
                     ASTNode::Literal{value, ..} => {
@@ -133,6 +134,37 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
                             let result = eval(body, env)?;
                             return Ok(result);
                         }
+                    }
+                    ASTNode::OptionSome{ref value, ..} => {
+                        if let Value::Option(Some(ref some_value)) = expression_value {
+                            println!("OptionSome: {:?}", value);
+                            match value.as_ref() {
+                                ASTNode::Literal{value, ..} => {
+                                    if value == some_value.as_ref() {
+                                        let result = eval(body, env)?;
+                                        return Ok(result);
+                                    }
+                                },
+                                ASTNode::Variable{name, ..} => {
+                                    let _ = env.set(name.clone(), some_value.as_ref().clone(), crate::environment::EnvVariableType::Mutable, some_value.value_type().clone(), true);
+                                    let result = eval(body, env)?;
+                                    return Ok(result);
+                                },
+                                _ => {
+                                    return Err(RuntimeError::new("Unsupported pattern", line, column));
+                                }
+                            }
+                            
+                        }
+                    }
+                    ASTNode::OptionNone{..} => {
+                        if let Value::Option(None) = expression_value {
+                            let result = eval(body, env)?;
+                            return Ok(result);
+                        }
+                    }
+                    ASTNode::Variable{name, ..} => {
+                        println!("Variable: {:?}", name);
                     }
                     _ => {}
                 }
