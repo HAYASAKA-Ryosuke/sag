@@ -82,8 +82,6 @@ impl Parser {
     fn create_assignment(&mut self, name: String, variable_info: Option<(ValueType, EnvVariableType)>) -> Result<ASTNode, ParseError> {
         // 再代入
         self.consume_token();
-        println!("re create_assignment: {:?}", name);
-        println!("re variable_info: {:?}", variable_info);
         if variable_info.is_none() {
             let current_token = self.get_current_token().unwrap();
             return Err(ParseError::new(

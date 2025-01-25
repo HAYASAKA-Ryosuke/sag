@@ -359,6 +359,22 @@ mod tests {
     }
 
     #[test]
+    fn test_option_type() {
+        let input = r#"
+        val mut x:Option<number> = None
+        x = Some(5)
+        val mut y = None
+        x
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        let results = evals(ast, &mut env).unwrap();
+        assert_eq!(*results.last().unwrap(), Value::Option(Some(Box::new(Value::Number(Fraction::from(5))))));
+    }
+
+    #[test]
     fn test_comparison_operations() {
         let mut env = Env::new();
         let ast = ASTNode::Eq {

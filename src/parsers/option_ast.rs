@@ -20,3 +20,30 @@ impl Parser {
         Ok(ASTNode::OptionNone{line, column})
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokenizer::tokenize;
+    use crate::environment::Env;
+    use crate::builtin::register_builtins;
+
+    #[test]
+    fn test_option_type_other_type_error() {
+        let input = r#"
+        val mut x:Option<number> = None
+        x = Some("hello")
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        println!("{:?}", ast);
+        match ast.unwrap_err() {
+            ParseError{message, ..} => {
+                assert_eq!(message, "type mismatch");
+            }
+            _ => panic!("unexpected error"),
+        }
+    }
+}
