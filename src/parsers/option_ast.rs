@@ -6,7 +6,6 @@ use crate::parsers::parse_error::ParseError;
 impl Parser {
     pub fn parse_option_some(&mut self) -> Result<ASTNode, ParseError> {
         self.consume_token();
-        println!("Parsing option some");
         self.extract_token(TokenKind::LParen);
         let value = self.parse_expression(0)?;
         self.extract_token(TokenKind::RParen);
@@ -38,7 +37,40 @@ mod tests {
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse_lines();
-        println!("{:?}", ast);
+        match ast.unwrap_err() {
+            ParseError{message, ..} => {
+                assert_eq!(message, "type mismatch");
+            }
+            _ => panic!("unexpected error"),
+        }
+    }
+    #[test]
+    fn test_other_type_reassign_some_error() {
+        let input = r#"
+        val mut x = 1
+        x = Some("hello")
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        match ast.unwrap_err() {
+            ParseError{message, ..} => {
+                assert_eq!(message, "type mismatch");
+            }
+            _ => panic!("unexpected error"),
+        }
+    }
+    #[test]
+    fn test_other_type_reassign_none_error() {
+        let input = r#"
+        val mut x = 1
+        x = None
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
         match ast.unwrap_err() {
             ParseError{message, ..} => {
                 assert_eq!(message, "type mismatch");

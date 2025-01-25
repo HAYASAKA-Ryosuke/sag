@@ -220,8 +220,6 @@ impl Parser {
         scope: String,
         name: String,
     ) -> Option<(ValueType, EnvVariableType)> {
-        println!("find_variables: {:?}", name);
-        println!("variables: {:?}", self.variables);
         for checked_scope in vec![scope.to_string(), "global".to_string()] {
             match self
                 .variables

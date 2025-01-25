@@ -64,24 +64,18 @@ impl Parser {
                             self.extract_token(TokenKind::Gt);
                             ValueType::OptionType(Box::new(value_type))
                         },
-                        _ => {
-                            println!("{:?}", token);
-                            panic!("undefined type")
-                        },
+                        _ => return Err(ParseError::new("unexpected token", &token)),
                     },
-                    _ => panic!("undefined type"),
+                    _ => panic!("missing token"),
                 };
                 match self.consume_token() {
                     Some(Token{kind: TokenKind::Equal, ..}) => {
-                        println!("Parsing assign with type");
                         let value = self.parse_expression(0)?;
-                        println!("Value: {:?}", value);
                         let variable_type = if mutable_or_immutable.kind == TokenKind::Mutable {
                             EnvVariableType::Mutable
                         } else {
                             EnvVariableType::Immutable
                         };
-                        println!("ffVariable type: {:?}", variable_type);
                         self.register_variables(scope, &name, &value_type, &variable_type);
                         Ok(ASTNode::Assign {
                             name,
