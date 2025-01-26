@@ -405,6 +405,16 @@ mod tests {
         let ast = parser.parse_lines().unwrap();
         let results = evals(ast, &mut env).unwrap();
         assert_eq!(*results.last().unwrap(), Value::Result(Err(Box::new(Value::String("hello".to_string())))));
+        let input = r#"
+        val mut x:Result<Option<number>, string> = Suc(Some(5))
+        x
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        let results = evals(ast, &mut env).unwrap();
+        assert_eq!(*results.last().unwrap(), Value::Result(Ok(Box::new(Value::Option(Some(Box::new(Value::Number(Fraction::from(5)))))))));
     }
 
     #[test]
