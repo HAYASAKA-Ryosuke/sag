@@ -56,13 +56,7 @@ pub enum EnvVariableType {
     Mutable,
 }
 
-#[derive(PartialEq, Debug, Clone)]
-pub enum ResultType {
-    Success(Box<ValueType>),
-    Failure(Box<ValueType>),
-}
-
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum ValueType {
     Any,
     Number,
@@ -82,6 +76,32 @@ pub enum ValueType {
     OptionType(Box<ValueType>),
     ResultType{success: Box<ValueType>, failure: Box<ValueType>},
 }
+
+impl PartialEq for ValueType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.clone(), other.clone()) {
+            (ValueType::Any, _) | (_, ValueType::Any) => true,
+            (ValueType::Number, ValueType::Number) => true,
+            (ValueType::String, ValueType::String) => true,
+            (ValueType::Bool, ValueType::Bool) => true,
+            (ValueType::Void, ValueType::Void) => true,
+            (ValueType::SelfType, ValueType::SelfType) => true,
+            (ValueType::MutSelfType, ValueType::MutSelfType) => true,
+            (ValueType::List(a), ValueType::List(b)) => a == b,
+            (ValueType::Function, ValueType::Function) => true,
+            (ValueType::Lambda, ValueType::Lambda) => true,
+            (ValueType::Return, ValueType::Return) => true,
+            (ValueType::Struct { name: a, .. }, ValueType::Struct { name: b, .. }) => a == b,
+            (ValueType::StructField { value_type: a, is_public: b }, ValueType::StructField { value_type: c, is_public: d }) => a == c && b == d,
+            (ValueType::StructInstance { name: a, .. }, ValueType::StructInstance { name: b, .. }) => a == b,
+            (ValueType::Impl { base_struct: a, .. }, ValueType::Impl { base_struct: b, .. }) => a == b,
+            (ValueType::OptionType(a), ValueType::OptionType(b)) => a == b,
+            (ValueType::ResultType { success: a, failure: b }, ValueType::ResultType { success: c, failure: d }) => a == c && b == d,
+            _ => false,
+        }
+    }
+}
+impl Eq for ValueType {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnvVariableValueInfo {
