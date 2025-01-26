@@ -41,6 +41,48 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                     return Ok(result);
                 }
             }
+            ASTNode::ResultSuccess{ref value, ..} => {
+                if let Value::Result(Ok(ref some_value)) = expression_value {
+                    match value.as_ref() {
+                        ASTNode::Literal{value, ..} => {
+                            if value == some_value.as_ref() {
+                                let result = eval(body, env)?;
+                                return Ok(result);
+                            }
+                        },
+                        ASTNode::Variable{name, ..} => {
+                            let _ = env.set(name.clone(), some_value.as_ref().clone(), crate::environment::EnvVariableType::Mutable, some_value.value_type().clone(), true);
+                            let result = eval(body, env)?;
+                            return Ok(result);
+                        },
+                        _ => {
+                            return Err(RuntimeError::new("Unsupported pattern", line, column));
+                        }
+                    }
+                    
+                }
+            }
+            ASTNode::ResultFailure{ref value, ..} => {
+                if let Value::Result(Err(ref some_value)) = expression_value {
+                    match value.as_ref() {
+                        ASTNode::Literal{value, ..} => {
+                            if value == some_value.as_ref() {
+                                let result = eval(body, env)?;
+                                return Ok(result);
+                            }
+                        },
+                        ASTNode::Variable{name, ..} => {
+                            let _ = env.set(name.clone(), some_value.as_ref().clone(), crate::environment::EnvVariableType::Mutable, some_value.value_type().clone(), true);
+                            let result = eval(body, env)?;
+                            return Ok(result);
+                        },
+                        _ => {
+                            return Err(RuntimeError::new("Unsupported pattern", line, column));
+                        }
+                    }
+                    
+                }
+            }
             _ => {}
         }
     }

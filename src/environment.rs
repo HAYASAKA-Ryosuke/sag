@@ -57,6 +57,12 @@ pub enum EnvVariableType {
 }
 
 #[derive(PartialEq, Debug, Clone)]
+pub enum ResultType {
+    Success(Box<ValueType>),
+    Failure(Box<ValueType>),
+}
+
+#[derive(PartialEq, Debug, Clone)]
 pub enum ValueType {
     Any,
     Number,
@@ -74,6 +80,7 @@ pub enum ValueType {
     StructInstance{name: String, fields: HashMap<String, ValueType>},
     Impl{base_struct: Box<ValueType>, methods: HashMap<String, MethodInfo>},
     OptionType(Box<ValueType>),
+    ResultType{success: Box<ValueType>, failure: Box<ValueType>},
 }
 
 #[derive(Debug, Clone, PartialEq)]

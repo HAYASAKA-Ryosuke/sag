@@ -208,6 +208,16 @@ pub enum ASTNode {
         line: usize,
         column: usize,
     },
+    ResultSuccess {
+        value: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
+    ResultFailure {
+        value: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
     Match {
         expression: Box<ASTNode>,
         cases: Vec<(ASTNode, ASTNode)>,

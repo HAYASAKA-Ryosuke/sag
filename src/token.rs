@@ -57,4 +57,7 @@ pub enum TokenKind {
     Option,
     Some,
     None,
+    Result,
+    Success,
+    Failure,
 }
