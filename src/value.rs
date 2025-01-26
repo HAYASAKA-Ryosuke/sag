@@ -8,6 +8,7 @@ use crate::environment::Env;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Option(Option<Box<Value>>),
+    Result(Result<Box<Value>, Box<Value>>),
     Number(Fraction),
     String(String),
     Bool(bool),
@@ -51,6 +52,13 @@ impl Value {
                     ValueType::OptionType(Box::new(ValueType::Any))
                 } else {
                     ValueType::OptionType(Box::new(v.as_ref().unwrap().value_type()))
+                }
+            },
+            Value::Result(v) => {
+                if v.is_ok() {
+                    ValueType::ResultType{success: Box::new(v.as_ref().unwrap().value_type()), failure: Box::new(ValueType::Void)}
+                } else {
+                    ValueType::ResultType{success: Box::new(ValueType::Void), failure: Box::new(v.as_ref().unwrap().value_type())}
                 }
             },
             Value::Impl { base_struct, methods } => {
@@ -141,6 +149,10 @@ impl fmt::Display for Value {
             Value::Option(option) => match option {
                 Some(value) => write!(f, "{}", value),
                 None => write!(f, "None"),
+            },
+            Value::Result(result) => match result {
+                Ok(value) => write!(f, "Suc({})", value),
+                Err(value) => write!(f, "Fail({})", value),
             },
             Value::Impl { base_struct, methods } => {
                 let mut result = String::new();

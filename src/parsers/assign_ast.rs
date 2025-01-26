@@ -64,11 +64,32 @@ impl Parser {
                             self.extract_token(TokenKind::Gt);
                             ValueType::OptionType(Box::new(value_type))
                         },
+                        TokenKind::Result => {
+                            self.extract_token(TokenKind::Lt);
+                            let success_value_type = match self.consume_token() {
+                                Some(token) => match token.kind {
+                                    TokenKind::Identifier(value_type) => self.string_to_value_type(value_type),
+                                    _ => return Err(ParseError::new("unexpected token", &token)),
+                                },
+                                _ => return Err(ParseError::new("unexpected token", &token)),
+                            };
+                            self.extract_token(TokenKind::Comma);
+                            let failure_value_type = match self.consume_token() {
+                                Some(token) => match token.kind {
+                                    TokenKind::Identifier(value_type) => self.string_to_value_type(value_type),
+                                    _ => return Err(ParseError::new("unexpected token", &token)),
+                                },
+                                _ => return Err(ParseError::new("unexpected token", &token)),
+                            };
+                            self.extract_token(TokenKind::Gt);
+                            ValueType::ResultType{success: Box::new(success_value_type), failure: Box::new(failure_value_type)}
+                        },
                         _ => return Err(ParseError::new("unexpected token", &token)),
                     },
                     _ => panic!("missing token"),
                 };
-                match self.consume_token() {
+                let token = self.consume_token();
+                match token {
                     Some(Token{kind: TokenKind::Equal, ..}) => {
                         let value = self.parse_expression(0)?;
                         let variable_type = if mutable_or_immutable.kind == TokenKind::Mutable {
@@ -76,6 +97,39 @@ impl Parser {
                         } else {
                             EnvVariableType::Immutable
                         };
+                        match value_type.clone() {
+                            ValueType::ResultType{success, failure} => {
+                                match value {
+                                    ASTNode::ResultSuccess{ref value, ..} => {
+                                        if *success.as_ref() != self.infer_type(&value).unwrap() {
+                                            return Err(ParseError::new("type mismatch", &token.unwrap()));
+                                        }
+                                    },
+                                    ASTNode::ResultFailure{ref value, ..} => {
+                                        if *failure.as_ref() != self.infer_type(&value).unwrap() {
+                                            return Err(ParseError::new("type mismatch", &token.unwrap()));
+                                        }
+                                    },
+                                    _ => return Err(ParseError::new("type mismatch", &token.unwrap())),
+                                }
+                            },
+                            ValueType::OptionType(ref value_type) => {
+                                match value {
+                                    ASTNode::OptionSome{ref value, ..} => {
+                                        if *value_type.as_ref() != self.infer_type(&value).unwrap() {
+                                            return Err(ParseError::new("type mismatch", &token.unwrap()));
+                                        }
+                                    },
+                                    ASTNode::OptionNone{..} => {},
+                                    _ => return Err(ParseError::new("type mismatch", &token.unwrap())),
+                                }
+                            },
+                            _ => {
+                                if value_type != self.infer_type(&value).unwrap() {
+                                    return Err(ParseError::new("type mismatch", &token.unwrap()));
+                                }
+                            }
+                        }
                         self.register_variables(scope, &name, &value_type, &variable_type);
                         Ok(ASTNode::Assign {
                             name,

@@ -129,6 +129,57 @@ impl Parser {
                     }
                 }
             }
+            ValueType::ResultType {ref success, ref failure} => {
+                match value {
+                    ASTNode::ResultSuccess { value: _, .. } => {
+                        match infer_type {
+                            Ok(ValueType::ResultType{success: ref value_type, failure: _}) => {
+                                if success != value_type {
+                                    let current_token = self.get_current_token().unwrap();
+                                    return Err(ParseError::new(
+                                        format!("type mismatch").as_str(),
+                                        &current_token,
+                                    ));
+                                }
+                            },
+                            _ => {
+                                let current_token = self.get_current_token().unwrap();
+                                return Err(ParseError::new(
+                                    format!("undefined type").as_str(),
+                                    &current_token,
+                                ));
+                            }
+                        }
+                    },
+                    ASTNode::ResultFailure { value: _, .. } => {
+                        match infer_type {
+                            Ok(ValueType::ResultType{success: _, failure: ref value_type}) => {
+                                if failure != value_type {
+                                    let current_token = self.get_current_token().unwrap();
+                                    return Err(ParseError::new(
+                                        format!("type mismatch").as_str(),
+                                        &current_token,
+                                    ));
+                                }
+                            },
+                            _ => {
+                                let current_token = self.get_current_token().unwrap();
+                                return Err(ParseError::new(
+                                    format!("undefined type").as_str(),
+                                    &current_token,
+                                ));
+                            }
+                        }
+                    },
+                    _ => {
+                        let current_token = self.get_current_token().unwrap();
+                        return Err(ParseError::new(
+                            format!("type mismatch").as_str(),
+                            &current_token,
+                        ));
+                    }
+                }
+            }
             _ => {
                 if value_type != infer_type.unwrap() {
                     let current_token = self.get_current_token().unwrap();

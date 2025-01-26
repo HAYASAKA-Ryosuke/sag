@@ -17,6 +17,7 @@ pub mod string_to_value_type;
 pub mod import_ast;
 pub mod parse_error;
 pub mod option_ast;
+pub mod result_ast;
 pub mod match_ast;
 
 
@@ -236,6 +237,9 @@ impl Parser {
                     },
                     &ValueType::List(ref value_type) => return Some((ValueType::List(Box::new(*value_type.clone())), value.1.clone())),
                     &ValueType::OptionType(ref value_type) => return Some((ValueType::OptionType(value_type.clone()), value.1.clone())),
+                    &ValueType::ResultType{ref success, ref failure} => {
+                        return Some((ValueType::ResultType{success: success.clone(), failure: failure.clone()}, value.1.clone()))
+                    },
                     &ValueType::Any => return Some((ValueType::Any, value.1.clone())),
                     _ => return None,
                 },
@@ -323,6 +327,8 @@ impl Parser {
             TokenKind::Import => self.parse_import(),
             TokenKind::Some => self.parse_option_some(),
             TokenKind::None => self.parse_option_none(),
+            TokenKind::Success => self.parse_result_success(),
+            TokenKind::Failure => self.parse_result_failure(),
             TokenKind::If => {
                 let ast_if = self.parse_if()?;
                 match ast_if {

@@ -306,6 +306,33 @@ fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_result(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "Result".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_success(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "Suc".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_failure(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "Fail".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_option(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "Option".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -582,6 +609,27 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_none(&mut tokenizer) {
             tokenizer.column += 4;
             tokenizer.tokens.push(Token{kind: TokenKind::None, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 4;
+            continue;
+        }
+
+        if is_result(&mut tokenizer) {
+            tokenizer.column += 6;
+            tokenizer.tokens.push(Token{kind: TokenKind::Result, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 6;
+            continue;
+        }
+
+        if is_success(&mut tokenizer) {
+            tokenizer.column += 3;
+            tokenizer.tokens.push(Token{kind: TokenKind::Success, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 3;
+            continue;
+        }
+
+        if is_failure(&mut tokenizer) {
+            tokenizer.column += 4;
+            tokenizer.tokens.push(Token{kind: TokenKind::Failure, line: tokenizer.line, column: tokenizer.column});
             tokenizer.pos += 4;
             continue;
         }
@@ -1275,8 +1323,8 @@ mod tests {
 
     #[test]
     fn test_option() {
-        let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Option, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::Some, TokenKind::LParen, TokenKind::String("hello".into()), TokenKind::RParen, TokenKind::Eof];
-        for (i, token) in tokenize(&"val mut foo: Option<number> = Some(\"hello\")".to_string()).into_iter().enumerate() {
+        let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Option, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::Some, TokenKind::LParen, TokenKind::Number(Fraction::from(1)), TokenKind::RParen, TokenKind::Eof];
+        for (i, token) in tokenize(&"val mut foo: Option<number> = Some(1)".to_string()).into_iter().enumerate() {
             assert_eq!(token.kind, result[i]);
         }
         let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Option, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::None, TokenKind::Eof];
@@ -1286,17 +1334,13 @@ mod tests {
     }
 
     #[test]
-    fn test_some() {
-        let result = vec![TokenKind::Some, TokenKind::Eof];
-        for (i, token) in tokenize(&"Some".to_string()).into_iter().enumerate() {
+    fn test_result() {
+        let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Result, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Comma, TokenKind::Identifier("string".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::Success, TokenKind::LParen, TokenKind::Number(Fraction::from(1)), TokenKind::RParen, TokenKind::Eof];
+        for (i, token) in tokenize(&"val mut foo: Result<number, string> = Suc(1)".to_string()).into_iter().enumerate() {
             assert_eq!(token.kind, result[i]);
         }
-    }
-
-    #[test]
-    fn test_none() {
-        let result = vec![TokenKind::None, TokenKind::Eof];
-        for (i, token) in tokenize(&"None".to_string()).into_iter().enumerate() {
+        let result = vec![TokenKind::Mutable, TokenKind::Identifier("foo".into()), TokenKind::Colon, TokenKind::Result, TokenKind::Lt, TokenKind::Identifier("number".into()), TokenKind::Comma, TokenKind::Identifier("string".into()), TokenKind::Gt, TokenKind::Equal, TokenKind::Failure, TokenKind::LParen, TokenKind::String("fail".into()), TokenKind::RParen, TokenKind::Eof];
+        for (i, token) in tokenize(&"val mut foo: Result<number, string> = Fail(\"fail\")".to_string()).into_iter().enumerate() {
             assert_eq!(token.kind, result[i]);
         }
     }

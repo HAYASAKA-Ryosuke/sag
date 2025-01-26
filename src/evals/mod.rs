@@ -135,6 +135,14 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         ASTNode::OptionNone { line: _, column: _ } => {
             Ok(Value::Option(None))
         }
+        ASTNode::ResultSuccess { value, line: _, column: _ } => {
+            let value = eval(*value, env)?;
+            Ok(Value::Result(Ok(value.into())))
+        }
+        ASTNode::ResultFailure { value, line: _, column: _ } => {
+            let value = eval(*value, env)?;
+            Ok(Value::Result(Err(value.into())))
+        }
         ASTNode::If {
             condition,
             then,
@@ -381,6 +389,22 @@ mod tests {
         let ast = parser.parse_lines().unwrap();
         let results = evals(ast, &mut env).unwrap();
         assert_eq!(*results.last().unwrap(), Value::Option(Some(Box::new(Value::Number(Fraction::from(5))))));
+    }
+
+    #[test]
+    fn test_result_type() {
+        let input = r#"
+        val mut x:Result<number, string> = Suc(5)
+        x = Fail("hello")
+        val mut y = Suc(5)
+        x
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        let results = evals(ast, &mut env).unwrap();
+        assert_eq!(*results.last().unwrap(), Value::Result(Err(Box::new(Value::String("hello".to_string())))));
     }
 
     #[test]

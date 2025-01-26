@@ -116,6 +116,14 @@ impl Parser {
                 let value_type = self.infer_type(&value)?;
                 Ok(ValueType::OptionType(Box::new(value_type)))
             }
+            ASTNode::ResultSuccess { value, .. } => {
+                let value_type = self.infer_type(&value)?;
+                Ok(ValueType::ResultType{success: Box::new(value_type), failure: Box::new(ValueType::Void)})
+            }
+            ASTNode::ResultFailure { value, .. } => {
+                let value_type = self.infer_type(&value)?;
+                Ok(ValueType::ResultType{success: Box::new(ValueType::Void), failure: Box::new(value_type)})
+            }
             ASTNode::Assign { name: _, value: _, variable_type: _, value_type, is_new: _, .. } => {
                 Ok(value_type.clone())
             }
