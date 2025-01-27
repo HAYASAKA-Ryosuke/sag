@@ -60,3 +60,35 @@ fun fibo(n: number): number {
 
 
 print(fibo(7))
+
+val mut result:Result<number, string> = Suc(1)
+result -> print
+val match_result = match (result) {
+  Suc(v) => {return v + 1}
+  Fail(_) => {return 0}
+}
+match_result -> print
+result = Fail("fail")
+result -> print
+val match_result = match (result) {
+  Suc(v) => {return v + 1}
+  Fail(_) => {return 0}
+}
+match_result -> print
+
+
+val mut option:Option<number> = Some(1)
+option -> print
+val match_option = match (option) {
+  Some(v) => {return v + 1}
+  None => {return 0}
+}
+match_option -> print
+option = None
+option -> print
+
+val match_option = match (option) {
+  Some(v) => {return v + 1}
+  None => {return 0}
+}
+match_option -> print
