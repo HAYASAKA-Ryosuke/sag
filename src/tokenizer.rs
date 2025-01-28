@@ -502,9 +502,9 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
 
         if is_mutable(&mut tokenizer) {
-            tokenizer.column += 7;
+            tokenizer.column += 8;
             tokenizer.tokens.push(Token{kind: TokenKind::Mutable, line: tokenizer.line, column: tokenizer.column});
-            tokenizer.pos += 7;
+            tokenizer.pos += 8;
             continue;
         }
 
@@ -537,9 +537,9 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
 
         if is_import(&mut tokenizer) {
-            tokenizer.column += 6;
+            tokenizer.column += 7;
             tokenizer.tokens.push(Token{kind: TokenKind::Import, line: tokenizer.line, column: tokenizer.column});
-            tokenizer.pos += 6;
+            tokenizer.pos += 7;
             continue;
         }
 
@@ -551,16 +551,16 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
 
         if is_match(&mut tokenizer) {
-            tokenizer.column += 5;
+            tokenizer.column += 6;
             tokenizer.tokens.push(Token{kind: TokenKind::Match, line: tokenizer.line, column: tokenizer.column});
-            tokenizer.pos += 5;
+            tokenizer.pos += 6;
             continue;
         }
 
         if is_return(&mut tokenizer) {
-            tokenizer.column += 6;
+            tokenizer.column += 7;
             tokenizer.tokens.push(Token{kind: TokenKind::Return, line: tokenizer.line, column: tokenizer.column});
-            tokenizer.pos += 6;
+            tokenizer.pos += 7;
             continue;
         }
 
@@ -725,6 +725,7 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
 
+        tokenizer.column += 1;
         match c {
             '+' => tokenizer.tokens.push(Token{kind: TokenKind::Plus, line: tokenizer.line, column: tokenizer.column}),
             '-' => tokenizer.tokens.push(Token{kind: TokenKind::Minus, line: tokenizer.line, column: tokenizer.column}),
@@ -751,12 +752,12 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             '=' => tokenizer.tokens.push(Token{kind: TokenKind::Equal, line: tokenizer.line, column: tokenizer.column}),
             _ => {
                 let value = get_identifier(&mut tokenizer);
+                tokenizer.column += value.len() - 1;
                 tokenizer.tokens.push(Token{kind: TokenKind::Identifier(value), line: tokenizer.line, column: tokenizer.column});
                 continue;
             }
         }
         tokenizer.pos += 1;
-        tokenizer.column += 1;
     }
     match tokenizer.tokens.last() {
         Some(Token {kind, ..}) => {
