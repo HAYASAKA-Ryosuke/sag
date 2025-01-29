@@ -417,6 +417,12 @@ impl Parser {
                                             None => None,
                                         }
                                     },
+                                    Ok(value_type) => {
+                                        match self.get_method(self.get_current_scope(), value_type, method_name.clone()) {
+                                            Some(method_info) => Some(method_info.clone()),
+                                            None => None,
+                                        }
+                                    },
                                     _ => None,
                                 };
                                 match method_info {
