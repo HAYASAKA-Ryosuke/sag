@@ -1,44 +1,65 @@
 use std::collections::HashMap;
 use crate::ast::ASTNode;
 use crate::value::Value;
-use crate::environment::{Env, ValueType, MethodInfo, EnvVariableType, EnvVariableValueInfo};
+use crate::environment::{Env, ValueType, MethodInfo, EnvVariableType, EnvVariableValueInfo, FunctionInfo};
 use crate::evals::eval;
 use crate::evals::runtime_error::RuntimeError;
 
 pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, arguments: Box<ASTNode>, _line: usize, _column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     match *caller.clone() {
-        ASTNode::FunctionCall { name: _, arguments, line: _, column: _ } => {
+        ASTNode::FunctionCall { name, arguments, line, column } => {
             let arguments = match *arguments { ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],
             };
-            match method_name.as_str() {
-                "to_string" => {
-                    let value = eval(*caller.clone(), env)?;
-                    Ok(match value {
-                        Value::Number(value) => Value::String(value.to_string()),
-                        _ => Value::Void,
-                    })
+            let function_reutrn_type = match env.get_function(&name) {
+                Some(FunctionInfo{return_type, ..}) => return_type,
+                _ => return Err(RuntimeError::new(format!("missing function: {:?}", name).as_str(), line, column)),
+            };
+            match function_reutrn_type {
+                ValueType::Number => {
+                    match method_name.as_str() {
+                        "to_string" => {
+                            let value = eval(*caller.clone(), env)?;
+                            Ok(match value {
+                                Value::Number(value) => Value::String(value.to_string()),
+                                _ => Value::Void,
+                            })
+                        },
+                        "round" => {
+                            let value = eval(*caller.clone(), env)?;
+                            Ok(match value {
+                                Value::Number(value) => Value::Number(value.round()),
+                                _ => Value::Void,
+                            })
+                        },
+                        _ => Err(RuntimeError::new(format!("{} is not a method of number", method_name).as_str(), line, column)),
+                    }
                 },
-                "round" => {
-                    let value = eval(*caller.clone(), env)?;
-                    Ok(match value {
-                        Value::Number(value) => Value::Number(value.round()),
-                        _ => Value::Void,
-                    })
-                },
-                "push" => {
-                    let mut list = match eval(*caller.clone(), env)? {
-                        Value::List(list) => list,
-                        _ => vec![],
-                    };
-                    let value = eval(arguments[1].clone(), env)?;
-                    list.push(value);
-                    Ok(Value::List(list))
-                },
-                _ => Ok(Value::Void),
+                ValueType::List(_) => {
+                    match method_name.as_str() {
+                        "to_string" => {
+                            let value = eval(*caller.clone(), env)?;
+                            Ok(match value {
+                                Value::Number(value) => Value::String(value.to_string()),
+                                _ => Value::Void,
+                            })
+                        },
+                        "push" => {
+                            let mut list = match eval(*caller.clone(), env)? {
+                                Value::List(list) => list,
+                                _ => vec![],
+                            };
+                            let value = eval(arguments[0].clone(), env)?;
+                            list.push(value);
+                            Ok(Value::List(list))
+                        },
+                        _ => Err(RuntimeError::new(format!("{} is not a method of list", method_name).as_str(), line, column)),
+                    }
+                }
+                _ => Err(RuntimeError::new(format!("{} is not a method of function", method_name).as_str(), line, column)),
             }
         }
-        ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _, line: _, column: _ } => {
+        ASTNode::MethodCall { method_name: _, caller: _, arguments: _, builtin: _, line, column } => {
             let method_name = method_name.clone();
             let arguments = match *arguments { ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
                 _ => vec![],
@@ -46,22 +67,22 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
             match method_name.as_str() {
                 "to_string" => {
                     let value = eval(arguments[0].clone(), env)?;
-                    Ok(match value {
-                        Value::Number(value) => Value::String(value.to_string()),
-                        _ => Value::Void,
-                    })
+                    match value {
+                        Value::Number(value) => Ok(Value::String(value.to_string())),
+                        _ => Err(RuntimeError::new(format!("{} is not a method of number", method_name).as_str(), line, column)),
+                    }
                 },
                 "round" => {
                     let value = eval(arguments[0].clone(), env)?;
-                    Ok(match value {
-                        Value::Number(value) => Value::Number(value.round()),
-                        _ => Value::Void,
-                    })
+                    match value {
+                        Value::Number(value) => Ok(Value::Number(value.round())),
+                        _ => Err(RuntimeError::new(format!("{} is not a method of number", method_name).as_str(), line, column)),
+                    }
                 },
                 "push" => {
                     let mut list = match eval(arguments[0].clone(), env)? {
                         Value::List(list) => list,
-                        _ => vec![],
+                        _ => return Err(RuntimeError::new(format!("{} is not a method of list", method_name).as_str(), line, column)),
                     };
                     let value = eval(arguments[1].clone(), env)?;
                     list.push(value);
@@ -70,7 +91,7 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
                 _ => Ok(Value::Void),
             }
         }
-        ASTNode::Literal{value: Value::Number(_), ..} => {
+        ASTNode::Literal{value: Value::Number(_), line, column} => {
             let method_name = method_name.clone();
             let arguments = match *arguments {
                 ASTNode::FunctionCallArgs{args: arguments, ..} => arguments,
@@ -91,22 +112,7 @@ pub fn builtin_method_call_node(method_name: String, caller: Box<ASTNode>, argum
                         _ => Value::Void,
                     })
                 },
-                "push" => {
-                    let mut list = match *caller {
-                        ASTNode::Variable { name, value_type: _, .. } => {
-                            let variable = env.get(&name, None).unwrap();
-                            match variable.value.clone() {
-                                Value::List(list) => list,
-                                _ => vec![],
-                            }
-                        },
-                        _ => vec![],
-                    };
-                    let value = eval(arguments[1].clone(), env)?;
-                    list.push(value);
-                    Ok(Value::List(list))
-                },
-                _ => Ok(Value::Void),
+                _ => Err(RuntimeError::new(format!("{} is not a method of number", method_name).as_str(), line, column)),
             }
         }
         ASTNode::Variable { ref name, ref value_type, .. } => {

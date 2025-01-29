@@ -402,13 +402,35 @@ impl Parser {
                                 }
                             },
                             ASTNode::MethodCall { ref caller, .. } => {
-                                match self.infer_type(&caller) {
-                                    Ok(ValueType::Number) => true,
-                                    Ok(ValueType::String) => true,
-                                    Ok(ValueType::Bool) => true,
-                                    Ok(ValueType::Void) => true,
-                                    Ok(ValueType::List(_)) => true,
-                                    _ => false,
+                                let method_info = match self.infer_type(caller) {
+                                    Ok(ValueType::StructInstance{ name, .. }) => {
+                                        let methods = match self.get_struct(self.get_current_scope(), name.clone()) {
+                                            Some(ValueType::Struct { name: _, fields: _, methods }) => methods,
+                                            _ => panic!("invalid struct"),
+                                        };
+                                        let caller_method_name = match lhs {
+                                            ASTNode::MethodCall { ref method_name, .. } => method_name,
+                                            _ => panic!("invalid method call"),
+                                        };
+                                        match methods.get(caller_method_name) {
+                                            Some(method_info) => Some(method_info.clone()),
+                                            None => None,
+                                        }
+                                    },
+                                    _ => None,
+                                };
+                                match method_info {
+                                    Some(MethodInfo { return_type, .. }) => {
+                                        match return_type {
+                                            ValueType::Number => true,
+                                            ValueType::String => true,
+                                            ValueType::Bool => true,
+                                            ValueType::Void => true,
+                                            ValueType::List(_) => true,
+                                            _ => false,
+                                        }
+                                    },
+                                    None => false,
                                 }
                             },
                             _ => false,
