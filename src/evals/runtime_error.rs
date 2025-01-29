@@ -18,8 +18,8 @@ impl RuntimeError {
         let lines: Vec<&str> = source.lines().collect();
         let error_line = lines.get(self.line - 1).unwrap_or(&"");
         format!(
-            "Runtime Error: {}\n --> line {}, column {}\n | {}\n | {}^",
-            self.message, self.line, self.column, error_line, " ".repeat(self.column)
+            "Runtime Error: {}\n line {}\n | {}\n |",
+            self.message, self.line, error_line,
         )
     }
 }
