@@ -191,6 +191,12 @@ impl Parser {
                         return_type: ValueType::String,
                         is_mut: false,
                     }),
+                    "sqrt" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Number,
+                        is_mut: false,
+                    }),
                     "round" => Some(MethodInfo {
                         arguments: vec![],
                         body: None,
@@ -439,7 +445,14 @@ impl Parser {
                                     None => false,
                                 }
                             },
-                            _ => false,
+                            _ => match self.infer_type(&lhs) {
+                                Ok(ValueType::Number) => true,
+                                Ok(ValueType::String) => true,
+                                Ok(ValueType::Bool) => true,
+                                Ok(ValueType::Void) => true,
+                                Ok(ValueType::List(_)) => true,
+                                _ => false,
+                            },
                         };
 
                         lhs = ASTNode::MethodCall{
