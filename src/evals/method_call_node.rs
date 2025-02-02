@@ -4,7 +4,7 @@ use crate::value::Value;
 use crate::environment::{Env, ValueType, EnvVariableType};
 use crate::evals::eval;
 use crate::evals::runtime_error::RuntimeError;
-use fraction::{Fraction, GenericFraction};
+use fraction::Fraction;
 
 fn extract_arguments(arguments: Box<ASTNode>) -> Vec<ASTNode> {
     match *arguments {
