@@ -36,7 +36,21 @@ impl Parser {
                 let value_type = self.infer_type(&expr)?;
                 Ok(value_type)
             }
-
+            ASTNode::StructFieldAccess { instance, field_name, ..} => {
+                let instance_type = self.infer_type(&instance)?;
+                if let ValueType::Struct { fields, .. } = instance_type {
+                    if let Some(field_type) = fields.get(field_name) {
+                        match field_type.clone() {
+                            ValueType::StructField { value_type, is_public: _ } => Ok(*value_type),
+                            _ => Ok(field_type.clone())
+                        }
+                    } else {
+                        Err(format!("field not found: {:?}", field_name))
+                    }
+                } else {
+                    Err("field access on non-struct".to_string())
+                }
+            }
             ASTNode::StructInstance { name, fields, .. } => {
                 let mut field_types = HashMap::new();
                 for (field_name, field_value) in fields.iter() {
