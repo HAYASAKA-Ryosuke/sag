@@ -4,7 +4,7 @@ use crate::value::Value;
 use crate::environment::{Env, ValueType, EnvVariableType};
 use crate::evals::eval;
 use crate::evals::runtime_error::RuntimeError;
-use fraction::GenericFraction;
+use fraction::{Fraction, GenericFraction};
 
 fn extract_arguments(arguments: Box<ASTNode>) -> Vec<ASTNode> {
     match *arguments {
@@ -15,7 +15,7 @@ fn extract_arguments(arguments: Box<ASTNode>) -> Vec<ASTNode> {
 
 // number builtin method
 fn call_builtin_method_on_number(
-    num: GenericFraction<u64>,
+    num: Fraction,
     method_name: &str,
     _args: &[ASTNode],
     line: usize,
@@ -24,6 +24,13 @@ fn call_builtin_method_on_number(
     match method_name {
         "to_string" => Ok(Value::String(num.to_string())),
         "round" => Ok(Value::Number(num.round().into())),
+        "sqrt" => {
+            let num_f64 = *num.numer().unwrap() as f64;
+            let denom_f64 = *num.denom().unwrap() as f64;
+            let fraction_value = num_f64 / denom_f64;
+            let sqrt_value = fraction_value.sqrt();
+            Ok(Value::Number(sqrt_value.into()))
+        },
         _ => Err(RuntimeError::new(
             format!("{} is not a method of number", method_name).as_str(),
             line,
@@ -313,6 +320,17 @@ mod tests {
     fn test_round_method_call_node() {
         let mut env = Env::new();
         let input = "(1.5).round()".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse();
+        let result = eval(ast.unwrap(), &mut env).unwrap();
+        assert_eq!(result, Value::Number(2.into()));
+    }
+
+    #[test]
+    fn test_sqrt_method_call_node() {
+        let mut env = Env::new();
+        let input = "(2 + 2).sqrt()".to_string();
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse();
