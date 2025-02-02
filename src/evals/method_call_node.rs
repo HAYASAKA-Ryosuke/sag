@@ -159,6 +159,9 @@ pub fn method_call_node(
         ValueType::StructInstance { name: struct_name, .. } => {
             local_env.get_struct(struct_name).cloned()
         }
+        ValueType::Struct { name: struct_name, .. } => {
+            local_env.get_struct(struct_name).cloned()
+        }
         _ => {
             return Err(RuntimeError::new(
                 format!("missing struct: {:?}", variable_info.value).as_str(),
@@ -336,6 +339,33 @@ mod tests {
         let ast = parser.parse();
         let result = eval(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result, Value::Number(2.into()));
+    }
+
+    #[test]
+    fn test_new_method_call_node() {
+        let mut env = Env::new();
+        let input = r#"
+        struct Point {
+            x: number,
+            y: number,
+        }
+        impl Point {
+          fun new(self, x: number, y: number): Point {
+            return Point { x: x, y: y }
+          }
+          fun get_x(self): number {
+            return self.x
+          }
+        }
+        val mut p = Point{x: 1, y: 2}
+        val mut p2 = p.new(3, 4)
+        p2.get_x()
+        "#.to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env);
+        assert_eq!(result.unwrap().last(), Some(&Value::Number(3.into())));
     }
     #[test]
     fn test_push_method_call_node() {

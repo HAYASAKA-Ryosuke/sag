@@ -126,7 +126,7 @@ impl Parser {
         }
     }
 
-    fn get_struct(&mut self, scope: String, name: String) -> Option<ValueType> {
+    fn get_struct(&self, scope: String, name: String) -> Option<ValueType> {
         for checked_scope in vec![scope.to_string(), "global".to_string()] {
             match self.structs.get(&(checked_scope.to_string(), name.to_string())) {
                 Some((ref value_type, _, ..)) => match value_type.clone() {
@@ -180,6 +180,17 @@ impl Parser {
                         return_type: ValueType::Void,
                         is_mut: true,
                     }),
+                    _ => None
+                }
+            }
+            ValueType::StructInstance { name, fields: _ } => {
+                match self.get_struct(self.get_current_scope(), name.clone()) {
+                    Some(ValueType::Struct { name: _, fields: _, methods }) => {
+                        match methods.get(&method_name) {
+                            Some(method) => Some(method.clone()),
+                            None => None
+                        }
+                    },
                     _ => None
                 }
             }
