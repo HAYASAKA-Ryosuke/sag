@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.28", features = ["derive"] }
+clap_derive = "4.5.28"
 fraction = "0.15.3"
+toml = "0.8.20"
 wasm-bindgen = "0.2.99"
 
 [lib]

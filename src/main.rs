@@ -11,9 +11,25 @@ mod token;
 use crate::builtin::register_builtins;
 use crate::environment::Env;
 use crate::evals::{eval, evals};
-use crate::parsers::Parser;
+use crate::parsers::Parser as SagParser;
 use crate::tokenizer::tokenize;
-use std::env;
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Install,
+    Run {
+        file_path: String,
+    },
+    Repl,
+}
 
 fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
     let mut env = Env::new();
@@ -21,7 +37,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
     for line in std::io::stdin().lines() {
         let line = line?;
         let tokens = tokenize(&line);
-        let mut parser = Parser::new(tokens.to_vec(), builtins.clone());
+        let mut parser = SagParser::new(tokens.to_vec(), builtins.clone());
         let ast_node = parser.parse();
         if let Err(e) = ast_node {
             eprint!("{}", e.message_with_source(&line));
@@ -42,7 +58,7 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("tokens: {:?}", tokens);
     let mut env = Env::new();
     let builtins = register_builtins(&mut env);
-    let mut parser = Parser::new(tokens.to_vec(), builtins.clone());
+    let mut parser = SagParser::new(tokens.to_vec(), builtins.clone());
     let ast_nodes = parser.parse_lines();
     if let Err(e) = ast_nodes {
         eprint!("{}", e.message_with_source(&file));
@@ -59,16 +75,19 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        //println!("args: {:?}", args);
-        let file_path = args[1].clone();
-        if let Err(e) = run_file(file_path) {
-            eprintln!("Error: {}", e);
+    let args = Cli::parse();
+    match args.command {
+        Commands::Install => {
         }
-    } else {
-        if let Err(e) = run_repl() {
-            eprintln!("Error: {}", e);
+        Commands::Run {file_path} => {
+            if let Err(e) = run_file(file_path) {
+                eprintln!("Error: {}", e);
+            }
+        }
+        Commands::Repl => {
+            if let Err(e) = run_repl() {
+                eprintln!("Error: {}", e);
+            }
         }
     }
 }
