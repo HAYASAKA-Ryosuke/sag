@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use crate::ast::ASTNode;
 use crate::value::Value;
 use wasm_bindgen::prelude::*;
@@ -129,8 +130,15 @@ impl Env {
             return Ok(());
         }
 
-        let file_content = std::fs::read_to_string(module_path)
-            .map_err(|e| format!("Failed to read file '{}': {}", module_path, e))?;
+        let file_content = if !PathBuf::from(module_path).exists() {
+            let module_path = PathBuf::from(format!("./.sag_packages/{}", module_path));
+            if !module_path.exists() {
+                return Err("missing package".to_string())
+            }
+            std::fs::read_to_string(module_path).unwrap()
+        } else {
+            std::fs::read_to_string(module_path).unwrap()
+        };
 
         let tokens = tokenize(&file_content);
         let builtins = register_builtins(self);

@@ -7,12 +7,14 @@ mod parsers;
 mod ast;
 mod value;
 mod token;
+mod install;
 
 use crate::builtin::register_builtins;
 use crate::environment::Env;
 use crate::evals::{eval, evals};
 use crate::parsers::Parser as SagParser;
 use crate::tokenizer::tokenize;
+use crate::install::install_package;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -24,7 +26,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Install,
+    Install {
+        package_or_path: String
+    },
     Run {
         file_path: String,
     },
@@ -77,7 +81,8 @@ fn run_file(file_path: String) -> Result<(), Box<dyn std::error::Error>> {
 fn main() {
     let args = Cli::parse();
     match args.command {
-        Commands::Install => {
+        Commands::Install {package_or_path} => {
+            install_package(package_or_path);
         }
         Commands::Run {file_path} => {
             if let Err(e) = run_file(file_path) {

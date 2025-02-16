@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::value::Value;
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -6,7 +7,7 @@ use crate::environment::ExportedSymbolType;
 use crate::evals::runtime_error::RuntimeError;
 
 pub fn import_node(module_name: String, symbols: Vec<String>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
-    let module_path = format!("./{}.sag", module_name);
+    let module_path = format!("{}.sag", module_name);
     match env.register_module(&module_name, &module_path) {
         Ok(_) => {}
         Err(e) => return Err(RuntimeError::new(format!("Failed to import module {}: {:?}", module_name, e).as_str(), line, column)),
