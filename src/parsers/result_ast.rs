@@ -44,7 +44,6 @@ mod tests {
             ParseError{message, ..} => {
                 assert_eq!(message, "type mismatch");
             }
-            _ => panic!("unexpected error"),
         }
     }
     #[test]
@@ -61,7 +60,6 @@ mod tests {
             ParseError{message, ..} => {
                 assert_eq!(message, "type mismatch");
             }
-            _ => panic!("unexpected error"),
         }
     }
     #[test]
@@ -78,7 +76,6 @@ mod tests {
             ParseError{message, ..} => {
                 assert_eq!(message, "type mismatch");
             }
-            _ => panic!("unexpected error"),
         }
     }
 }
