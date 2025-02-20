@@ -90,7 +90,7 @@ impl Parser {
                     }
                 }
             },
-            ASTNode::MethodCall { ref caller, .. } => {
+            ASTNode::MethodCall { caller, .. } => {
                 match self.infer_type(&caller) {
                     Ok(ValueType::Number) => true,
                     Ok(ValueType::String) => true,

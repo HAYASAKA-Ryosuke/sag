@@ -49,7 +49,7 @@ impl Parser {
                 },
                 ASTNode::Block{nodes: ref statements, ..} => {
                     for statement in statements {
-                        if let ASTNode::Return{expr: ref value, ..} = statement {
+                        if let ASTNode::Return{expr: value, ..} = statement {
                             then_type = Some(self.infer_type(&value));
                         }
                     }
@@ -59,12 +59,12 @@ impl Parser {
 
             if let Some(else_node) = &else_ {
                 match &**else_node {
-                    ASTNode::Return{expr: ref value, ..} => {
+                    ASTNode::Return{expr: value, ..} => {
                         else_type = Some(self.infer_type(&value));
                     },
-                    ASTNode::Block{nodes: ref statements, ..} => {
+                    ASTNode::Block{nodes: statements, ..} => {
                         for statement in statements {
-                            if let ASTNode::Return{expr: ref value, ..} = statement { 
+                            if let ASTNode::Return{expr: value, ..} = statement { 
                                 else_type = Some(self.infer_type(&value));
                             }
                         }

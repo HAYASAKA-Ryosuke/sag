@@ -198,7 +198,7 @@ impl Env {
         match impl_value {
             Value::Impl { base_struct, methods } => {
                 if let ValueType::Struct { name, .. } = base_struct {
-                    if let Some(Value::Struct { methods: ref mut struct_methods, .. }) = self.structs.get_mut(&name) {
+                    if let Some(Value::Struct { methods: struct_methods, .. }) = self.structs.get_mut(&name) {
                         for (method_name, method_info) in methods {
                             struct_methods.insert(method_name.clone(), method_info.clone());
                         }

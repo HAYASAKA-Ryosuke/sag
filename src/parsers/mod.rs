@@ -129,7 +129,7 @@ impl Parser {
     fn get_struct(&self, scope: String, name: String) -> Option<ValueType> {
         for checked_scope in vec![scope.to_string(), "global".to_string()] {
             match self.structs.get(&(checked_scope.to_string(), name.to_string())) {
-                Some((ref value_type, _, ..)) => match value_type.clone() {
+                Some((value_type, _, ..)) => match value_type.clone() {
                     ValueType::Struct { .. } => {
                         return Some(value_type.clone())
                     },

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 impl Parser {
     pub fn infer_type(&self, ast: &ASTNode) -> Result<ValueType, String> {
         match ast {
-            ASTNode::Literal{value: ref v, ..} => match v {
+            ASTNode::Literal{value: v, ..} => match v {
                 Value::Number(_) => Ok(ValueType::Number),
                 Value::String(_) => Ok(ValueType::String),
                 Value::Bool(_) => Ok(ValueType::Bool),
