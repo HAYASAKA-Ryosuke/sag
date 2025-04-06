@@ -95,9 +95,10 @@ match_option -> print
 
 
 fun divide(a: number, b: number): Result<number, string> {
-    if (b == 0) {
+    return if (b == 0) {
         return Fail("division by zero")
+    } else {
+    	return Suc(a / b)
     }
-    return Suc(a / b)
 }
 divide(1, 2)
