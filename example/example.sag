@@ -92,3 +92,12 @@ val match_option = match (option) {
   None => {return 0}
 }
 match_option -> print
+
+
+fun divide(a: number, b: number): Result<number, string> {
+    if (b == 0) {
+        return Fail("division by zero")
+    }
+    return Suc(a / b)
+}
+divide(1, 2)
