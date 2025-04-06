@@ -1,4 +1,4 @@
-- name: Dispatch sag-playground CI
+name: Dispatch sag-playground CI
 on:
   push:
     branches:
