@@ -18,6 +18,7 @@ jobs:
       - name: Trigger sag-playground CI
         uses: actions/github-script@v4
         with:
+          github-token: ${{ secrets.REPO_DISPATCH_PAT }}
           script: |
             const response = await github.repos.createDispatchEvent({
               owner: 'sag-lang-project',
