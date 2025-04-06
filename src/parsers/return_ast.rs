@@ -16,8 +16,33 @@ impl Parser {
         match self.get_current_token() {
             Some(Token{kind: TokenKind::Colon, ..}) => {
                 self.consume_token();
-                if let Some(Token{kind: TokenKind::Identifier(type_name), ..}) = self.consume_token() {
+                if let Some(Token{kind: TokenKind::Identifier(type_name), ..}) = self.get_current_token() {
+                    self.consume_token();
                     return self.string_to_value_type(type_name);
+                }
+                if let Some(Token{kind: TokenKind::Result, ..}) = self.get_current_token() {
+                    self.consume_token();
+                    self.extract_token(TokenKind::Lt);
+                    let success = match self.get_current_token() {
+                        Some(Token{kind: TokenKind::Identifier(type_name), ..}) => {
+                            self.consume_token();
+                            self.string_to_value_type(type_name)
+                        }
+                        _ => ValueType::Void,
+                    };
+                    self.extract_token(TokenKind::Comma);
+                    let failure = match self.get_current_token() {
+                        Some(Token{kind: TokenKind::Identifier(type_name), ..}) => {
+                            self.consume_token();
+                            self.string_to_value_type(type_name)
+                        }
+                        _ => ValueType::Void,
+                    };
+                    self.consume_token();
+                    return ValueType::ResultType{
+                        success: Box::new(success),
+                        failure: Box::new(failure),
+                    };
                 }
             },
             _ => {}
