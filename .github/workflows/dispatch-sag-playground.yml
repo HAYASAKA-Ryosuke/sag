@@ -20,7 +20,7 @@ jobs:
         with:
           script: |
             const response = await github.repos.createDispatchEvent({
-              owner: 'HAYASAKA-Ryosuke',
+              owner: 'sag-lang-project',
               repo: 'sag-playground',
               event_type: 'sag-main-update',
             });
