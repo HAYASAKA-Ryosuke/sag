@@ -1,0 +1,16 @@
+name: Dispatch sag-playground CI
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sag-playground CI
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: HAYASAKA-Ryosuke/sag-playground
+          event-type: sag-main-update
