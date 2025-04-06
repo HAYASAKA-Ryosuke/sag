@@ -29,6 +29,12 @@ impl Parser {
                                 self.extract_token(TokenKind::Gt);
                                 ValueType::ResultType{success: Box::new(success_value_type), failure: Box::new(failure_value_type)}
                             },
+                            TokenKind::List => {
+                                self.extract_token(TokenKind::Lt);
+                                let element_type = self.get_result_value_type()?;
+                                self.extract_token(TokenKind::Gt);
+                                ValueType::List(Box::new(element_type))
+                            },
                             _ => return Err(ParseError::new("unexpected token", &token)),
                         },
                         _ => return Err(ParseError::new("unexpected token", &token)),
@@ -43,6 +49,12 @@ impl Parser {
                     let failure_value_type = self.get_result_value_type()?;
                     self.extract_token(TokenKind::Gt);
                     Ok(ValueType::ResultType{success: Box::new(success_value_type), failure: Box::new(failure_value_type)})
+                },
+                TokenKind::List => {
+                    self.extract_token(TokenKind::Lt);
+                    let element_type = self.get_result_value_type()?;
+                    self.extract_token(TokenKind::Gt);
+                    Ok(ValueType::List(Box::new(element_type)))
                 },
                 _ => Err(ParseError::new("unexpected token", &token)),
             },

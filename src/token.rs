@@ -60,4 +60,5 @@ pub enum TokenKind {
     Result,
     Success,
     Failure,
+    List,
 }

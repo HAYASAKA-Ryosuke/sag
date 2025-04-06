@@ -20,6 +20,19 @@ impl Parser {
                     self.consume_token();
                     return self.string_to_value_type(type_name);
                 }
+                if let Some(Token{kind: TokenKind::Option, ..}) = self.get_current_token() {
+                    self.consume_token();
+                    self.extract_token(TokenKind::Lt);
+                    let some = match self.get_current_token() {
+                        Some(Token{kind: TokenKind::Identifier(type_name), ..}) => {
+                            self.consume_token();
+                            self.string_to_value_type(type_name)
+                        }
+                        _ => ValueType::Void,
+                    };
+                    self.extract_token(TokenKind::Gt);
+                    return ValueType::OptionType(Box::new(some));
+                }
                 if let Some(Token{kind: TokenKind::Result, ..}) = self.get_current_token() {
                     self.consume_token();
                     self.extract_token(TokenKind::Lt);
@@ -43,6 +56,19 @@ impl Parser {
                         success: Box::new(success),
                         failure: Box::new(failure),
                     };
+                }
+                if let Some(Token{kind: TokenKind::List, ..}) = self.get_current_token() {
+                    self.consume_token();
+                    self.extract_token(TokenKind::Lt);
+                    let element_type = match self.get_current_token() {
+                        Some(Token{kind: TokenKind::Identifier(type_name), ..}) => {
+                            self.consume_token();
+                            self.string_to_value_type(type_name)
+                        }
+                        _ => ValueType::Void,
+                    };
+                    self.extract_token(TokenKind::Gt);
+                    return ValueType::List(Box::new(element_type));
                 }
             },
             _ => {}
