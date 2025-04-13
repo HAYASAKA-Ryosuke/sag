@@ -1345,4 +1345,42 @@ mod tests {
             assert_eq!(token.kind, result[i]);
         }
     }
+
+    #[test]
+    fn test_for_in_function() {
+
+        let result = vec![
+            TokenKind::Function,
+            TokenKind::Identifier("f".into()),
+            TokenKind::LParen,
+            TokenKind::Identifier("xs".into()),
+            TokenKind::Colon,
+            TokenKind::Identifier("List".into()),
+            TokenKind::Lt,
+            TokenKind::Identifier("number".into()),
+            TokenKind::Gt,
+            TokenKind::RParen,
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::For,
+            TokenKind::Identifier("x".into()),
+            TokenKind::In,
+            TokenKind::Identifier("xs".into()),
+            TokenKind::LBrace,
+            TokenKind::Eof,
+            TokenKind::Identifier("print".into()),
+            TokenKind::LParen,
+            TokenKind::Identifier("x".into()),
+            TokenKind::RParen,
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof,
+            TokenKind::RBrace,
+            TokenKind::Eof,
+        ];
+
+        for (i, token) in tokenize(&"fun f(xs: List<number>) {\n for x in xs {\n print(x)\n }\n }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+    }
 }

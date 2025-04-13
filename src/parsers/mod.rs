@@ -1822,12 +1822,19 @@ mod tests {
 
     #[test]
     fn test_struct_instance() {
-        let input = "Point { x: 1, y: 2 }";
+        let input = r#"
+            struct Point {
+                x: number,
+                y: number
+            }
+            Point { x: 1, y: 2 }
+        "#.to_string();
         let tokens = tokenize(&input.to_string());
-        let builtins = register_builtins(&mut Env::new());
-        let mut parser = Parser::new(tokens, builtins);
-        match parser.parse() {
-            Ok(ASTNode::StructInstance { name, fields, .. }) => {
+        let mut parser = Parser::new(tokens, register_builtins(&mut Env::new()));
+        let results = parser.parse_lines().unwrap();
+        assert_eq!(results.len(), 2);
+        match &results[1] {
+            ASTNode::StructInstance { name, fields, .. } => {
                 assert_eq!(name, "Point");
                 assert_eq!(fields.len(), 2);
                 let x = fields.get("x").unwrap();

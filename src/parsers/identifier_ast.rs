@@ -6,42 +6,52 @@ use crate::parsers::parse_error::ParseError;
 use std::collections::HashMap;
 
 impl Parser {
+    fn resolve_variable_type(
+        &mut self,
+        scope: &str,
+        name: &str,
+        variable_info: Option<(ValueType, EnvVariableType)>
+    ) -> Option<ValueType> {
+        if let Some((val_type, _)) = variable_info {
+            Some(val_type)
+        } else if let Some(struct_name) = self.get_current_struct() {
+            if let Some(ValueType::Struct { fields, .. }) = self.get_struct(scope.to_string(), struct_name) {
+                fields.get(name).cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
     pub fn parse_identifier(&mut self, name: String) -> Result<ASTNode, ParseError> {
         self.pos += 1;
         let scope = self.get_current_scope().to_string();
         let variable_info = self.find_variables(scope.clone(), name.clone());
         match self.get_current_token() {
-            Some(Token{kind: TokenKind::LBrace, ..}) => self.create_struct_instance(name.clone()),
+            Some(Token{kind: TokenKind::LBrace, ..}) => {
+                // 構造体が指定されている場合はインスタンス化
+                let struct_name = self.get_struct(scope.clone(), name.clone());
+                if struct_name.is_some() {
+                    self.create_struct_instance(name.clone())
+                } else {
+                    let value_type = self.resolve_variable_type(&scope, &name, variable_info.clone());
+                    Ok(ASTNode::Variable {
+                        name,
+                        value_type,
+                        line: self.line,
+                        column: self.pos,
+                    })
+                }
+            },
             Some(Token{kind: TokenKind::LParen, ..}) => self.create_function_call(name.clone()),
             Some(Token{kind: TokenKind::Equal, ..}) => self.create_assignment(name.clone(), variable_info),
             Some(Token{kind: TokenKind::Colon, ..}) => self.create_variable_declaration(name.clone()),
             Some(Token{kind: TokenKind::Dot, ..}) => self.create_struct_field_access(name.clone()),
             _ => {
                 // 代入
-                let value_type = if variable_info.is_some() {
-                    Some(variable_info.unwrap().0)
-                } else {
-                    // structに所属しているかチェック
-                    match self.get_current_struct(){
-                        Some(struct_name) => {
-                            let struct_info = self.get_struct(scope.clone(), struct_name.clone());
-                            match struct_info {
-                                Some(ValueType::Struct { fields, .. }) => {
-                                    let field_info = fields.get(&name);
-                                    match field_info {
-                                        Some(field_info) => Some(field_info.clone()),
-                                        None => None
-                                    }
-                                },
-                                _ => None
-                            }
-                        },
-                        None => None
-                    }
-                };
-                let line = self.line;
-                let column = self.pos;
-                Ok(ASTNode::Variable { name, value_type, line, column })
+                let value_type = self.resolve_variable_type(&scope, &name, variable_info.clone());
+                Ok(ASTNode::Variable { name, value_type, line: self.line, column: self.pos })
             }
 
         }
