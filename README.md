@@ -182,10 +182,10 @@ val match_option = match (option) {
 // This is a single line comment
 
 // Multi-line comment
-```
+\`\`\`
 This is a
 multi-line comment
-```
+\`\`\`
 
 ## License
 
