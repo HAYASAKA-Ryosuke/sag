@@ -53,6 +53,17 @@ impl Parser {
                             then_type = Some(self.infer_type(&value));
                         }
                     }
+                    if then_type.is_none() {
+                        let last = statements.last();
+                        match last {
+                            Some(ast_node) => {
+                                then_type = Some(self.infer_type(ast_node));
+                            },
+                            _ => {
+                                then_type = None
+                            }
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -66,6 +77,17 @@ impl Parser {
                         for statement in statements {
                             if let ASTNode::Return{expr: value, ..} = statement { 
                                 else_type = Some(self.infer_type(&value));
+                            }
+                        }
+                        if then_type.is_none() {
+                            let last = statements.last();
+                            match last {
+                                Some(ast_node) => {
+                                    else_type = Some(self.infer_type(ast_node));
+                                },
+                                _ => {
+                                    else_type = None
+                                }
                             }
                         }
                     }

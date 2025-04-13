@@ -17,12 +17,20 @@ pub fn function_node(name: String, arguments: Vec<ASTNode>, body: Box<ASTNode>, 
 }
 
 pub fn block_node(statements: Vec<ASTNode>, _line: usize, _column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+    let last = if statements.len() > 0 {
+        statements[statements.len()-1].clone()
+    } else {
+        return Ok(Value::Void);
+    };
     for statement in statements {
         if let Value::Return(v) = eval(statement, env)? {
             return Ok(*v);
         }
     }
-    Ok(Value::Void)
+    match eval(last, env) {
+        Ok(value) => Ok(value),
+        Err(e) => Err(e),
+    }
 }
 
 pub fn function_call_node(name: String, arguments: Box<ASTNode>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
