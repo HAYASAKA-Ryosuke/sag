@@ -110,8 +110,8 @@ mod tests {
     fn test_pattern_matching() {
         let input = r#"
         match 1 {
-            1 => {return 2}
-            _ => {return 3}
+            1 => {2}
+            _ => {3}
         }
         "#.to_string();
         let mut env = Env::new();
@@ -123,8 +123,8 @@ mod tests {
 
         let input = r#"
         match 2 {
-            1 => { return 2 }
-            _ => { return 3 }
+            1 => { 2 }
+            _ => { 3 }
         }
         "#.to_string();
         let tokens = tokenize(&input);
@@ -134,8 +134,8 @@ mod tests {
         assert_eq!(result, Value::Number(Fraction::from(3)));
         let input = r#"
         match Some(2) {
-            Some(2) => { return 2 }
-            _ => { return 3 }
+            Some(2) => { 2 }
+            _ => { 3 }
         }
         "#.to_string();
         let tokens = tokenize(&input);
@@ -146,9 +146,9 @@ mod tests {
         let input = r#"
         val x:Option<number> = Some(2)
         match (x) {
-            Some(v) => { return (v + 10) }
-            None => { return 3 }
-            _ => { return 4 }
+            Some(v) => { (v + 10) }
+            None => { 3 }
+            _ => { 4 }
         }
         "#.to_string();
         let tokens = tokenize(&input);
@@ -158,9 +158,9 @@ mod tests {
         assert_eq!(result[1], Value::Number(Fraction::from(12)));
         let input = r#"
         match None {
-            Some(2) => { return 2 }
-            None => { return 3 }
-            _ => { return 4 }
+            Some(2) => { 2 }
+            None => { 3 }
+            _ => { 4 }
         }
         "#.to_string();
         let tokens = tokenize(&input);

@@ -8,13 +8,16 @@ pub fn for_node(variable: String, iterable: Box<ASTNode>, body: Box<ASTNode>, li
     let iterable = eval(*iterable, env)?;
     match iterable {
         Value::List(values) => {
+            let scope_name = format!("for-{}", variable.clone());
             for value in values {
-                let scope_name = format!("for-{}-{}", variable.clone(), value.clone());
                 env.enter_scope(scope_name.clone());
                 let _ = env.set(variable.clone(), value.clone(), EnvVariableType::Immutable, value.value_type(), true);
-                eval(*body.clone(), env)?;
-                env.leave_scope();
+                let result = eval(*body.clone(), env)?;
+                if let Value::Return(_) = result {
+                    return Ok(result);
+                }
             }
+            env.leave_scope();
             Ok(Value::Void)
         }
         _ => Err(RuntimeError::new(format!("Unexpected iterable: {:?}", iterable).as_str(), line, column)),

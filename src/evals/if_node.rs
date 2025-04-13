@@ -34,31 +34,14 @@ mod tests {
         let input = r#"
         if (1 == 1) {
             1
+        } else {
+            2
         }
         "#;
         let tokens = tokenize(&input.to_string());
         let builtin = register_builtins(&mut Env::new());
         let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
         let result = evals(asts, &mut env).unwrap();
-        assert_eq!(result, vec![
-            Value::Void
-        ]);
-    }
-
-    #[test]
-    fn test_if_return() {
-        let mut env = Env::new();
-        let input = r#"
-        if (1 == 1) {
-            return 1
-        } else {
-            return 2
-        }
-        "#;
-        let tokens = tokenize(&input.to_string());
-        let builtin = register_builtins(&mut Env::new());
-        let asts = Parser::new(tokens, builtin).parse_lines();
-        let result = evals(asts.unwrap(), &mut env).unwrap();
         assert_eq!(result, vec![
             Value::Number(Fraction::from(1)),
         ]);

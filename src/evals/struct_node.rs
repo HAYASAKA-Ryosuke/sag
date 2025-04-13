@@ -341,6 +341,7 @@ impl Point {
   fun move(mut self, dx: number, dy: number) {
       self.x = self.x + dx
       self.y = self.y + dy
+      Void
   }
 }
 
@@ -348,6 +349,7 @@ impl Point {
   fun clear(mut self) {
       self.x = 0
       self.y = 0
+      Void
   }
 }
 

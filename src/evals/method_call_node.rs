@@ -279,6 +279,11 @@ pub fn method_call_node(
 
     // メソッド本体の評価
     let result = eval(method_info.body.clone().unwrap(), &mut local_env)?;
+    // Returnに包まれている場合は中身を取り出す
+    let unwrapped_result = match result {
+        Value::Return(inner) => *inner,
+        other => other,
+    };
 
     // メソッド呼び出し後、self の変更があればグローバル環境に反映する
     if let Some(self_var) = local_env.get(&"self".to_string(), None) {
@@ -297,7 +302,7 @@ pub fn method_call_node(
     }
     env.update_global_env(&local_env);
     env.leave_scope();
-    Ok(result)
+    Ok(unwrapped_result)
 }
 
 #[cfg(test)]

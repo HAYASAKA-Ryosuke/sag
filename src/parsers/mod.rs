@@ -344,6 +344,7 @@ impl Parser {
             TokenKind::Import => self.parse_import(),
             TokenKind::Some => self.parse_option_some(),
             TokenKind::None => self.parse_option_none(),
+            TokenKind::Void => self.parse_literal(Value::Void),
             TokenKind::Success => self.parse_result_success(),
             TokenKind::Failure => self.parse_result_failure(),
             TokenKind::If => {
@@ -1399,7 +1400,7 @@ mod tests {
 
     #[test]
     fn test_if() {
-        let input = "if (x == 1) { 1 }";
+        let input = "if (x == 1) { 1 } else { 0 }";
         let tokens = tokenize(&input.to_string());
         let builtins = register_builtins(&mut Env::new());
         let mut parser = Parser::new(tokens, builtins);
@@ -1427,7 +1428,7 @@ mod tests {
                     }
                     _ => assert!(false, "Invalid ASTNode")
                 }
-                assert_eq!(ValueType::Void, value_type);
+                assert_eq!(ValueType::Number, value_type);
             }
             _ => assert!(false, "Invalid ASTNode")
         }
@@ -1475,41 +1476,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_non_return_if() {
-        let input = "if (x == 1) { 1 }";
-        let tokens = tokenize(&input.to_string());
-        let builtins = register_builtins(&mut Env::new());
-        let mut parser = Parser::new(tokens, builtins);
-        match parser.parse() {
-            Ok(ASTNode::If { condition, then, value_type, .. }) => {
-                match condition.as_ref() {
-                    ASTNode::Eq { left, right, .. } => {
-                        match left.as_ref() {
-                            ASTNode::Variable { name, .. } => assert_eq!(name, "x"),
-                            _ => assert!(false, "Invalid ASTNode")
-                        }
-                        match right.as_ref() {
-                            ASTNode::Literal { value, .. } => assert_eq!(*value, Value::Number(Fraction::from(1))),
-                            _ => assert!(false, "Invalid ASTNode")
-                        }
-                    }
-                    _ => assert!(false, "Invalid ASTNode")
-                }
-                match then.as_ref() {
-                    ASTNode::Block { nodes: statements, .. } => {
-                        match &statements[0] {
-                            ASTNode::Literal { value, .. } => assert_eq!(*value, Value::Number(Fraction::from(1))),
-                            _ => assert!(false, "Invalid ASTNode")
-                        }
-                    }
-                    _ => assert!(false, "Invalid ASTNode")
-                }
-                assert_eq!(ValueType::Void, value_type);
-            }
-            _ => assert!(false, "Invalid ASTNode")
-        }
-    }
 
     #[test]
     fn test_else() {

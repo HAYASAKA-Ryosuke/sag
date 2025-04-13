@@ -360,6 +360,15 @@ fn is_none(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_void(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "Void".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_pub(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "pub ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -609,6 +618,13 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_none(&mut tokenizer) {
             tokenizer.column += 4;
             tokenizer.tokens.push(Token{kind: TokenKind::None, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 4;
+            continue;
+        }
+
+        if is_void(&mut tokenizer) {
+            tokenizer.column += 4;
+            tokenizer.tokens.push(Token{kind: TokenKind::Void, line: tokenizer.line, column: tokenizer.column});
             tokenizer.pos += 4;
             continue;
         }
