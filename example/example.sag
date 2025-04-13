@@ -102,3 +102,9 @@ fun divide(a: number, b: number): Result<number, string> {
     }
 }
 divide(1, 2)
+
+fun find(xs: List<number>) {
+    for x in xs {
+      print(x)
+    }
+}
