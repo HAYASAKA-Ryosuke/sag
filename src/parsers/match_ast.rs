@@ -2,14 +2,43 @@ use crate::ast::ASTNode;
 use crate::parsers::Parser;
 use crate::token::TokenKind;
 use crate::parsers::parse_error::ParseError;
+use crate::environment::ValueType;
 
 impl Parser {
+
+    fn get_type(&self, ast: &ASTNode) -> Option<ValueType> {
+        match &ast {
+            ASTNode::Literal { value, .. } => {
+                Some(value.value_type())
+            }
+            ASTNode::Variable { value_type, .. } => {
+                value_type.clone()
+            }
+            ASTNode::Block { nodes, .. } => {
+                println!("nodes: {:?}", nodes);
+                if let Some(node) = nodes.last() {
+                    match node {
+                        ASTNode::Literal { value, .. } => Some(value.value_type()),
+                        ASTNode::Variable { value_type, .. } => value_type.clone(),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => {
+                None
+            }
+        }
+    }
 
     pub fn parse_match(&mut self) -> Result<ASTNode, ParseError> {
         self.consume_token();
         let expression = self.parse_expression(0)?;
         self.extract_token(TokenKind::LBrace);
         let mut cases = vec![];
+        let mut case_pattern_type: Option<ValueType> = None;
+        let mut case_body_type: Option<ValueType> = None;
         while self.get_current_token().is_some() && self.get_current_token().unwrap().kind != TokenKind::RBrace {
             if self.get_current_token().unwrap().kind == TokenKind::Eof {
                 self.pos = 0;
@@ -19,8 +48,25 @@ impl Parser {
             let pattern = self.parse_expression(0)?;
             self.extract_token(TokenKind::RRocket);
             let body = self.parse_block()?;
-            cases.push((pattern, body));
+            cases.push((pattern.clone(), body.clone()));
+            if case_pattern_type.is_none() {
+                case_pattern_type = self.get_type(&pattern);
+                if case_pattern_type.is_none() {
+                    return Err(ParseError::new("Unsupported pattern", &self.get_current_token().unwrap()))
+                }
+            } else if case_pattern_type != self.get_type(&pattern) {
+                return Err(ParseError::new("Pattern type mismatch", &self.get_current_token().unwrap()));
+            }
+            if case_body_type.is_none() {
+                case_body_type = self.get_type(&body);
+                if case_body_type.is_none() {
+                    return Err(ParseError::new("Unsupported pattern", &self.get_current_token().unwrap()));
+                }
+            } else if case_body_type != self.get_type(&body) {
+                return Err(ParseError::new("Pattern type mismatch", &self.get_current_token().unwrap()));
+            }
         }
+
         self.extract_token(TokenKind::RBrace);
         let (line, column) = self.get_line_column();
         Ok(ASTNode::Match {
