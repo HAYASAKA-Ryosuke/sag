@@ -141,6 +141,15 @@ impl Parser {
             ASTNode::Assign { name: _, value: _, variable_type: _, value_type, is_new: _, .. } => {
                 Ok(value_type.clone())
             }
+            ASTNode::Block {nodes, ..} => {
+                let node = nodes.last();
+                match node {
+                    Some(node) => {
+                        self.infer_type(node)
+                    }
+                    _ => Ok(ValueType::Any)
+                }
+            }
             _ => Ok(ValueType::Any),
         }
     }
