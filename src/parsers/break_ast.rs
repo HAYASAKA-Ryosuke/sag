@@ -1,7 +1,5 @@
 use crate::ast::ASTNode;
-use crate::token::{Token, TokenKind};
 use crate::parsers::Parser;
-use crate::environment::ValueType;
 use crate::parsers::parse_error::ParseError;
 
 impl Parser {
