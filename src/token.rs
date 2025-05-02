@@ -31,6 +31,8 @@ pub enum TokenKind {
     BackSlash,
     Pipe,
     Return,
+    Break,
+    Continue,
     Comma,
     RArrow,
     Match,

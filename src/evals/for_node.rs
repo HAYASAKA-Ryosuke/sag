@@ -16,6 +16,14 @@ pub fn for_node(variable: String, iterable: Box<ASTNode>, body: Box<ASTNode>, li
                 if let Value::Return(_) = result {
                     return Ok(result);
                 }
+                if let Value::Break = result {
+                    env.leave_scope();
+                    return Ok(Value::Void);
+                }
+                if let Value::Continue = result {
+                    env.leave_scope();
+                    continue;
+                }
             }
             env.leave_scope();
             Ok(Value::Void)
@@ -55,4 +63,52 @@ mod tests {
         ]);
     }
 
+    #[test]
+    fn test_for_break() {
+        let input = r#"
+        val mut value = 0
+        for i in [0, 1, 2, 3] {
+            if (i == 2) {
+                value = i
+                break
+            }
+        }
+        value
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut Env::new());
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let result = evals(asts, &mut env).unwrap();
+        assert_eq!(result, vec![
+            Value::Number(Fraction::from(0)),
+            Value::Void,
+            Value::Number(Fraction::from(2)),
+        ]);
+    }
+    #[test]
+    fn test_for_continue() {
+        let input = r#"
+        val mut value = 0
+        for i in range(10) {
+            if (i > 2) {
+                continue
+            }
+            value = i
+        }
+        value
+        "#;
+        let tokens = tokenize(&input.to_string());
+        let builtin = register_builtins(&mut Env::new());
+        let asts = Parser::new(tokens, builtin).parse_lines().unwrap();
+        let mut env = Env::new();
+        register_builtins(&mut env);
+        let result = evals(asts, &mut env).unwrap();
+        assert_eq!(result, vec![
+            Value::Number(Fraction::from(0)),
+            Value::Void,
+            Value::Number(Fraction::from(2)),
+        ]);
+    }
 }

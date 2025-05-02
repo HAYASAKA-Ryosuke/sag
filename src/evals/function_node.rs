@@ -23,6 +23,12 @@ pub fn block_node(statements: Vec<ASTNode>, _line: usize, _column: usize, env: &
         if let Value::Return(v) = &value {
             return Ok(Value::Return(v.clone()));
         }
+        if let Value::Break = value {
+            return Ok(Value::Break);
+        }
+        if let Value::Continue = value {
+            return Ok(Value::Continue);
+        }
         last_value = value;
     }
     Ok(last_value)

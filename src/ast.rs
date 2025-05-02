@@ -89,6 +89,14 @@ pub enum ASTNode {
         line: usize,
         column: usize,
     },
+    Break {
+        line: usize,
+        column: usize,
+    },
+    Continue {
+        line: usize,
+        column: usize,
+    },
     Lambda {
         arguments: Vec<ASTNode>,
         body: Box<ASTNode>,

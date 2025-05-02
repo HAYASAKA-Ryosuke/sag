@@ -16,6 +16,8 @@ pub enum Value {
     List(Vec<Value>),
     Function,
     Return(Box<Value>),
+    Break,
+    Continue,
     Struct {
         name: String,
         fields: HashMap<String, Value>,  // field_name: value
@@ -107,6 +109,8 @@ impl Value {
                     value.value_type()
                 }
             },
+            Value::Break => ValueType::Void,
+            Value::Continue => ValueType::Void,
             Value::Lambda { .. } => ValueType::Lambda,
         }
     }
@@ -146,6 +150,8 @@ impl fmt::Display for Value {
             Value::Function => write!(f, "Function"),
             Value::Lambda { .. } => write!(f, "Lambda"),
             Value::Return(value) => write!(f, "{}", value),
+            Value::Break => write!(f, "Break"),
+            Value::Continue => write!(f, "Continue"),
             Value::Option(option) => match option {
                 Some(value) => write!(f, "{}", value),
                 None => write!(f, "None"),

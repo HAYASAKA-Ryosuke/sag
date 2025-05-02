@@ -243,6 +243,24 @@ fn get_comment_string(tokenizer: &mut Tokenizer) -> String {
     comment
 }
 
+fn is_break(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "break".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_continue(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "continue".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_immutable(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "val ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -507,6 +525,20 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         if is_string(&c) {
             let str = get_string(&mut tokenizer);
             tokenizer.tokens.push(Token{kind: TokenKind::String(str), line: tokenizer.line, column: tokenizer.column});
+            continue;
+        }
+
+        if is_break(&mut tokenizer) {
+            tokenizer.column += 5;
+            tokenizer.tokens.push(Token{kind: TokenKind::Break, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 5;
+            continue;
+        }
+
+        if is_continue(&mut tokenizer) {
+            tokenizer.column += 8;
+            tokenizer.tokens.push(Token{kind: TokenKind::Continue, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 8;
             continue;
         }
 

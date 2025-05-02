@@ -96,6 +96,8 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         ASTNode::Return{expr: value, line: _, column: _} => {
             Ok(Value::Return(Box::new(eval(*value, env)?)))
         }
+        ASTNode::Break { line: _, column: _ } => Ok(Value::Break),
+        ASTNode::Continue { line: _, column: _ } => Ok(Value::Continue),
         ASTNode::Eq { left, right, line, column } => {
             comparison_op::comparison_op_node(TokenKind::Eq, left, right, line, column, env)
         }

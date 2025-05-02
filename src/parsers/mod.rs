@@ -1,6 +1,8 @@
 pub mod struct_ast;
 pub mod function_ast;
 pub mod return_ast;
+pub mod break_ast;
+pub mod continue_ast;
 pub mod assign_ast;
 pub mod literal_ast;
 pub mod pipe_ast;
@@ -334,6 +336,8 @@ impl Parser {
             TokenKind::Impl => self.parse_impl(),
             TokenKind::Minus => self.parse_prefix_op(TokenKind::Minus),
             TokenKind::Return => self.parse_return(),
+            TokenKind::Break => self.parse_break(),
+            TokenKind::Continue => self.parse_continue(),
             TokenKind::Number(value) => self.parse_literal(Value::Number(value)),
             TokenKind::String(value) => self.parse_literal(Value::String(value.into())),
             TokenKind::Function => self.parse_function(),
