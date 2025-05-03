@@ -14,6 +14,9 @@ impl Parser {
         let case_pattern_type: Result<ValueType, String> = self.infer_type(&expression);
         let mut case_body_type: Option<ValueType> = None;
         let mut under_score_pattern_count = 0;
+
+        let mut count = 0;
+
         while self.get_current_token().is_some() && self.get_current_token().unwrap().kind != TokenKind::RBrace {
             if self.get_current_token().unwrap().kind == TokenKind::Eof {
                 self.pos = 0;
@@ -21,18 +24,61 @@ impl Parser {
                 continue;
             }
             let pattern = self.parse_expression(0)?;
+            self.enter_scope(format!("match-{:?}", count).to_string());
+            count += 1;
             match pattern {
                 ASTNode::OptionSome { ref value, .. } => {
                     match *value.clone() {
                         ASTNode::Variable { name, .. } => {
                             let expression_type = self.infer_type(&expression);
-                            self.register_variables(self.get_current_scope().clone(), &name, &expression_type.unwrap(), &EnvVariableType::Immutable);
+                            match expression_type {
+                                Ok(ValueType::OptionType(some)) => {
+                                    self.register_variables(self.get_current_scope().clone(), &name, &some, &EnvVariableType::Immutable);
+                                }
+                                _ => {
+                                    self.register_variables(self.get_current_scope().clone(), &name, &expression_type.unwrap(), &EnvVariableType::Immutable);
+                                }
+                            }
+                        }
+                        _ => {}
+                    };
+                }
+                ASTNode::ResultSuccess { ref value, .. } => {
+                    match *value.clone() {
+                        ASTNode::Variable { name, .. } => {
+                            let expression_type = self.infer_type(&expression);
+                            match expression_type {
+                                Ok(ValueType::ResultType { success, .. }) => {
+                                    self.register_variables(self.get_current_scope().clone(), &name, &success, &EnvVariableType::Immutable);
+                                }
+                                _ => {
+                                    self.register_variables(self.get_current_scope().clone(), &name, &expression_type.unwrap(), &EnvVariableType::Immutable);
+                                }
+                            }
+                        }
+                        _ => {}
+                    };
+                }
+                ASTNode::ResultFailure { ref value, .. } => {
+                    match *value.clone() {
+                        ASTNode::Variable { name, .. } => {
+                            let expression_type = self.infer_type(&expression);
+                            match expression_type {
+                                Ok(ValueType::ResultType { failure, .. }) => {
+                                    self.register_variables(self.get_current_scope().clone(), &name, &failure, &EnvVariableType::Immutable);
+                                    println!("variable!!: {:?}", self.variables);
+                                }
+                                _ => {
+                                    self.register_variables(self.get_current_scope().clone(), &name, &expression_type.unwrap(), &EnvVariableType::Immutable);
+                                }
+                            }
                         }
                         _ => {}
                     };
                 }
                 _ => {}
             };
+            println!("env: {:?}", self.variables);
             self.extract_token(TokenKind::RRocket);
             let body = self.parse_block()?;
             cases.push((pattern.clone(), body.clone()));
@@ -62,6 +108,7 @@ impl Parser {
         }
 
         self.extract_token(TokenKind::RBrace);
+        self.leave_scope();
         let (line, column) = self.get_line_column();
         Ok(ASTNode::Match {
             expression: Box::new(expression),

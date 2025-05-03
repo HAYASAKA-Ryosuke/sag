@@ -14,6 +14,7 @@ pub fn for_node(variable: String, iterable: Box<ASTNode>, body: Box<ASTNode>, li
                 let _ = env.set(variable.clone(), value.clone(), EnvVariableType::Immutable, value.value_type(), true);
                 let result = eval(*body.clone(), env)?;
                 if let Value::Return(_) = result {
+                    env.leave_scope();
                     return Ok(result);
                 }
                 if let Value::Break = result {

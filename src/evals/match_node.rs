@@ -1,13 +1,20 @@
 use crate::ast::ASTNode;
 use crate::value::Value;
 use crate::evals::eval;
-use crate::environment::Env;
+use crate::environment::{Env, EnvVariableType, ValueType};
 use crate::evals::runtime_error::RuntimeError;
 
 pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
-    let expression_value = eval(*expression, env)?;
+    let expression_value = eval(*expression.clone(), env)?;
+    let mut count = 0;
     for (pattern, body) in cases.clone() {
+        env.enter_scope(format!("match-{:?}", count).to_string());
+        count += 1;
+        println!("Pattern: {:?}", pattern);
         match pattern {
+            ASTNode::Variable{name, ..} if name == "_" => {
+                return Ok(eval(body, env)?);
+            },
             ASTNode::Literal{value, ..} => {
                 if value == expression_value {
                     let result = eval(body, env)?;
@@ -15,7 +22,9 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                 }
             }
             ASTNode::OptionSome{ref value, ..} => {
+                println!("OptionSome: {:?}", value);
                 if let Value::Option(Some(ref some_value)) = expression_value {
+                    println!("Some: {:?}", some_value);
                     match value.as_ref() {
                         ASTNode::Literal{value, ..} => {
                             if value == some_value.as_ref() {
@@ -24,7 +33,7 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                             }
                         },
                         ASTNode::Variable{name, ..} => {
-                            let _ = env.set(name.clone(), some_value.as_ref().clone(), crate::environment::EnvVariableType::Mutable, some_value.value_type().clone(), true);
+                            let _ = env.set(name.clone(), *some_value.clone(), EnvVariableType::Immutable, some_value.value_type().clone(), true);
                             let result = eval(body, env)?;
                             return Ok(result);
                         },
@@ -42,57 +51,123 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                 }
             }
             ASTNode::ResultSuccess{ref value, ..} => {
-                if let Value::Result(Ok(ref some_value)) = expression_value {
-                    match value.as_ref() {
-                        ASTNode::Literal{value, ..} => {
-                            if value == some_value.as_ref() {
-                                let result = eval(body, env)?;
-                                return Ok(result);
+                let value_type = match expression.as_ref() {
+                    ASTNode::Variable { value_type, .. } => {
+                        println!("Value type: {:?}", value_type);
+                        match value_type {
+                            Some(ValueType::ResultType { success, .. }) => {
+                                success.clone()
                             }
-                        },
-                        ASTNode::Variable{name, ..} => {
-                            let _ = env.set(name.clone(), some_value.as_ref().clone(), crate::environment::EnvVariableType::Mutable, some_value.value_type().clone(), true);
-                            let result = eval(body, env)?;
-                            return Ok(result);
-                        },
-                        _ => {
-                            return Err(RuntimeError::new("Unsupported pattern", line, column));
+                            _ => {
+                                panic!("Value type not found")
+                            }
                         }
                     }
-                    
-                }
-            }
-            ASTNode::ResultFailure{ref value, ..} => {
-                if let Value::Result(Err(ref some_value)) = expression_value {
-                    match value.as_ref() {
-                        ASTNode::Literal{value, ..} => {
-                            if value == some_value.as_ref() {
-                                let result = eval(body, env)?;
-                                return Ok(result);
+                    _ => {
+                        panic!("Value type not found");
+                    }
+                };
+                match value.as_ref() {
+                    ASTNode::Variable{name, ..} => {
+                        let expression_value = match expression_value {
+                            Value::Result(Ok(ref some_value)) => {
+                                some_value.clone()
                             }
-                        },
-                        ASTNode::Variable{name, ..} => {
-                            let _ = env.set(name.clone(), some_value.as_ref().clone(), crate::environment::EnvVariableType::Mutable, some_value.value_type().clone(), true);
+                            Value::Result(Err(ref some_value)) => {
+                                some_value.clone()
+                            }
+                            _ => {
+                                return Err(RuntimeError::new("Unsupported pattern", line, column));
+                            }
+                        };
+                        if expression_value.value_type() != *value_type {
+                            continue;
+                        }
+                        let _ = env.set(name.clone(), *expression_value.clone(), EnvVariableType::Immutable, *value_type.clone(), true);
+                        let result = eval(body, env)?;
+                        return Ok(result);
+                    }
+                    _ => {
+                        println!("not expected pattern: {:?}", value);
+                    }
+                }
+                match expression_value {
+                    Value::Result(Ok(ref some_value)) => {
+                        let evaluated_value = eval(*value.clone(), env)?;
+                        if evaluated_value == *some_value.clone() {
                             let result = eval(body, env)?;
                             return Ok(result);
-                        },
-                        _ => {
-                            return Err(RuntimeError::new("Unsupported pattern", line, column));
                         }
                     }
-                    
+                    _ => {
+                        println!("Pattern: {:?}", value);
+                    }
                 }
             }
-            _ => {}
+            ASTNode::ResultFailure { ref value, .. } => {
+                let value_type = match expression.as_ref() {
+                    ASTNode::Variable { value_type, .. } => {
+                        println!("Value type: {:?}", value_type);
+                        match value_type {
+                            Some(ValueType::ResultType { failure, .. }) => {
+                                failure.clone()
+                            }
+                            _ => {
+                                panic!("Failure value type not found");
+                            }
+                        }
+                    }
+                    _ => {
+                        panic!("Value type not found");
+                    }
+                };
+            
+                match value.as_ref() {
+                    ASTNode::Variable { name, .. } => {
+                        let expression_value = match expression_value {
+                            Value::Result(Err(ref some_value)) => {
+                                some_value.clone()
+                            }
+                            Value::Result(Ok(ref some_value)) => {
+                                some_value.clone()
+                            }
+                            _ => {
+                                return Err(RuntimeError::new("Unsupported pattern in ResultFailure", line, column));
+                            }
+                        };
+            
+                        if expression_value.value_type() != *value_type {
+                            continue;
+                        }
+            
+                        let _ = env.set(name.clone(), *expression_value.clone(), EnvVariableType::Immutable, *value_type.clone(), true);
+                        let result = eval(body, env)?;
+                        return Ok(result);
+                    }
+                    _ => {
+                        println!("Unexpected pattern in ResultFailure: {:?}", value);
+                    }
+                }
+            
+                match expression_value {
+                    Value::Result(Err(ref some_value)) => {
+                        let evaluated_value = eval(*value.clone(), env)?;
+                        if evaluated_value == *some_value.clone() {
+                            let result = eval(body, env)?;
+                            return Ok(result);
+                        }
+                    }
+                    _ => {
+                        println!("Pattern did not match Err: {:?}", expression_value);
+                    }
+                }
+            }
+            _ => {
+
+                println!("Pattern");
+            }
         }
-    }
-    for (pattern, body) in cases {
-        match pattern {
-            ASTNode::Variable{name, ..} if name == "_" => {
-                return Ok(eval(body, env)?);
-            },
-            _ => {}
-        }
+        env.leave_scope();
     }
     Err(RuntimeError::new("No match found", line, column))
 }
