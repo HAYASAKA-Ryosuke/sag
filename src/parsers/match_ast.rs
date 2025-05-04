@@ -78,7 +78,6 @@ impl Parser {
                 }
                 _ => {}
             };
-            println!("env: {:?}", self.variables);
             self.extract_token(TokenKind::RRocket);
             let body = self.parse_block()?;
             cases.push((pattern.clone(), body.clone()));
@@ -105,10 +104,10 @@ impl Parser {
             } else if case_body_type != self.infer_type(&body).ok() {
                 return Err(ParseError::new("Pattern type mismatch", &self.get_current_token().unwrap()));
             }
+            self.leave_scope();
         }
 
         self.extract_token(TokenKind::RBrace);
-        self.leave_scope();
         let (line, column) = self.get_line_column();
         Ok(ASTNode::Match {
             expression: Box::new(expression),
