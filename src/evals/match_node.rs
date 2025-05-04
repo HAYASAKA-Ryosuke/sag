@@ -8,6 +8,7 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
     let expression_value = eval(*expression.clone(), env)?;
     let mut count = 0;
     for (pattern, body) in cases.clone() {
+        env.enter_scope(format!("match-{:?}", count).to_string());
         count += 1;
         match pattern {
             ASTNode::Variable{name, ..} if name == "_" => {
@@ -21,7 +22,6 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
             }
             ASTNode::OptionSome{ref value, ..} => {
                 if let Value::Option(Some(ref some_value)) = expression_value {
-                    println!("Some: {:?}", some_value);
                     match value.as_ref() {
                         ASTNode::Literal{value, ..} => {
                             if value == some_value.as_ref() {
@@ -30,7 +30,6 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                             }
                         },
                         ASTNode::Variable{name, ..} => {
-                            env.enter_scope(format!("match-{:?}", count).to_string());
                             let _ = env.set(name.clone(), *some_value.clone(), EnvVariableType::Immutable, some_value.value_type().clone(), true);
                             let result = eval(body, env)?;
                             env.leave_scope();
@@ -46,13 +45,13 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
             ASTNode::OptionNone{..} => {
                 if let Value::Option(None) = expression_value {
                     let result = eval(body, env)?;
+                    env.leave_scope();
                     return Ok(result);
                 }
             }
             ASTNode::ResultSuccess{ref value, ..} => {
                 let value_type = match expression.as_ref() {
                     ASTNode::Variable { value_type, .. } => {
-                        println!("Value type: {:?}", value_type);
                         match value_type {
                             Some(ValueType::ResultType { success, .. }) => {
                                 success.clone()
@@ -82,10 +81,9 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                         if expression_value.value_type() != *value_type {
                             continue;
                         }
-                        env.enter_scope(format!("match-{:?}", count).to_string());
                         let _ = env.set(name.clone(), *expression_value.clone(), EnvVariableType::Immutable, *value_type.clone(), true);
-                        env.leave_scope();
                         let result = eval(body, env)?;
+                        env.leave_scope();
                         return Ok(result);
                     }
                     _ => {
@@ -97,6 +95,7 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                         let evaluated_value = eval(*value.clone(), env)?;
                         if evaluated_value == *some_value.clone() {
                             let result = eval(body, env)?;
+                            env.leave_scope();
                             return Ok(result);
                         }
                     }
@@ -139,12 +138,10 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
             
                         if expression_value.value_type() != *value_type {
                             continue;
-                        }
-            
-                        env.enter_scope(format!("match-{:?}", count).to_string());
+                        }  
                         let _ = env.set(name.clone(), *expression_value.clone(), EnvVariableType::Immutable, *value_type.clone(), true);
-                        env.leave_scope();
                         let result = eval(body, env)?;
+                        env.leave_scope();
                         return Ok(result);
                     }
                     _ => {
@@ -157,6 +154,7 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                         let evaluated_value = eval(*value.clone(), env)?;
                         if evaluated_value == *some_value.clone() {
                             let result = eval(body, env)?;
+                            env.leave_scope();
                             return Ok(result);
                         }
                     }
@@ -170,6 +168,7 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                 println!("Pattern");
             }
         }
+        env.leave_scope();
     }
     Err(RuntimeError::new("No match found", line, column))
 }
