@@ -4,7 +4,7 @@ use crate::environment::Env;
 use crate::evals::eval;
 use crate::evals::runtime_error::RuntimeError;
 
-pub fn if_node(condition: Box<ASTNode>, is_statement: bool, then: Box<ASTNode>, else_: Option<Box<ASTNode>>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
+pub fn if_node(condition: Box<ASTNode>, _is_statement: bool, then: Box<ASTNode>, else_: Option<Box<ASTNode>>, line: usize, column: usize, env: &mut Env) -> Result<Value, RuntimeError> {
     let condition = eval(*condition, env)?;
     match condition {
         Value::Bool(true) => eval(*then, env),
