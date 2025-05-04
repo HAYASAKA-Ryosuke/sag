@@ -164,14 +164,14 @@ fun find(list: List<number>, search_value: number): Option<number> {
 // Pattern matching with Result and Option
 val mut result: Result<number, string> = Suc(1)
 val match_result = match (result) {
-    Suc(v) => { return v + 1 }
-    Fail(_) => { return 0 }
+    Suc(v) => { v + 1 }
+    Fail(_) => { 0 }
 }
 
 val mut option: Option<number> = Some(1)
 val match_option = match (option) {
-    Some(v) => { return v + 1 }
-    None => { return 0 }
+    Some(v) => { v + 1 }
+    None => { 0 }
 }
 ```
 
