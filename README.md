@@ -38,11 +38,11 @@ val add = \|x: number, y: number| => x + y
 ### Control Structures
 
 ```sag
-// if statement
-if (x > 0) {
-    print("positive")
+// if expression 
+val message = if (x > 0) {
+    "positive"
 } else {
-    print("negative")
+    "negative"
 }
 
 // for loop
