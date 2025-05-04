@@ -125,7 +125,7 @@ Lists can be created using square brackets and support the following operations:
 
 ```sag
 // List creation
-val numbers = [1, 2, 3]
+val mut numbers = [1, 2, 3]
 val strings = ["hello", "world"]
 
 // List methods
