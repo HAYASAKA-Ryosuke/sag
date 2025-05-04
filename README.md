@@ -144,10 +144,10 @@ range(1, 5, 2)   // Returns [1, 3]
 ```sag
 // Error handling with Result type
 fun divide(a: number, b: number): Result<number, string> {
-    if (b == 0) {
-        return Fail("division by zero")
+    return if (b == 0) {
+        Fail("division by zero")
     } else {
-        return Suc(a / b)
+        Suc(a / b)
     }
 }
 
