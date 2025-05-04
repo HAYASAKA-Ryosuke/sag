@@ -147,13 +147,14 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         }
         ASTNode::If {
             condition,
+            is_statement,
             then,
             else_,
             value_type: _,
             line,
             column
         } => {
-            if_node::if_node(condition, then, else_, line, column, env)
+            if_node::if_node(condition, is_statement, then, else_, line, column, env)
         }
         ASTNode::Assign {
             name,

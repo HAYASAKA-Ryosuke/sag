@@ -141,6 +141,7 @@ pub enum ASTNode {
     },
     If {
         condition: Box<ASTNode>,
+        is_statement: bool,
         then: Box<ASTNode>,
         else_: Option<Box<ASTNode>>,
         value_type: ValueType,

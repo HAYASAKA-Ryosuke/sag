@@ -356,12 +356,13 @@ impl Parser {
                 match ast_if {
                     ASTNode::If {
                         condition: _,
+                        is_statement,
                         then: _,
                         ref else_,
                         ref value_type,
                         ..
                     } => {
-                        if *value_type != ValueType::Void {
+                        if !is_statement && *value_type != ValueType::Void {
                             if else_.is_none() {
                                 panic!("if expressions without else");
                             }

@@ -6,6 +6,8 @@ use crate::parsers::parse_error::ParseError;
 
 impl Parser {
     pub fn parse_if(&mut self) -> Result<ASTNode, ParseError> {
+        // if式か文か
+        let mut is_statement = false;
         match self.get_current_token() {
             Some(Token{kind: TokenKind::If, ..}) => self.consume_token(),
             _ => {
@@ -50,6 +52,7 @@ impl Parser {
                 ASTNode::Block{nodes: ref statements, ..} => {
                     for statement in statements {
                         if let ASTNode::Return{expr: value, ..} = statement {
+                            is_statement = true;
                             then_type = Some(self.infer_type(&value));
                         }
                     }
@@ -71,6 +74,7 @@ impl Parser {
             if let Some(else_node) = &else_ {
                 match &**else_node {
                     ASTNode::Return{expr: value, ..} => {
+                        is_statement = true;
                         else_type = Some(self.infer_type(&value));
                     },
                     ASTNode::Block{nodes: statements, ..} => {
@@ -116,6 +120,7 @@ impl Parser {
 
         Ok(ASTNode::If {
             condition: Box::new(condition),
+            is_statement,
             then: Box::new(then),
             else_,
             value_type: value_type.unwrap(),
