@@ -12,11 +12,13 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
         count += 1;
         match pattern {
             ASTNode::Variable{name, ..} if name == "_" => {
+                env.leave_scope();
                 return Ok(eval(body, env)?);
             },
             ASTNode::Literal{value, ..} => {
                 if value == expression_value {
                     let result = eval(body, env)?;
+                    env.leave_scope();
                     return Ok(result);
                 }
             }
@@ -26,6 +28,7 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
                         ASTNode::Literal{value, ..} => {
                             if value == some_value.as_ref() {
                                 let result = eval(body, env)?;
+                                env.leave_scope();
                                 return Ok(result);
                             }
                         },
@@ -107,7 +110,6 @@ pub fn match_node(expression: Box<ASTNode>, cases: Vec<(ASTNode, ASTNode)>, line
             ASTNode::ResultFailure { ref value, .. } => {
                 let value_type = match expression.as_ref() {
                     ASTNode::Variable { value_type, .. } => {
-                        println!("Value type: {:?}", value_type);
                         match value_type {
                             Some(ValueType::ResultType { failure, .. }) => {
                                 failure.clone()
