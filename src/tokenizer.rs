@@ -467,6 +467,24 @@ fn is_gt(c: char) -> bool {
     c == '>'
 }
 
+fn is_true(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "true".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_false(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "false".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_if(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "if ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -749,6 +767,20 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             tokenizer.column += 1;
             tokenizer.tokens.push(Token{kind: TokenKind::Gt, line: tokenizer.line, column: tokenizer.column});
             tokenizer.pos += 1;
+            continue;
+        }
+
+        if is_true(&mut tokenizer) {
+            tokenizer.column += 4;
+            tokenizer.tokens.push(Token{kind: TokenKind::True, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 4;
+            continue;
+        }
+
+        if is_false(&mut tokenizer) {
+            tokenizer.column += 5;
+            tokenizer.tokens.push(Token{kind: TokenKind::False, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 5;
             continue;
         }
 
