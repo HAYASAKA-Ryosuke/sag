@@ -324,6 +324,33 @@ fn is_right_rocket(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_and(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "and".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_or(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "or".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_xor(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "xor".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_result(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "Result".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -676,6 +703,26 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             tokenizer.column += 4;
             tokenizer.tokens.push(Token{kind: TokenKind::Void, line: tokenizer.line, column: tokenizer.column});
             tokenizer.pos += 4;
+            continue;
+        }
+
+        if is_and(&mut tokenizer) {
+            tokenizer.column += 3;
+            tokenizer.tokens.push(Token{kind: TokenKind::And, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 3;
+            continue;
+        }
+        if is_or(&mut tokenizer) {
+            tokenizer.column += 2;
+            tokenizer.tokens.push(Token{kind: TokenKind::Or, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 2;
+            continue;
+        }
+
+        if is_xor(&mut tokenizer) {
+            tokenizer.column += 3;
+            tokenizer.tokens.push(Token{kind: TokenKind::Xor, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 3;
             continue;
         }
 

@@ -580,7 +580,7 @@ impl Parser {
     }
     fn get_priority(&self, token: &Token) -> Option<(u8, u8)> {
         match token.kind {
-            TokenKind::Eq | TokenKind::Gt | TokenKind::Gte | TokenKind::Lt | TokenKind::Lte => Some((1, 2)),
+            TokenKind::Eq | TokenKind::Gt | TokenKind::Gte | TokenKind::Lt | TokenKind::Lte | TokenKind::And | TokenKind::Or | TokenKind::Xor => Some((1, 2)),
             TokenKind::Plus | TokenKind::Minus => Some((3, 4)),
             TokenKind::Mul | TokenKind::Div | TokenKind::Mod => Some((5, 6)),
             _ => None,
