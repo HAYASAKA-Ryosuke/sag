@@ -22,8 +22,8 @@ pub fn binary_op(op: TokenKind, left: Box<ASTNode>, right: Box<ASTNode>, line: u
             let c = r.numer().unwrap();
             let d = r.denom().unwrap();
 
-            let raw_numer = a.checked_pow(*c as u32).ok_or(RuntimeError::new("Overflow Numerator", line, column))?;
-            let raw_denom = b.checked_pow(*d as u32).ok_or(RuntimeError::new("Overflow Denominator", line, column))?;
+            let raw_numer = a.wrapping_pow(*c as u32);
+            let raw_denom = b.wrapping_pow(*d as u32);
             if raw_denom == 0 {
                 return Err(RuntimeError::new("Division by zero", line, column));
             }
