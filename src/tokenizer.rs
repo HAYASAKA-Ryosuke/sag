@@ -1474,6 +1474,18 @@ mod tests {
     }
 
     #[test]
+    fn test_true_false() {
+        let result = vec![TokenKind::True, TokenKind::Eof];
+        for (i, token) in tokenize(&"true".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+        let result = vec![TokenKind::False, TokenKind::Eof];
+        for (i, token) in tokenize(&"false".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+    }
+
+    #[test]
     fn test_for_in_function() {
 
         let result = vec![

@@ -39,3 +39,120 @@ pub fn binary_op(op: TokenKind, left: Box<ASTNode>, right: Box<ASTNode>, line: u
         _ => Err(RuntimeError::new(format!("Unsupported operation: {:?} {:?} {:?}", left_val.clone(), op, right_val.clone()).as_str(), line, column)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokenizer::tokenize;
+    use crate::parsers::Parser;
+    use crate::builtin::register_builtins;
+    use crate::evals::evals;
+
+    #[test]
+    fn add() {
+        let mut env = Env::new();
+        let input = "1 + 1".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env).unwrap();
+        assert_eq!(result[0], Value::Number(2.into()));
+    }
+
+    #[test]
+    fn sub() {
+        let mut env = Env::new();
+        let input = "1 - 1".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env).unwrap();
+        assert_eq!(result[0], Value::Number(0.into()));
+    }
+
+    #[test]
+    fn mul() {
+        let mut env = Env::new();
+        let input = "2 * 3".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env).unwrap();
+        assert_eq!(result[0], Value::Number(6.into()));
+    }
+
+    #[test]
+    fn div() {
+        let mut env = Env::new();
+        let input = "2 / 3".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env).unwrap();
+        assert_eq!(result[0], Value::Number((2, 3).into()));
+    }
+
+    #[test]
+    fn and() {
+        let mut env = Env::new();
+        for xy in [(true, true), (true, false), (false, true), (false, false)] {
+            let input = format!("{} and {}", xy.0, xy.1);
+            let tokens = tokenize(&input);
+            let mut parser = Parser::new(tokens, register_builtins(&mut env));
+            let ast = parser.parse_lines();
+            let result = evals(ast.unwrap(), &mut env).unwrap();
+            assert_eq!(result[0], Value::Bool(xy.0 && xy.1));
+        }
+
+        for xy in [(1, 1), (1, 0), (0, 1), (0, 0)] {
+            let input = format!("{} and {}", xy.0, xy.1);
+            let tokens = tokenize(&input);
+            let mut parser = Parser::new(tokens, register_builtins(&mut env));
+            let ast = parser.parse_lines();
+            let result = evals(ast.unwrap(), &mut env).unwrap();
+            assert_eq!(result[0], Value::Number((xy.0 & xy.1, 1).into()));
+        }
+    }
+
+    #[test]
+    fn or() {
+        let mut env = Env::new();
+        for xy in [(true, true), (true, false), (false, true), (false, false)] {
+            let input = format!("{} or {}", xy.0, xy.1);
+            let tokens = tokenize(&input);
+            let mut parser = Parser::new(tokens, register_builtins(&mut env));
+            let ast = parser.parse_lines();
+            let result = evals(ast.unwrap(), &mut env).unwrap();
+            assert_eq!(result[0], Value::Bool(xy.0 || xy.1));
+        }
+        for xy in [(1, 1), (1, 0), (0, 1), (0, 0)] {
+            let input = format!("{} or {}", xy.0, xy.1);
+            let tokens = tokenize(&input);
+            let mut parser = Parser::new(tokens, register_builtins(&mut env));
+            let ast = parser.parse_lines();
+            let result = evals(ast.unwrap(), &mut env).unwrap();
+            assert_eq!(result[0], Value::Number((xy.0 | xy.1, 1).into()));
+        }
+    }
+
+    #[test]
+    fn xor() {
+        let mut env = Env::new();
+        for xy in [(true, true), (true, false), (false, true), (false, false)] {
+            let input = format!("{} xor {}", xy.0, xy.1);
+            let tokens = tokenize(&input);
+            let mut parser = Parser::new(tokens, register_builtins(&mut env));
+            let ast = parser.parse_lines();
+            let result = evals(ast.unwrap(), &mut env).unwrap();
+            assert_eq!(result[0], Value::Bool(xy.0 ^ xy.1));
+        }
+        for xy in [(1, 1), (1, 0), (0, 1), (0, 0)] {
+            let input = format!("{} xor {}", xy.0, xy.1);
+            let tokens = tokenize(&input);
+            let mut parser = Parser::new(tokens, register_builtins(&mut env));
+            let ast = parser.parse_lines();
+            let result = evals(ast.unwrap(), &mut env).unwrap();
+            assert_eq!(result[0], Value::Number((xy.0 ^ xy.1, 1).into()));
+        }
+    }
+}
