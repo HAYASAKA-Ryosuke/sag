@@ -52,9 +52,9 @@ for i in [1, 2, 3] {
 
 // Pattern matching
 val result = match (x) {
-    1 => { return "one" }
-    2 => { return "two" }
-    _ => { return "other" }
+    1 => { "one" }
+    2 => { "two" }
+    _ => { "other" }
 }
 ```
 
