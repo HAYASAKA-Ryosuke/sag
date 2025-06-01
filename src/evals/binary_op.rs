@@ -20,10 +20,9 @@ pub fn binary_op(op: TokenKind, left: Box<ASTNode>, right: Box<ASTNode>, line: u
             let a = l.numer().unwrap();
             let b = l.denom().unwrap();
             let c = r.numer().unwrap();
-            let d = r.denom().unwrap();
 
             let raw_numer = a.wrapping_pow(*c as u32);
-            let raw_denom = b.wrapping_pow(*d as u32);
+            let raw_denom = b.wrapping_pow(*c as u32);
             if raw_denom == 0 {
                 return Err(RuntimeError::new("Division by zero", line, column));
             }
@@ -172,11 +171,11 @@ mod tests {
     #[test]
     fn pow() {
         let mut env = Env::new();
-        let input = "2 ** 3".to_string();
+        let input = "val h = 188\nval w = 104\n w / (h / 100) ** 2".to_string();
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse_lines();
         let result = evals(ast.unwrap(), &mut env).unwrap();
-        assert_eq!(result[0], Value::Number((8, 1).into()));
+        assert_eq!(result[2], Value::Number((65000, 2209).into()));
     }
 }

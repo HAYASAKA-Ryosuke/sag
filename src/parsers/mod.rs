@@ -578,11 +578,20 @@ impl Parser {
         }
         Ok(lhs)
     }
+
     fn get_priority(&self, token: &Token) -> Option<(u8, u8)> {
+        // 比較演算子やビット演算子の優先度を定義
+        // 左結合と右結合を考慮して (left_priority, right_priority) のタプルを返す
         match token.kind {
-            TokenKind::Eq | TokenKind::Gt | TokenKind::Gte | TokenKind::Lt | TokenKind::Lte | TokenKind::And | TokenKind::Or | TokenKind::Xor => Some((1, 2)),
-            TokenKind::Plus | TokenKind::Minus => Some((3, 4)),
-            TokenKind::Mul | TokenKind::Div | TokenKind::Mod | TokenKind::Pow => Some((5, 6)),
+            TokenKind::Lt  | TokenKind::Gt  |
+            TokenKind::Lte | TokenKind::Gte => Some((1, 2)),
+            TokenKind::Eq => Some((2, 3)),
+            TokenKind::And => Some((3, 4)),
+            TokenKind::Xor => Some((4, 5)),
+            TokenKind::Or => Some((5, 6)),
+            TokenKind::Plus | TokenKind::Minus => Some((6, 7)),
+            TokenKind::Mul  | TokenKind::Div | TokenKind::Mod => Some((7, 8)),
+            TokenKind::Pow => Some((8, 8)),
             _ => None,
         }
     }
