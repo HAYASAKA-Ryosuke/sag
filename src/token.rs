@@ -43,6 +43,7 @@ pub enum TokenKind {
     If,
     Else,
     Eq,
+    Neq,
     Lte,
     Lt,
     Gte,
