@@ -23,6 +23,7 @@ pub enum TokenKind {
     Mul,
     Div,
     Mod,
+    Pow,
     LParen,
     RParen,
     LBrace,

@@ -297,6 +297,15 @@ fn is_return(tokenizer: &mut Tokenizer) -> bool {
     true
 }
 
+fn is_exponent(tokenizer: &mut Tokenizer) -> bool {
+    for (i, c) in "**".chars().enumerate() {
+        if c != tokenizer.get_position_char(i + tokenizer.pos) {
+            return false;
+        }
+    }
+    true
+}
+
 fn is_match(tokenizer: &mut Tokenizer) -> bool {
     for (i, c) in "match ".chars().enumerate() {
         if c != tokenizer.get_position_char(i + tokenizer.pos) {
@@ -633,6 +642,13 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             tokenizer.column += 5;
             tokenizer.tokens.push(Token{kind: TokenKind::From, line: tokenizer.line, column: tokenizer.column});
             tokenizer.pos += 5;
+            continue;
+        }
+
+        if is_exponent(&mut tokenizer) {
+            tokenizer.column += 2;
+            tokenizer.tokens.push(Token{kind: TokenKind::Pow, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.pos += 2;
             continue;
         }
 
@@ -1519,6 +1535,18 @@ mod tests {
         ];
 
         for (i, token) in tokenize(&"fun f(xs: List<number>) {\n for x in xs {\n print(x)\n }\n }".to_string()).into_iter().enumerate() {
+            assert_eq!(token.kind, result[i]);
+        }
+    }
+    #[test]
+    fn test_exponential() {
+        let result = vec![
+            TokenKind::Number(Fraction::from(2)),
+            TokenKind::Pow,
+            TokenKind::Number(Fraction::from(3)),
+            TokenKind::Eof
+        ];
+        for (i, token) in tokenize(&"2 ** 3".to_string()).into_iter().enumerate() {
             assert_eq!(token.kind, result[i]);
         }
     }

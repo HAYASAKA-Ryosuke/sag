@@ -16,6 +16,19 @@ pub fn binary_op(op: TokenKind, left: Box<ASTNode>, right: Box<ASTNode>, line: u
         (Value::Number(l), Value::Number(r), TokenKind::Mul) => Ok(Value::Number(l * r)),
         (Value::Number(l), Value::Number(r), TokenKind::Div) => Ok(Value::Number(l / r)),
         (Value::Number(l), Value::Number(r), TokenKind::Mod) => Ok(Value::Number(l % r)),
+        (Value::Number(l), Value::Number(r), TokenKind::Pow) => {
+            let a = l.numer().unwrap();
+            let b = l.denom().unwrap();
+            let c = r.numer().unwrap();
+            let d = r.denom().unwrap();
+
+            let raw_numer = a.checked_pow(*c as u32).ok_or(RuntimeError::new("Overflow Numerator", line, column))?;
+            let raw_denom = b.checked_pow(*d as u32).ok_or(RuntimeError::new("Overflow Denominator", line, column))?;
+            if raw_denom == 0 {
+                return Err(RuntimeError::new("Division by zero", line, column));
+            }
+            Ok(Value::Number((raw_numer, raw_denom).into()))
+        },
         (Value::Bool(l), Value::Bool(r), TokenKind::And) => Ok(Value::Bool(l && r)),
         (Value::Bool(l), Value::Bool(r), TokenKind::Or) => Ok(Value::Bool(l || r)),
         (Value::Bool(l), Value::Bool(r), TokenKind::Xor) => Ok(Value::Bool(l && !r || !l && r)),
@@ -154,5 +167,16 @@ mod tests {
             let result = evals(ast.unwrap(), &mut env).unwrap();
             assert_eq!(result[0], Value::Number((xy.0 ^ xy.1, 1).into()));
         }
+    }
+
+    #[test]
+    fn pow() {
+        let mut env = Env::new();
+        let input = "2 ** 3".to_string();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines();
+        let result = evals(ast.unwrap(), &mut env).unwrap();
+        assert_eq!(result[0], Value::Number((8, 1).into()));
     }
 }
