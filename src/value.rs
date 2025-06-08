@@ -103,12 +103,12 @@ impl Value {
                 }
             },
             Value::Dict(dict) => {
-                let mut map: HashMap<String, ValueType> = HashMap::new();
+                let mut value_type = ValueType::Any;
                 for key in dict.keys() {
-                    let value_type = dict.get(key).unwrap().value_type();
-                    map.insert(key.clone(), value_type);
+                    value_type = dict.get(key).unwrap().value_type();
+                    break
                 }
-                ValueType::Dict(map)
+                ValueType::Dict(Box::new(value_type))
             },
             Value::Function => ValueType::Function,
             Value::Return(value) => {

@@ -12,6 +12,7 @@ pub mod import_node;
 pub mod method_call_node;
 pub mod runtime_error;
 pub mod match_node;
+use fraction::Fraction;
 
 use crate::environment::Env;
 use crate::ast::ASTNode;
@@ -184,8 +185,52 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
         ASTNode::BinaryOp { left, op, right, line, column } => {
             binary_op::binary_op(op, left, right, line, column, env)
         }
+        ASTNode::ListIndexAccess {
+            list,
+            index,
+            line,
+            column,
+        } => {
+            if let Value::List(values) = eval(*list, env)? {
+                if let Value::Number(index_value) = eval(*index, env)? {
+                    let index = if index_value < Fraction::from(0) {
+                        (values.len() as u64) + *index_value.numer().unwrap()
+                    } else {
+                        *index_value.numer().unwrap()
+                    } as usize;
+                    if index < values.len() {
+                        Ok(values[index].clone())
+                    } else {
+                        Err(RuntimeError::new("Index out of bounds", line, column))
+                    }
+                } else {
+                    Err(RuntimeError::new("Index must be a number", line, column))
+                }
+            } else {
+                Err(RuntimeError::new("Expected a list for index access", line, column))
+            }
+        },
+        ASTNode::DictKeyAccess {
+            dict,
+            key,
+            line,
+            column,
+        } => {
+            if let Value::Dict(dict_map) = eval(*dict, env)? {
+                if let Value::String(key_value) = eval(*key, env)? {
+                    match dict_map.get(&key_value) {
+                        Some(value) => Ok(value.clone()),
+                        None => Err(RuntimeError::new("Key not found in dictionary", line, column)),
+                    }
+                } else {
+                    Err(RuntimeError::new("Key must be a string", line, column))
+                }
+            } else {
+                Err(RuntimeError::new("Expected a dictionary for key access", line, column))
+            }
+        },
         ASTNode::CommentBlock{..} => Ok(Value::Void),
-        _ => Err(RuntimeError::new(format!("Unsupported ast node: {:?}", ast).as_str(), 0, 0)),
+        _ => Err(RuntimeError::new(format!("Unsupported ast node: {:?}", ast).as_str(), 0, 0))
     }
 }
 
@@ -287,16 +332,19 @@ mod tests {
     fn test_dict() {
         let input = r#"
         val mut x = {: "a" => 1, "b" => 2 :}
+        x
+        x["b"]
         "#.to_string();
         let mut env = Env::new();
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
         let ast = parser.parse_lines().unwrap();
         let results = evals(ast, &mut env).unwrap();
-        assert_eq!(*results.last().unwrap(), Value::Dict([
+        assert_eq!(results[1], Value::Dict([
             ("a".to_string(), Value::Number(Fraction::from(1))),
             ("b".to_string(), Value::Number(Fraction::from(2))),
         ].into_iter().collect()));
+        assert_eq!(results[2], Value::Number(Fraction::from(2)));
     }
 
     #[test]

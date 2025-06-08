@@ -256,6 +256,7 @@ impl Parser {
                         return Some((ValueType::StructInstance{name: name.to_string(), fields: fields.clone()}, value.1.clone()))
                     },
                     &ValueType::List(ref value_type) => return Some((ValueType::List(Box::new(*value_type.clone())), value.1.clone())),
+                    &ValueType::Dict(ref value_type) => return Some((ValueType::Dict(value_type.clone()), value.1.clone())),
                     &ValueType::OptionType(ref value_type) => return Some((ValueType::OptionType(value_type.clone()), value.1.clone())),
                     &ValueType::ResultType{ref success, ref failure} => {
                         return Some((ValueType::ResultType{success: success.clone(), failure: failure.clone()}, value.1.clone()))

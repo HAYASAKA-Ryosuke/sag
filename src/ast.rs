@@ -233,4 +233,30 @@ pub enum ASTNode {
         line: usize,
         column: usize,
     },
+    DictKeyAccess {
+        dict: Box<ASTNode>,
+        key: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
+    DictAssign {
+        dict: Box<ASTNode>,
+        key: Box<ASTNode>,
+        value: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
+    ListIndexAccess {
+        list: Box<ASTNode>,
+        index: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
+    ListIndexAssign {
+        list: Box<ASTNode>,
+        index: Box<ASTNode>,
+        value: Box<ASTNode>,
+        line: usize,
+        column: usize,
+    },
 }

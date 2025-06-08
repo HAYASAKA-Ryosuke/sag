@@ -29,6 +29,51 @@ impl Parser {
         let scope = self.get_current_scope().to_string();
         let variable_info = self.find_variables(scope.clone(), name.clone());
         match self.get_current_token() {
+            Some(Token{kind: TokenKind::LBrancket, ..}) => {
+                // リストかdictのインデックスアクセス
+                self.consume_token();
+                let index = self.parse_expression(0)?;
+                self.extract_token(TokenKind::RBrancket);
+                let (line, column) = self.get_line_column();
+                let value_type = self.resolve_variable_type(&scope, &name, variable_info.clone());
+                println!("value_type: {:?}", value_type);
+
+                match value_type {
+                    Some(ValueType::List(_)) => {
+                        Ok(ASTNode::ListIndexAccess {
+                            list: Box::new(ASTNode::Variable {
+                                name: name.clone(),
+                                value_type,
+                                line,
+                                column,
+                            }),
+                            index: Box::new(index),
+                            line,
+                            column,
+                        })
+                    },
+                    Some(ValueType::Dict(_)) => {
+                        Ok(ASTNode::DictKeyAccess {
+                            dict: Box::new(ASTNode::Variable {
+                                name: name.clone(),
+                                value_type,
+                                line,
+                                column,
+                            }),
+                            key: Box::new(index),
+                            line,
+                            column,
+                        })
+                    },
+                    _ => {
+                        let current_token = self.get_current_token().unwrap();
+                        Err(ParseError::new(
+                            format!("type mismatch: expected List or Dict, found {:?}", value_type).as_str(),
+                            &current_token,
+                        ))
+                    }
+                }
+            },
             Some(Token{kind: TokenKind::LBrace, ..}) => {
                 // 構造体が指定されている場合はインスタンス化
                 let struct_name = self.get_struct(scope.clone(), name.clone());

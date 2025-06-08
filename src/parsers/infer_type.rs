@@ -29,6 +29,17 @@ impl Parser {
                     let value = values.first().unwrap();
                     Ok(ValueType::List(Box::new(value.value_type().clone())))
                 },
+                Value::Dict(dict) => {
+                    if dict.is_empty() {
+                        return Ok(ValueType::Dict(Box::new(ValueType::Any)));
+                    }
+                    let mut value_type = ValueType::Any;
+                    for (_, value) in dict.iter() {
+                        value_type = value.value_type();
+                        break;
+                    }
+                    Ok(ValueType::Dict(Box::new(value_type)))
+                },
                 _ => Ok(ValueType::Any),
             },
             ASTNode::Lambda { .. } => Ok(ValueType::Lambda),
