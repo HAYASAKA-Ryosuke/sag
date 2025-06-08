@@ -67,6 +67,7 @@ pub enum ValueType {
     SelfType,
     MutSelfType,
     List(Box<ValueType>),
+    Dict(HashMap<String, ValueType>),
     Function,
     Lambda,
     Return,

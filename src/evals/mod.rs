@@ -284,6 +284,22 @@ mod tests {
     }
 
     #[test]
+    fn test_dict() {
+        let input = r#"
+        val mut x = {: "a" => 1, "b" => 2 :}
+        "#.to_string();
+        let mut env = Env::new();
+        let tokens = tokenize(&input);
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        let results = evals(ast, &mut env).unwrap();
+        assert_eq!(*results.last().unwrap(), Value::Dict([
+            ("a".to_string(), Value::Number(Fraction::from(1))),
+            ("b".to_string(), Value::Number(Fraction::from(2))),
+        ].into_iter().collect()));
+    }
+
+    #[test]
     #[should_panic(expected = "does not match arguments length")]
     fn test_function_call_argument_mismatch() {
         let input = r#"

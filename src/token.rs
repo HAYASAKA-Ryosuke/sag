@@ -71,4 +71,5 @@ pub enum TokenKind {
     Success,
     Failure,
     List,
+    Dict,
 }

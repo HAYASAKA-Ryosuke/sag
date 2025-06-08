@@ -3,6 +3,7 @@ pub mod function_ast;
 pub mod return_ast;
 pub mod break_ast;
 pub mod continue_ast;
+pub mod dict_ast;
 pub mod assign_ast;
 pub mod literal_ast;
 pub mod pipe_ast;
@@ -381,7 +382,18 @@ impl Parser {
                 self.pos += 1;
                 expr
             }
-            TokenKind::LBrace => self.parse_block(),
+            TokenKind::LBrace => {
+                self.pos += 1;
+                match self.get_current_token() {
+                    Some(token) if token.kind == TokenKind::Colon => {
+                        self.parse_dict()
+                    },
+                    _ => {
+                        self.pos -= 1;
+                        self.parse_block()
+                    },
+                }
+            },
             TokenKind::LBrancket => self.parse_list(),
             TokenKind::Identifier(name) => {
                 self.parse_identifier(name)

@@ -14,6 +14,7 @@ pub enum Value {
     Bool(bool),
     Void,
     List(Vec<Value>),
+    Dict(HashMap<String, Value>),
     Function,
     Return(Box<Value>),
     Break,
@@ -100,6 +101,14 @@ impl Value {
                     }
                     ValueType::List(Box::new(value_type))
                 }
+            },
+            Value::Dict(dict) => {
+                let mut map: HashMap<String, ValueType> = HashMap::new();
+                for key in dict.keys() {
+                    let value_type = dict.get(key).unwrap().value_type();
+                    map.insert(key.clone(), value_type);
+                }
+                ValueType::Dict(map)
             },
             Value::Function => ValueType::Function,
             Value::Return(value) => {
@@ -204,7 +213,17 @@ impl fmt::Display for Value {
                     result.push_str(&format!("{}", value));
                 }
                 write!(f, "[{}]", result)
-            }
+            },
+            Value::Dict(dict) => {
+                let mut result = String::new();
+                for (i, (key, value)) in dict.iter().enumerate() {
+                    if i > 0 {
+                        result.push_str(", ");
+                    }
+                    result.push_str(&format!("{}: {}", key, value));
+                }
+                write!(f, "{{:{}:}}", result)
+            },
         }
     }
 }
