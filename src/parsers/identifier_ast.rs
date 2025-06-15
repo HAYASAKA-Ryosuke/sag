@@ -36,41 +36,86 @@ impl Parser {
                 self.extract_token(TokenKind::RBrancket);
                 let (line, column) = self.get_line_column();
                 let value_type = self.resolve_variable_type(&scope, &name, variable_info.clone());
-                println!("value_type: {:?}", value_type);
 
-                match value_type {
-                    Some(ValueType::List(_)) => {
-                        Ok(ASTNode::ListIndexAccess {
-                            list: Box::new(ASTNode::Variable {
-                                name: name.clone(),
-                                value_type,
+                // 代入かアクセスかを判定
+                if let Some(Token{kind: TokenKind::Equal, ..}) = self.get_current_token() {
+                    // dict[key] = value または list[index] = value の代入
+                    self.consume_token();
+                    let value = self.parse_expression(0)?;
+                    
+                    match value_type {
+                        Some(ValueType::Dict(_)) => {
+                            Ok(ASTNode::DictAssign {
+                                dict: Box::new(ASTNode::Variable {
+                                    name: name.clone(),
+                                    value_type,
+                                    line,
+                                    column,
+                                }),
+                                key: Box::new(index),
+                                value: Box::new(value),
                                 line,
                                 column,
-                            }),
-                            index: Box::new(index),
-                            line,
-                            column,
-                        })
-                    },
-                    Some(ValueType::Dict(_)) => {
-                        Ok(ASTNode::DictKeyAccess {
-                            dict: Box::new(ASTNode::Variable {
-                                name: name.clone(),
-                                value_type,
+                            })
+                        },
+                        Some(ValueType::List(_)) => {
+                            Ok(ASTNode::ListIndexAssign {
+                                list: Box::new(ASTNode::Variable {
+                                    name: name.clone(),
+                                    value_type,
+                                    line,
+                                    column,
+                                }),
+                                index: Box::new(index),
+                                value: Box::new(value),
                                 line,
                                 column,
-                            }),
-                            key: Box::new(index),
-                            line,
-                            column,
-                        })
-                    },
-                    _ => {
-                        let current_token = self.get_current_token().unwrap();
-                        Err(ParseError::new(
-                            format!("type mismatch: expected List or Dict, found {:?}", value_type).as_str(),
-                            &current_token,
-                        ))
+                            })
+                        },
+                        _ => {
+                            let current_token = self.get_current_token().unwrap();
+                            Err(ParseError::new(
+                                format!("type mismatch: expected List or Dict for assignment, found {:?}", value_type).as_str(),
+                                &current_token,
+                            ))
+                        }
+                    }
+                } else {
+                    // 通常のアクセス
+                    match value_type {
+                        Some(ValueType::List(_)) => {
+                            Ok(ASTNode::ListIndexAccess {
+                                list: Box::new(ASTNode::Variable {
+                                    name: name.clone(),
+                                    value_type,
+                                    line,
+                                    column,
+                                }),
+                                index: Box::new(index),
+                                line,
+                                column,
+                            })
+                        },
+                        Some(ValueType::Dict(_)) => {
+                            Ok(ASTNode::DictKeyAccess {
+                                dict: Box::new(ASTNode::Variable {
+                                    name: name.clone(),
+                                    value_type,
+                                    line,
+                                    column,
+                                }),
+                                key: Box::new(index),
+                                line,
+                                column,
+                            })
+                        },
+                        _ => {
+                            let current_token = self.get_current_token().unwrap();
+                            Err(ParseError::new(
+                                format!("type mismatch: expected List or Dict, found {:?}", value_type).as_str(),
+                                &current_token,
+                            ))
+                        }
                     }
                 }
             },

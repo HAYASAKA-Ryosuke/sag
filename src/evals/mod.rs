@@ -229,6 +229,112 @@ pub fn eval(ast: ASTNode, env: &mut Env) -> Result<Value, RuntimeError> {
                 Err(RuntimeError::new("Expected a dictionary for key access", line, column))
             }
         },
+        ASTNode::DictAssign {
+            dict,
+            key,
+            value,
+            line,
+            column,
+        } => {
+            // 辞書の変数名を取得
+            let dict_name = match dict.as_ref() {
+                ASTNode::Variable { name, .. } => name.clone(),
+                _ => return Err(RuntimeError::new("Dictionary assignment target must be a variable", line, column)),
+            };
+
+            // 現在の辞書を取得
+            let current_dict = match env.get(&dict_name, None) {
+                Some(var_info) => match &var_info.value {
+                    Value::Dict(dict_map) => dict_map.clone(),
+                    _ => return Err(RuntimeError::new("Variable is not a dictionary", line, column)),
+                },
+                None => return Err(RuntimeError::new("Dictionary variable not found", line, column)),
+            };
+
+            // キーと値を評価
+            let key_value = eval(*key, env)?;
+            let new_value = eval(*value, env)?;
+
+            if let Value::String(key_str) = key_value {
+                let mut updated_dict = current_dict;
+                updated_dict.insert(key_str, new_value.clone());
+
+                // 辞書を更新
+                let var_info = env.get(&dict_name, None).unwrap();
+                let result = env.set(
+                    dict_name,
+                    Value::Dict(updated_dict),
+                    var_info.variable_type.clone(),
+                    var_info.value_type.clone(),
+                    false,
+                );
+                if let Err(e) = result {
+                    return Err(RuntimeError::new(e.as_str(), line, column));
+                }
+
+                Ok(new_value)
+            } else {
+                Err(RuntimeError::new("Dictionary key must be a string", line, column))
+            }
+        },
+        ASTNode::ListIndexAssign {
+            list,
+            index,
+            value,
+            line,
+            column,
+        } => {
+            // リストの変数名を取得
+            let list_name = match list.as_ref() {
+                ASTNode::Variable { name, .. } => name.clone(),
+                _ => return Err(RuntimeError::new("List assignment target must be a variable", line, column)),
+            };
+
+            // 現在のリストを取得
+            let current_list = match env.get(&list_name, None) {
+                Some(var_info) => match &var_info.value {
+                    Value::List(list_vec) => list_vec.clone(),
+                    _ => return Err(RuntimeError::new("Variable is not a list", line, column)),
+                },
+                None => return Err(RuntimeError::new("List variable not found", line, column)),
+            };
+
+            // インデックスと値を評価
+            let index_value = eval(*index, env)?;
+            let new_value = eval(*value, env)?;
+
+            if let Value::Number(index_num) = index_value {
+                let index = if index_num < Fraction::from(0) {
+                    (current_list.len() as i64) + (*index_num.numer().unwrap() as i64)
+                } else {
+                    *index_num.numer().unwrap() as i64
+                } as usize;
+
+                if index < current_list.len() {
+                    let mut updated_list = current_list;
+                    updated_list[index] = new_value.clone();
+
+                    // リストを更新
+                    let var_info = env.get(&list_name, None).unwrap();
+                    let result = env.set(
+                        list_name,
+                        Value::List(updated_list),
+                        var_info.variable_type.clone(),
+                        var_info.value_type.clone(),
+                        false,
+                    );
+                    if let Err(e) = result {
+                        return Err(RuntimeError::new(e.as_str(), line, column));
+                    }
+
+                    Ok(new_value)
+                } else {
+                    Err(RuntimeError::new("List index out of bounds", line, column))
+                }
+            } else {
+                Err(RuntimeError::new("List index must be a number", line, column))
+            }
+        },
         ASTNode::CommentBlock{..} => Ok(Value::Void),
         _ => Err(RuntimeError::new(format!("Unsupported ast node: {:?}", ast).as_str(), 0, 0))
     }

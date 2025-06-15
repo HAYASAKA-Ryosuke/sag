@@ -290,6 +290,24 @@ impl Parser {
                         return_type: ValueType::Void,
                         is_mut: true,
                     }),
+                    "update" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Void,
+                        is_mut: true,
+                    }),
+                    "entry" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: true,
+                    }),
+                    "get_or_insert" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: _value_type.as_ref().clone(),
+                        is_mut: true,
+                    }),
                     _ => None
                 }
             }

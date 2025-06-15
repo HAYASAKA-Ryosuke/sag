@@ -247,6 +247,77 @@ fn call_builtin_method_on_dict(
             }
             Ok(Value::Void)
         }
+        "update" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("update requires a dictionary argument", line, column));
+            }
+            let other_dict_val = eval(args[0].clone(), env)?;
+            if let Value::Dict(other_dict) = other_dict_val {
+                for (key, value) in other_dict {
+                    dict.insert(key, value);
+                }
+                if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                    let result = env.set(
+                        name.to_string(),
+                        Value::Dict(dict.clone()),
+                        EnvVariableType::Mutable,
+                        value_type.clone().unwrap_or(ValueType::Any),
+                        false,
+                    );
+                    if let Err(e) = result {
+                        return Err(RuntimeError::new(e.as_str(), line, column));
+                    }
+                }
+                Ok(Value::Void)
+            } else {
+                Err(RuntimeError::new("update argument must be a dictionary", line, column))
+            }
+        }
+        "entry" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("entry requires a key argument", line, column));
+            }
+            let key_val = eval(args[0].clone(), env)?;
+            if let Value::String(key) = key_val {
+                if dict.contains_key(&key) {
+                    Ok(Value::Option(dict.get(&key).cloned().map(Box::new)))
+                } else {
+                    Ok(Value::Option(None))
+                }
+            } else {
+                Err(RuntimeError::new("entry key must be a string", line, column))
+            }
+        }
+        "get_or_insert" => {
+            if args.len() < 2 {
+                return Err(RuntimeError::new("get_or_insert requires key and default value arguments", line, column));
+            }
+            let key_val = eval(args[0].clone(), env)?;
+            let default_val = eval(args[1].clone(), env)?;
+            if let Value::String(key) = key_val {
+                let result_value = if dict.contains_key(&key) {
+                    dict.get(&key).unwrap().clone()
+                } else {
+                    dict.insert(key.clone(), default_val.clone());
+                    if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                        let result = env.set(
+                            name.to_string(),
+                            Value::Dict(dict.clone()),
+                            EnvVariableType::Mutable,
+                            value_type.clone().unwrap_or(ValueType::Any),
+                            false,
+                        );
+                        if let Err(e) = result {
+                            return Err(RuntimeError::new(e.as_str(), line, column));
+                        }
+                    }
+                    default_val
+                };
+                Ok(result_value)
+            } else {
+                Err(RuntimeError::new("get_or_insert key must be a string", line, column))
+            }
+        }
         _ => Err(RuntimeError::new(
             format!("{} is not a method of dict", method_name).as_str(),
             line,
@@ -824,6 +895,113 @@ mod tests {
                 assert_eq!(s, "HELLO");
             }
             _ => panic!("Expected string")
+        }
+    }
+
+    #[test]
+    fn test_dict_index_assignment() {
+        let input = r#"
+        val mut d = {: "a" => 1 :}
+        d["b"] = 2
+        d["a"]
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        
+        // 変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 辞書に新しいキーを追加
+        eval(ast[1].clone(), &mut env).unwrap();
+        // 元のキーの値を取得
+        let result = eval(ast[2].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(1));
+            }
+            _ => panic!("Expected number")
+        }
+    }
+
+    #[test]
+    fn test_dict_index_update() {
+        let input = r#"
+        val mut d = {: "a" => 1, "b" => 2 :}
+        d["a"] = 10
+        d["a"]
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        
+        // 変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 既存のキーの値を更新
+        eval(ast[1].clone(), &mut env).unwrap();
+        // 更新された値を取得
+        let result = eval(ast[2].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(10));
+            }
+            _ => panic!("Expected number")
+        }
+    }
+
+    #[test]
+    fn test_dict_update_method() {
+        let input = r#"
+        val mut d1 = {: "a" => 1 :}
+        val d2 = {: "b" => 2, "c" => 3 :}
+        d1.update(d2)
+        d1.len()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        
+        // 変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        eval(ast[1].clone(), &mut env).unwrap();
+        // updateメソッドを呼び出し
+        eval(ast[2].clone(), &mut env).unwrap();
+        // 更新後のサイズを確認
+        let result = eval(ast[3].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(3));
+            }
+            _ => panic!("Expected number")
+        }
+    }
+
+    #[test]
+    fn test_dict_get_or_insert_method() {
+        let input = r#"
+        val mut d = {: "a" => 1 :}
+        d.get_or_insert("b", 42)
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        
+        // 変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // get_or_insertメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(42));
+            }
+            _ => panic!("Expected number")
         }
     }
 }
