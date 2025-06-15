@@ -183,6 +183,113 @@ impl Parser {
                         return_type: ValueType::Void,
                         is_mut: true,
                     }),
+                    "pop" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: true,
+                    }),
+                    "len" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Number,
+                        is_mut: false,
+                    }),
+                    "is_empty" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "first" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: false,
+                    }),
+                    "last" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: false,
+                    }),
+                    "clear" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Void,
+                        is_mut: true,
+                    }),
+                    "contains" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "reverse" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Void,
+                        is_mut: true,
+                    }),
+                    _ => None
+                }
+            }
+            ValueType::Dict(_value_type) => {
+                match method_name.as_str() {
+                    "get" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: false,
+                    }),
+                    "insert" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: true,
+                    }),
+                    "remove" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::OptionType(Box::new(_value_type.as_ref().clone())),
+                        is_mut: true,
+                    }),
+                    "contains_key" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "keys" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::List(Box::new(ValueType::String)),
+                        is_mut: false,
+                    }),
+                    "values" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::List(Box::new(_value_type.as_ref().clone())),
+                        is_mut: false,
+                    }),
+                    "len" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Number,
+                        is_mut: false,
+                    }),
+                    "is_empty" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "clear" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Void,
+                        is_mut: true,
+                    }),
                     _ => None
                 }
             }
@@ -215,6 +322,71 @@ impl Parser {
                         arguments: vec![],
                         body: None,
                         return_type: ValueType::Number,
+                        is_mut: false,
+                    }),
+                    _ => None
+                }
+            }
+            ValueType::String => {
+                match method_name.as_str() {
+                    "len" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Number,
+                        is_mut: false,
+                    }),
+                    "is_empty" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "to_uppercase" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::String,
+                        is_mut: false,
+                    }),
+                    "to_lowercase" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::String,
+                        is_mut: false,
+                    }),
+                    "trim" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::String,
+                        is_mut: false,
+                    }),
+                    "contains" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "starts_with" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "ends_with" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::Bool,
+                        is_mut: false,
+                    }),
+                    "split" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::List(Box::new(ValueType::String)),
+                        is_mut: false,
+                    }),
+                    "replace" => Some(MethodInfo {
+                        arguments: vec![],
+                        body: None,
+                        return_type: ValueType::String,
                         is_mut: false,
                     }),
                     _ => None
@@ -425,6 +597,7 @@ impl Parser {
                             ASTNode::Literal{value: Value::Bool(_), ..} => true,
                             ASTNode::Literal{value: Value::Void, ..} => true,
                             ASTNode::Literal{value: Value::List(_), ..} => true,
+                            ASTNode::Literal{value: Value::Dict(_), ..} => true,
                             ASTNode::FunctionCall { ref name, .. } => {
                                 match self.get_function(self.get_current_scope(), name.clone()) {
                                     Some(value_type) => {
@@ -434,6 +607,7 @@ impl Parser {
                                             ValueType::Bool => true,
                                             ValueType::Void => true,
                                             ValueType::List(_) => true,
+                                            ValueType::Dict(_) => true,
                                             _ => false,
                                         }
                                     }
@@ -472,9 +646,26 @@ impl Parser {
                                             ValueType::Bool => true,
                                             ValueType::Void => true,
                                             ValueType::List(_) => true,
+                                            ValueType::Dict(_) => true,
                                             _ => false,
                                         }
                                     },
+                                    None => false,
+                                }
+                            },
+                            ASTNode::Variable { ref name, .. } => {
+                                match self.find_variables(self.get_current_scope(), name.clone()) {
+                                    Some((value_type, _)) => {
+                                        match value_type {
+                                            ValueType::Number => true,
+                                            ValueType::String => true,
+                                            ValueType::Bool => true,
+                                            ValueType::Void => true,
+                                            ValueType::List(_) => true,
+                                            ValueType::Dict(_) => true,
+                                            _ => false,
+                                        }
+                                    }
                                     None => false,
                                 }
                             },
@@ -484,6 +675,7 @@ impl Parser {
                                 Ok(ValueType::Bool) => true,
                                 Ok(ValueType::Void) => true,
                                 Ok(ValueType::List(_)) => true,
+                                Ok(ValueType::Dict(_)) => true,
                                 _ => false,
                             },
                         };

@@ -284,9 +284,12 @@ impl Parser {
                 self.pos += 1;
                 let arguments = self.parse_function_call_arguments_paren()?;
                 let (line, column) = self.get_line_column();
+                let scope = self.get_current_scope().to_string();
+                let variable_info = self.find_variables(scope.clone(), name.clone());
+                let value_type = self.resolve_variable_type(&scope, &name, variable_info.clone());
                 let caller_variable_ast = ASTNode::Variable {
                     name: name.clone(),
-                    value_type: None,
+                    value_type,
                     line,
                     column,
                 };

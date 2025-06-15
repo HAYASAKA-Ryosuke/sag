@@ -72,8 +72,265 @@ fn call_builtin_method_on_list(
             }
             Ok(Value::List(list))
         }
+        "pop" => {
+            let popped = list.pop();
+            if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                let result = env.set(
+                    name.to_string(),
+                    Value::List(list.clone()),
+                    EnvVariableType::Mutable,
+                    value_type.clone().unwrap_or(ValueType::Any),
+                    false,
+                );
+                if let Err(e) = result {
+                    return Err(RuntimeError::new(e.as_str(), line, column));
+                }
+            }
+            Ok(Value::Option(popped.map(Box::new)))
+        }
+        "len" => Ok(Value::Number(Fraction::from(list.len()))),
+        "is_empty" => Ok(Value::Bool(list.is_empty())),
+        "first" => Ok(Value::Option(list.first().cloned().map(Box::new))),
+        "last" => Ok(Value::Option(list.last().cloned().map(Box::new))),
+        "clear" => {
+            list.clear();
+            if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                let result = env.set(
+                    name.to_string(),
+                    Value::List(list.clone()),
+                    EnvVariableType::Mutable,
+                    value_type.clone().unwrap_or(ValueType::Any),
+                    false,
+                );
+                if let Err(e) = result {
+                    return Err(RuntimeError::new(e.as_str(), line, column));
+                }
+            }
+            Ok(Value::Void)
+        }
+        "contains" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("contains requires an argument", line, column));
+            }
+            let search_val = eval(args[0].clone(), env)?;
+            Ok(Value::Bool(list.contains(&search_val)))
+        }
+        "reverse" => {
+            list.reverse();
+            if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                let result = env.set(
+                    name.to_string(),
+                    Value::List(list.clone()),
+                    EnvVariableType::Mutable,
+                    value_type.clone().unwrap_or(ValueType::Any),
+                    false,
+                );
+                if let Err(e) = result {
+                    return Err(RuntimeError::new(e.as_str(), line, column));
+                }
+            }
+            Ok(Value::Void)
+        }
         _ => Err(RuntimeError::new(
             format!("{} is not a method of list", method_name).as_str(),
+            line,
+            column,
+        )),
+    }
+}
+
+// dict builtin method
+fn call_builtin_method_on_dict(
+    mut dict: HashMap<String, Value>,
+    method_name: &str,
+    args: &[ASTNode],
+    caller_ast: &ASTNode,
+    env: &mut Env,
+    line: usize,
+    column: usize,
+) -> Result<Value, RuntimeError> {
+    match method_name {
+        "get" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("get requires a key argument", line, column));
+            }
+            let key_val = eval(args[0].clone(), env)?;
+            if let Value::String(key) = key_val {
+                Ok(Value::Option(dict.get(&key).cloned().map(Box::new)))
+            } else {
+                Err(RuntimeError::new("dict key must be a string", line, column))
+            }
+        }
+        "insert" => {
+            if args.len() < 2 {
+                return Err(RuntimeError::new("insert requires key and value arguments", line, column));
+            }
+            let key_val = eval(args[0].clone(), env)?;
+            let value_val = eval(args[1].clone(), env)?;
+            if let Value::String(key) = key_val {
+                let old_value = dict.insert(key, value_val);
+                if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                    let result = env.set(
+                        name.to_string(),
+                        Value::Dict(dict.clone()),
+                        EnvVariableType::Mutable,
+                        value_type.clone().unwrap_or(ValueType::Any),
+                        false,
+                    );
+                    if let Err(e) = result {
+                        return Err(RuntimeError::new(e.as_str(), line, column));
+                    }
+                }
+                Ok(Value::Option(old_value.map(Box::new)))
+            } else {
+                Err(RuntimeError::new("dict key must be a string", line, column))
+            }
+        }
+        "remove" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("remove requires a key argument", line, column));
+            }
+            let key_val = eval(args[0].clone(), env)?;
+            if let Value::String(key) = key_val {
+                let removed_value = dict.remove(&key);
+                if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                    let result = env.set(
+                        name.to_string(),
+                        Value::Dict(dict.clone()),
+                        EnvVariableType::Mutable,
+                        value_type.clone().unwrap_or(ValueType::Any),
+                        false,
+                    );
+                    if let Err(e) = result {
+                        return Err(RuntimeError::new(e.as_str(), line, column));
+                    }
+                }
+                Ok(Value::Option(removed_value.map(Box::new)))
+            } else {
+                Err(RuntimeError::new("dict key must be a string", line, column))
+            }
+        }
+        "contains_key" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("contains_key requires a key argument", line, column));
+            }
+            let key_val = eval(args[0].clone(), env)?;
+            if let Value::String(key) = key_val {
+                Ok(Value::Bool(dict.contains_key(&key)))
+            } else {
+                Err(RuntimeError::new("dict key must be a string", line, column))
+            }
+        }
+        "keys" => {
+            let keys: Vec<Value> = dict.keys().map(|k| Value::String(k.clone())).collect();
+            Ok(Value::List(keys))
+        }
+        "values" => {
+            let values: Vec<Value> = dict.values().cloned().collect();
+            Ok(Value::List(values))
+        }
+        "len" => Ok(Value::Number(Fraction::from(dict.len()))),
+        "is_empty" => Ok(Value::Bool(dict.is_empty())),
+        "clear" => {
+            dict.clear();
+            if let ASTNode::Variable { name, value_type, .. } = caller_ast {
+                let result = env.set(
+                    name.to_string(),
+                    Value::Dict(dict.clone()),
+                    EnvVariableType::Mutable,
+                    value_type.clone().unwrap_or(ValueType::Any),
+                    false,
+                );
+                if let Err(e) = result {
+                    return Err(RuntimeError::new(e.as_str(), line, column));
+                }
+            }
+            Ok(Value::Void)
+        }
+        _ => Err(RuntimeError::new(
+            format!("{} is not a method of dict", method_name).as_str(),
+            line,
+            column,
+        )),
+    }
+}
+
+// string builtin method
+fn call_builtin_method_on_string(
+    string: String,
+    method_name: &str,
+    args: &[ASTNode],
+    env: &mut Env,
+    line: usize,
+    column: usize,
+) -> Result<Value, RuntimeError> {
+    match method_name {
+        "len" => Ok(Value::Number(Fraction::from(string.len()))),
+        "is_empty" => Ok(Value::Bool(string.is_empty())),
+        "to_uppercase" => Ok(Value::String(string.to_uppercase())),
+        "to_lowercase" => Ok(Value::String(string.to_lowercase())),
+        "trim" => Ok(Value::String(string.trim().to_string())),
+        "contains" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("contains requires a substring argument", line, column));
+            }
+            let search_val = eval(args[0].clone(), env)?;
+            if let Value::String(search_str) = search_val {
+                Ok(Value::Bool(string.contains(&search_str)))
+            } else {
+                Err(RuntimeError::new("contains argument must be a string", line, column))
+            }
+        }
+        "starts_with" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("starts_with requires a prefix argument", line, column));
+            }
+            let prefix_val = eval(args[0].clone(), env)?;
+            if let Value::String(prefix) = prefix_val {
+                Ok(Value::Bool(string.starts_with(&prefix)))
+            } else {
+                Err(RuntimeError::new("starts_with argument must be a string", line, column))
+            }
+        }
+        "ends_with" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("ends_with requires a suffix argument", line, column));
+            }
+            let suffix_val = eval(args[0].clone(), env)?;
+            if let Value::String(suffix) = suffix_val {
+                Ok(Value::Bool(string.ends_with(&suffix)))
+            } else {
+                Err(RuntimeError::new("ends_with argument must be a string", line, column))
+            }
+        }
+        "split" => {
+            if args.len() < 1 {
+                return Err(RuntimeError::new("split requires a delimiter argument", line, column));
+            }
+            let delimiter_val = eval(args[0].clone(), env)?;
+            if let Value::String(delimiter) = delimiter_val {
+                let parts: Vec<Value> = string.split(&delimiter)
+                    .map(|s| Value::String(s.to_string()))
+                    .collect();
+                Ok(Value::List(parts))
+            } else {
+                Err(RuntimeError::new("split delimiter must be a string", line, column))
+            }
+        }
+        "replace" => {
+            if args.len() < 2 {
+                return Err(RuntimeError::new("replace requires from and to arguments", line, column));
+            }
+            let from_val = eval(args[0].clone(), env)?;
+            let to_val = eval(args[1].clone(), env)?;
+            if let (Value::String(from), Value::String(to)) = (from_val, to_val) {
+                Ok(Value::String(string.replace(&from, &to)))
+            } else {
+                Err(RuntimeError::new("replace arguments must be strings", line, column))
+            }
+        }
+        _ => Err(RuntimeError::new(
+            format!("{} is not a method of string", method_name).as_str(),
             line,
             column,
         )),
@@ -96,6 +353,12 @@ fn call_builtin_method(
         }
         Value::List(list) => {
             call_builtin_method_on_list(list, method_name, args, caller_ast, env, line, column)
+        }
+        Value::Dict(dict) => {
+            call_builtin_method_on_dict(dict, method_name, args, caller_ast, env, line, column)
+        }
+        Value::String(string) => {
+            call_builtin_method_on_string(string, method_name, args, env, line, column)
         }
         _ => Err(RuntimeError::new(
             format!("Method {} is not supported for this type", method_name).as_str(),
@@ -404,5 +667,163 @@ mod tests {
         let ast = parser.parse_lines();
         let result = evals(ast.unwrap(), &mut env).unwrap();
         assert_eq!(result[1], Value::String("3".to_string()));
+    }
+
+    #[test]
+    fn test_list_len_method() {
+        let input = r#"
+        val xs = [1, 2, 3, 4, 5]
+        xs.len()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        // 最初に変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 次にメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        if let Err(e) = &result {
+            println!("Error: {:?}", e);
+        }
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(5));
+            }
+            _ => panic!("Expected number")
+        }
+    }
+
+    #[test]
+    fn test_list_pop_method() {
+        let input = r#"
+        val mut xs = [1, 2, 3]
+        xs.pop()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        // 最初に変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 次にメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Option(Some(value)) => {
+                assert_eq!(*value, Value::Number(Fraction::from(3)));
+            }
+            _ => panic!("Expected Some(3)")
+        }
+    }
+
+    #[test]
+    fn test_dict_len_method() {
+        let input = r#"
+        val d = {: "a" => 1, "b" => 2 :}
+        d.len()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        
+        println!("AST[0]: {:?}", ast[0]);
+        println!("AST[1]: {:?}", ast[1]);
+        
+        // 最初に変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 次にメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        if let Err(e) = &result {
+            println!("Dict len error: {:?}", e);
+        }
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(2));
+            }
+            _ => panic!("Expected number")
+        }
+    }
+
+    #[test]
+    fn test_dict_keys_method() {
+        let input = r#"
+        val d = {: "a" => 1, "b" => 2 :}
+        d.keys()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        // 最初に変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 次にメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::List(keys) => {
+                assert_eq!(keys.len(), 2);
+                // キーの順序は保証されないので、両方のキーが含まれていることを確認
+                let key_strings: Vec<String> = keys.iter().map(|v| {
+                    if let Value::String(s) = v {
+                        s.clone()
+                    } else {
+                        panic!("Expected string key")
+                    }
+                }).collect();
+                assert!(key_strings.contains(&"a".to_string()));
+                assert!(key_strings.contains(&"b".to_string()));
+            }
+            _ => panic!("Expected list of keys")
+        }
+    }
+
+    #[test]
+    fn test_string_len_method() {
+        let input = r#"
+        val s = "hello"
+        s.len()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        // 最初に変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 次にメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::Number(n) => {
+                assert_eq!(n, Fraction::from(5));
+            }
+            _ => panic!("Expected number")
+        }
+    }
+
+    #[test]
+    fn test_string_to_uppercase_method() {
+        let input = r#"
+        val s = "hello"
+        s.to_uppercase()
+        "#;
+        let mut env = Env::new();
+        let tokens = tokenize(&input.to_string());
+        let mut parser = Parser::new(tokens, register_builtins(&mut env));
+        let ast = parser.parse_lines().unwrap();
+        // 最初に変数を定義
+        eval(ast[0].clone(), &mut env).unwrap();
+        // 次にメソッドを呼び出し
+        let result = eval(ast[1].clone(), &mut env);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Value::String(s) => {
+                assert_eq!(s, "HELLO");
+            }
+            _ => panic!("Expected string")
+        }
     }
 }

@@ -58,6 +58,7 @@ impl Parser {
             ASTNode::Literal{value: Value::Bool(_), ..} => true,
             ASTNode::Literal{value: Value::Void, ..} => true,
             ASTNode::Literal{value: Value::List(_), ..} => true,
+            ASTNode::Literal{value: Value::Dict(_), ..} => true,
             ASTNode::Variable { name, value_type, .. } => {
                 if value_type.is_none() {
                     let variable = self.find_variables(self.get_current_scope(), name.clone());
@@ -69,6 +70,7 @@ impl Parser {
                                 ValueType::Bool => true,
                                 ValueType::Void => true,
                                 ValueType::List(_) => true,
+                                ValueType::Dict(_) => true,
                                 _ => false,
                             }
                         },
@@ -83,6 +85,7 @@ impl Parser {
                                 ValueType::Bool => true,
                                 ValueType::Void => true,
                                 ValueType::List(_) => true,
+                                ValueType::Dict(_) => true,
                                 _ => false,
                             }
                         },
@@ -97,6 +100,7 @@ impl Parser {
                     Ok(ValueType::Bool) => true,
                     Ok(ValueType::Void) => true,
                     Ok(ValueType::List(_)) => true,
+                    Ok(ValueType::Dict(_)) => true,
                     _ => false,
                 }
             },
