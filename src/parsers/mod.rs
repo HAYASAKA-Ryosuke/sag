@@ -78,10 +78,6 @@ impl Parser {
         self.current_struct.clone()
     }
 
-    fn is_in_method_scope(&self) -> bool {
-        self.in_method_scope
-    }
-
     fn enter_method_scope(&mut self) {
         self.in_method_scope = true;
     }
