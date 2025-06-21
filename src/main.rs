@@ -50,7 +50,10 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         println!("ast: {:?}", ast_node);
         let result = eval(ast_node.unwrap(), &mut env);
         println!("---------");
-        println!("res: {:?}", result);
+        match result {
+            Ok(value) => println!("res: {:?}", value),
+            Err(e) => eprint!("{}", e.message_with_source(&line)),
+        }
     }
     Ok(())
 }

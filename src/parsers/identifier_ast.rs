@@ -24,10 +24,17 @@ impl Parser {
             None
         }
     }
-    pub fn parse_identifier(&mut self, name: String) -> Result<ASTNode, ParseError> {
+    pub fn parse_identifier(&mut self, name: String) -> Result<ASTNode, ParseError> { 
         self.pos += 1;
         let scope = self.get_current_scope().to_string();
         let variable_info = self.find_variables(scope.clone(), name.clone());
+        
+        if variable_info.is_none() && self.get_function(scope.clone(), name.clone()).is_none() {
+            return Err(ParseError::new(
+                format!("undefined variable: {:?}", name).as_str(),
+                &self.tokens[self.line][self.pos - 1]
+            ));
+        }
         match self.get_current_token() {
             Some(Token{kind: TokenKind::LBrancket, ..}) => {
                 // リストかdictのインデックスアクセス
@@ -181,12 +188,12 @@ impl Parser {
 
     fn create_assignment(&mut self, name: String, variable_info: Option<(ValueType, EnvVariableType)>) -> Result<ASTNode, ParseError> {
         // 再代入
+        let prev_token = self.tokens[self.line][self.pos - 1].clone(); // Get the token for the variable name
         self.consume_token();
         if variable_info.is_none() {
-            let current_token = self.get_current_token().unwrap();
             return Err(ParseError::new(
                 format!("undefined variable: {:?}", name).as_str(),
-                &current_token,
+                &prev_token,
             ));
         }
         let (value_type, variable_type) = variable_info.clone().unwrap();

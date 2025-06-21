@@ -21,6 +21,11 @@ impl Tokenizer {
             nesting_count: 0,
         }
     }
+    
+    // Store the current position before advancing
+    pub fn store_position(&self) -> (usize, usize) {
+        (self.line, self.column)
+    }
 
     pub fn get_position_char(&self, pos: usize) -> char {
         if pos >= self.chars.len() {
@@ -544,13 +549,14 @@ pub fn tokenize(line: &String) -> Vec<Token> {
     loop {
         let c = tokenizer.get_position_char(tokenizer.pos);
         if is_line_break(&c) || is_semicoron(&c) {
+            let (line, column) = tokenizer.store_position();
             match tokenizer.tokens.last() {
                 Some(Token {kind, ..}) => {
                     if kind != &TokenKind::Eof {
-                        tokenizer.tokens.push(Token{kind: TokenKind::Eof, line: tokenizer.line, column: tokenizer.column});
+                        tokenizer.tokens.push(Token{kind: TokenKind::Eof, line, column});
                     }
                 }
-                _ => tokenizer.tokens.push(Token{kind: TokenKind::Eof, line: tokenizer.line, column: tokenizer.column})
+                _ => tokenizer.tokens.push(Token{kind: TokenKind::Eof, line, column})
             }
             tokenizer.line += 1;
             tokenizer.pos += 1;
@@ -571,41 +577,47 @@ pub fn tokenize(line: &String) -> Vec<Token> {
             continue;
         }
         if is_digit(&c) {
+            let (line, column) = tokenizer.store_position();
             let num = get_digit(&mut tokenizer);
-            tokenizer.tokens.push(Token{kind: TokenKind::Number(num), line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Number(num), line, column});
             continue;
         }
 
         if is_string(&c) {
+            let (line, column) = tokenizer.store_position();
             let str = get_string(&mut tokenizer);
-            tokenizer.tokens.push(Token{kind: TokenKind::String(str), line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::String(str), line, column});
             continue;
         }
 
         if is_break(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 5;
-            tokenizer.tokens.push(Token{kind: TokenKind::Break, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Break, line, column});
             tokenizer.pos += 5;
             continue;
         }
 
         if is_continue(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 8;
-            tokenizer.tokens.push(Token{kind: TokenKind::Continue, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Continue, line, column});
             tokenizer.pos += 8;
             continue;
         }
 
         if is_mutable(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 8;
-            tokenizer.tokens.push(Token{kind: TokenKind::Mutable, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Mutable, line, column});
             tokenizer.pos += 8;
             continue;
         }
 
         if is_immutable(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::Immutable, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Immutable, line, column});
             tokenizer.pos += 3;
             continue;
         }
@@ -625,290 +637,328 @@ pub fn tokenize(line: &String) -> Vec<Token> {
         }
 
         if is_function(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::Function, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Function, line, column});
             tokenizer.pos += 3;
             continue;
         }
 
         if is_import(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 7;
-            tokenizer.tokens.push(Token{kind: TokenKind::Import, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Import, line, column});
             tokenizer.pos += 7;
             continue;
         }
 
         if is_from(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 5;
-            tokenizer.tokens.push(Token{kind: TokenKind::From, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::From, line, column});
             tokenizer.pos += 5;
             continue;
         }
 
         if is_exponent(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::Pow, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Pow, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_match(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 6;
-            tokenizer.tokens.push(Token{kind: TokenKind::Match, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Match, line, column});
             tokenizer.pos += 6;
             continue;
         }
 
         if is_return(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 7;
-            tokenizer.tokens.push(Token{kind: TokenKind::Return, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Return, line, column});
             tokenizer.pos += 7;
             continue;
         }
 
         if is_right_arrow(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::RArrow, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::RArrow, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_struct(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 6;
-            tokenizer.tokens.push(Token{kind: TokenKind::Struct, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Struct, line, column});
             tokenizer.pos += 6;
             continue;
         }
 
         if is_impl(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::Impl, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Impl, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_pub(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::Pub, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Pub, line, column});
             tokenizer.pos += 3;
             continue;
         }
 
         if is_option(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 6;
-            tokenizer.tokens.push(Token{kind: TokenKind::Option, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Option, line, column});
             tokenizer.pos += 6;
             continue;
         }
 
         if is_some(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::Some, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Some, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_none(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::None, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::None, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_void(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::Void, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Void, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_and(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::And, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::And, line, column});
             tokenizer.pos += 3;
             continue;
         }
         if is_or(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::Or, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Or, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_xor(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::Xor, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Xor, line, column});
             tokenizer.pos += 3;
             continue;
         }
 
         if is_result(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 6;
-            tokenizer.tokens.push(Token{kind: TokenKind::Result, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Result, line, column});
             tokenizer.pos += 6;
             continue;
         }
 
         if is_success(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::Success, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Success, line, column});
             tokenizer.pos += 3;
             continue;
         }
 
         if is_failure(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::Failure, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Failure, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_for(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 3;
-            tokenizer.tokens.push(Token{kind: TokenKind::For, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::For, line, column});
             tokenizer.pos += 3;
             continue;
         }
 
         if is_in(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::In, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::In, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_right_rocket(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::RRocket, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::RRocket, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_if(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::If, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::If, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_else(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::Else, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Else, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_eq(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::Eq, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Eq, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_lte(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::Lte, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Lte, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_lt(c) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 1;
-            tokenizer.tokens.push(Token{kind: TokenKind::Lt, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Lt, line, column});
             tokenizer.pos += 1;
             continue;
         }
 
         if is_gte(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 2;
-            tokenizer.tokens.push(Token{kind: TokenKind::Gte, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Gte, line, column});
             tokenizer.pos += 2;
             continue;
         }
 
         if is_gt(c) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 1;
-            tokenizer.tokens.push(Token{kind: TokenKind::Gt, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Gt, line, column});
             tokenizer.pos += 1;
             continue;
         }
 
         if is_true(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 4;
-            tokenizer.tokens.push(Token{kind: TokenKind::True, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::True, line, column});
             tokenizer.pos += 4;
             continue;
         }
 
         if is_false(&mut tokenizer) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 5;
-            tokenizer.tokens.push(Token{kind: TokenKind::False, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::False, line, column});
             tokenizer.pos += 5;
             continue;
         }
 
         if is_colon(&c) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 1;
-            tokenizer.tokens.push(Token{kind: TokenKind::Colon, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Colon, line, column});
             tokenizer.pos += 1;
             continue;
         }
 
         if is_comma(&c) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 1;
-            tokenizer.tokens.push(Token{kind: TokenKind::Comma, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Comma, line, column});
             tokenizer.pos += 1;
             continue;
         }
 
         if is_function_call_args(&c) {
+            let (line, column) = tokenizer.store_position();
             tokenizer.column += 1;
-            tokenizer.tokens.push(Token{kind: TokenKind::Pipe, line: tokenizer.line, column: tokenizer.column});
+            tokenizer.tokens.push(Token{kind: TokenKind::Pipe, line, column});
             tokenizer.pos += 1;
             continue;
         }
 
+        let (line, column) = tokenizer.store_position();
         tokenizer.column += 1;
         match c {
-            '+' => tokenizer.tokens.push(Token{kind: TokenKind::Plus, line: tokenizer.line, column: tokenizer.column}),
-            '-' => tokenizer.tokens.push(Token{kind: TokenKind::Minus, line: tokenizer.line, column: tokenizer.column}),
-            '*' => tokenizer.tokens.push(Token{kind: TokenKind::Mul, line: tokenizer.line, column: tokenizer.column}),
-            '/' => tokenizer.tokens.push(Token{kind: TokenKind::Div, line: tokenizer.line, column: tokenizer.column}),
-            '%' => tokenizer.tokens.push(Token{kind: TokenKind::Mod, line: tokenizer.line, column: tokenizer.column}),
-            '(' => tokenizer.tokens.push(Token{kind: TokenKind::LParen, line: tokenizer.line, column: tokenizer.column}),
-            ')' => tokenizer.tokens.push(Token{kind: TokenKind::RParen, line: tokenizer.line, column: tokenizer.column}),
-            '[' => tokenizer.tokens.push(Token{kind: TokenKind::LBrancket, line: tokenizer.line, column: tokenizer.column}),
-            ']' => tokenizer.tokens.push(Token{kind: TokenKind::RBrancket, line: tokenizer.line, column: tokenizer.column}),
-            '.' => tokenizer.tokens.push(Token{kind: TokenKind::Dot, line: tokenizer.line, column: tokenizer.column}),
-            '\\' => tokenizer.tokens.push(Token{kind: TokenKind::BackSlash, line: tokenizer.line, column: tokenizer.column}),
+            '+' => tokenizer.tokens.push(Token{kind: TokenKind::Plus, line, column}),
+            '-' => tokenizer.tokens.push(Token{kind: TokenKind::Minus, line, column}),
+            '*' => tokenizer.tokens.push(Token{kind: TokenKind::Mul, line, column}),
+            '/' => tokenizer.tokens.push(Token{kind: TokenKind::Div, line, column}),
+            '%' => tokenizer.tokens.push(Token{kind: TokenKind::Mod, line, column}),
+            '(' => tokenizer.tokens.push(Token{kind: TokenKind::LParen, line, column}),
+            ')' => tokenizer.tokens.push(Token{kind: TokenKind::RParen, line, column}),
+            '[' => tokenizer.tokens.push(Token{kind: TokenKind::LBrancket, line, column}),
+            ']' => tokenizer.tokens.push(Token{kind: TokenKind::RBrancket, line, column}),
+            '.' => tokenizer.tokens.push(Token{kind: TokenKind::Dot, line, column}),
+            '\\' => tokenizer.tokens.push(Token{kind: TokenKind::BackSlash, line, column}),
             '{' => {
                 tokenizer.nesting_count += 1;
-                tokenizer.tokens.push(Token{kind: TokenKind::LBrace, line: tokenizer.line, column: tokenizer.column});
+                tokenizer.tokens.push(Token{kind: TokenKind::LBrace, line, column});
             }
             '}' => {
                 tokenizer.nesting_count -= 1;
-                tokenizer.tokens.push(Token{kind: TokenKind::RBrace, line: tokenizer.line, column: tokenizer.column});
+                tokenizer.tokens.push(Token{kind: TokenKind::RBrace, line, column});
                 if tokenizer.nesting_count == 0 {
-                    tokenizer.tokens.push(Token{kind: TokenKind::Eof, line: tokenizer.line, column: tokenizer.column});
+                    tokenizer.tokens.push(Token{kind: TokenKind::Eof, line, column});
                 }
             }
-            '=' => tokenizer.tokens.push(Token{kind: TokenKind::Equal, line: tokenizer.line, column: tokenizer.column}),
+            '=' => tokenizer.tokens.push(Token{kind: TokenKind::Equal, line, column}),
             _ => {
+                let (line, column) = tokenizer.store_position();
                 let value = get_identifier(&mut tokenizer);
                 tokenizer.column += value.len() - 1;
-                tokenizer.tokens.push(Token{kind: TokenKind::Identifier(value), line: tokenizer.line, column: tokenizer.column});
+                tokenizer.tokens.push(Token{kind: TokenKind::Identifier(value), line, column});
                 continue;
             }
         }
         tokenizer.pos += 1;
     }
+    let (line, column) = tokenizer.store_position();
     match tokenizer.tokens.last() {
         Some(Token {kind, ..}) => {
             if kind != &TokenKind::Eof {
-                tokenizer.tokens.push(Token{kind: TokenKind::Eof, line: tokenizer.line, column: tokenizer.column});
+                tokenizer.tokens.push(Token{kind: TokenKind::Eof, line, column});
             }
         }
-        _ => tokenizer.tokens.push(Token{kind: TokenKind::Eof, line: tokenizer.line, column: tokenizer.column})
+        _ => tokenizer.tokens.push(Token{kind: TokenKind::Eof, line, column})
     }
     tokenizer.tokens
 }
