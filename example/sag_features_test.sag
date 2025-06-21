@@ -1,0 +1,150 @@
+// SAG Language Feature Test
+
+// Variable declaration and basic operations
+val a = 10
+val b = 5
+val sum = a + b
+val diff = a - b
+val product = a * b
+val quotient = a / b
+val remainder = a % b
+val power = a ** 2
+
+print("Basic Operations:")
+print("a = " + a.to_string() + ", b = " + b.to_string())
+print("sum = " + sum.to_string())
+print("diff = " + diff.to_string())
+print("product = " + product.to_string())
+print("quotient = " + quotient.to_string())
+print("remainder = " + remainder.to_string())
+print("power = " + power.to_string())
+
+// Conditional branching
+print("\nConditional Branching:")
+if (a > b) {
+    print("a is greater than b")
+} else {
+    print("a is less than or equal to b")
+}
+
+// Logical operations
+val t = true
+val f = false
+print("Logical Operations:")
+t and f
+
+// List operations
+val numbers = [1, 2, 3, 4, 5]
+numbers
+
+// Dictionary operations
+val person = {: "name" => "Alice", "age" => 30, "city" => "Tokyo" :}
+print("\nDictionary Operations:")
+print(person)
+print(person["name"])
+print(person["age"])
+
+// Function definition and call
+fun greet(name: string): string {
+    return "Hello, " + name + "!"
+}
+
+fun fibonacci(n: number): number {
+    return if (n <= 1) {
+        n
+    } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+print("\nFunctions:")
+print(greet("World"))
+print(fibonacci(7))
+
+// Loops
+print("\nLoops:")
+for i in [1, 2, 3, 4, 5] {
+    print(i)
+}
+
+// Structs
+struct Point {
+    x: number,
+    y: number
+}
+
+impl Point {
+    fun distance(self): number {
+        return (self.x ** 2 + self.y ** 2) ** 0.5
+    }
+    
+    fun toString(self): string {
+        return "Point(" + self.x + ", " + self.y + ")"
+    }
+}
+
+print("\nStructs:")
+val mut p = Point{x: 3, y: 4}
+print(p)
+print(p.distance())
+
+// Option type
+fun divide(a: number, b: number): Option<number> {
+    return if (b == 0) {
+        None
+    } else {
+        Some(a / b)
+    }
+}
+
+print("\nOption Type:")
+val result1 = divide(10, 2)
+val result2 = divide(10, 0)
+
+match (result1) {
+    Some(value) => { print("10 / 2 = " + value.to_string()) }
+    None => { print("Division by zero!") }
+}
+
+match (result2) {
+    Some(value) => { print("10 / 0 = " + value.to_string()) }
+    None => { print("Division by zero!") }
+}
+
+// Result type
+fun safeDivide(a: number, b: number): Result<number, string> {
+    return if (b == 0) {
+        Fail("Cannot divide by zero")
+    } else {
+        Suc(a / b)
+    }
+}
+
+print("\nResult Type:")
+val safeResult1 = safeDivide(10, 2)
+val safeResult2 = safeDivide(10, 0)
+
+match (safeResult1) {
+    Suc(value) => { print("Safe division 10 / 2 = " + value.to_string()) }
+    Fail(error) => { print("Error: " + error) }
+}
+
+match (safeResult2) {
+    Suc(value) => { print("Safe division 10 / 0 = " + value.to_string()) }
+    Fail(error) => { print("Error: " + error) }
+}
+
+// Lambda expressions
+val add = \|x: number, y: number| => x + y
+print("\nLambda Expressions:")
+print(add(3, 4))
+
+// Pipe operator
+fun double(x: number): number { return x * 2 }
+fun square(x: number): number { return x ** 2 }
+
+print("\nPipe Operator:")
+print("5 -> double -> square = " + (5 -> double -> square).to_string())
+
+// Final result
+"All features tested successfully"
