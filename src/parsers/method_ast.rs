@@ -14,28 +14,38 @@ impl Parser {
             _ => panic!("unexpected token"),
         };
         self.enter_scope(name.to_string());
+        // メソッドスコープに入る
+        self.enter_method_scope();
+        
         self.consume_token();
         self.extract_token(TokenKind::LParen);
         let arguments = self.parse_function_arguments()?;
         let mut is_mut = false;
-        if arguments.len() > 0 {
+        // Check if this is a static method (no self parameter) or instance method
+        let _is_static_method = if arguments.len() > 0 {
             match arguments.first() {
                 Some(ASTNode::Variable { name, value_type, .. }) => {
-                    if name != "self" {
-                        panic!("first argument must be self");
-                    }
-                    match value_type {
-                        Some(value_type) => {
-                            is_mut = *value_type != ValueType::SelfType;
-                        },
-                        _ => {},
+                    if name == "self" {
+                        match value_type {
+                            Some(value_type) => {
+                                is_mut = *value_type != ValueType::SelfType;
+                            },
+                            _ => {},
+                        }
+                        false // Not static, it has self
+                    } else {
+                        true // Static method, first param is not self
                     }
                 },
-                _ => panic!("first argument must be self"),
+                _ => true, // Not a variable, so not self
             }
-        }
+        } else {
+            true // No arguments, so static method
+        };
         let return_type = self.parse_return_type();
         let body = self.parse_block()?;
+        // メソッドスコープから出る
+        self.leave_method_scope();
         self.leave_scope();
         let (line, column) = self.get_line_column();
         let method = ASTNode::Method {

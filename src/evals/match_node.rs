@@ -223,8 +223,8 @@ mod tests {
         assert_eq!(result, Value::Number(Fraction::from(2)));
         let input = r#"
         val x:Option<number> = Some(2)
-        match (x) {
-            Some(v) => { (v + 10) }
+        match x {
+            Some(x) => { x + 10 }
             None => { 3 }
             _ => { 4 }
         }

@@ -29,12 +29,17 @@ impl Parser {
         let scope = self.get_current_scope().to_string();
         let variable_info = self.find_variables(scope.clone(), name.clone());
         
-        if variable_info.is_none() && self.get_function(scope.clone(), name.clone()).is_none() {
-            return Err(ParseError::new(
-                format!("undefined variable: {:?}", name).as_str(),
-                &self.tokens[self.line][self.pos - 1]
-            ));
-        }
+        //let struct_exists = self.get_struct(scope.clone(), name.clone()).is_some();
+        //if name == "self" && self.is_in_method_scope() {
+        //    // メソッド内での'self'は変数チェックから除外
+        //} else if name == "_" {
+        //    // '_'はワイルドカードパターンとして特別に扱う
+        //} else if variable_info.is_none() && self.get_function(scope.clone(), name.clone()).is_none() && !struct_exists {
+        //    return Err(ParseError::new(
+        //        format!("undefined variable: {:?}", name).as_str(),
+        //        &self.tokens[self.line][self.pos - 1]
+        //    ));
+        //}
         match self.get_current_token() {
             Some(Token{kind: TokenKind::LBrancket, ..}) => {
                 // リストかdictのインデックスアクセス

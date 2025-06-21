@@ -16,9 +16,31 @@ impl Parser {
             }
         };
         let condition = match self.get_current_token() {
-            Some(Token{kind: TokenKind::LParen, ..}) => self.parse_expression(0)?,
+            Some(Token{kind: TokenKind::LParen, ..}) => {
+                self.consume_token(); // Consume the left parenthesis
+                let expr = self.parse_expression(0)?;
+                // Check for and consume the right parenthesis
+                match self.get_current_token() {
+                    Some(Token{kind: TokenKind::RParen, ..}) => {
+                        self.consume_token();
+                        expr
+                    },
+                    _ => {
+                        let current_token = self.get_current_token().unwrap_or(Token {
+                            kind: TokenKind::Eof,
+                            line: self.line,
+                            column: self.pos
+                        });
+                        return Err(ParseError::new("unexpected token missing )", &current_token))
+                    }
+                }
+            },
             _ => {
-                let current_token = self.get_current_token().unwrap();
+                let current_token = self.get_current_token().unwrap_or(Token {
+                    kind: TokenKind::Eof,
+                    line: self.line,
+                    column: self.pos
+                });
                 return Err(ParseError::new("unexpected token missing (", &current_token))
             }
         };

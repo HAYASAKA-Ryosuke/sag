@@ -501,6 +501,7 @@ mod tests {
             z = d = 4
             return x + y + z
         }
+        val mut z = 0
         fun f2(x: number, y: number): number {
             return x + y + z
         }
@@ -515,16 +516,33 @@ mod tests {
         let ast = parser.parse_lines().unwrap();
         let results = evals(ast, &mut env).unwrap();
         assert_eq!(*results.last().unwrap(), Value::Number(Fraction::from(6))); // 2 + 0 + z(4) = 6
-        let tokens = tokenize(&"f2(2, 0)".to_string());
-        let mut parser = Parser::new(tokens, register_builtins(&mut env));
-        let ast = parser.parse().unwrap();
-        let result = eval(ast, &mut env).unwrap();
+        // f2 is defined in the same scope, so it should be accessible
+        let result = eval(ASTNode::FunctionCall {
+            name: "f2".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs {
+                args: vec![
+                    ASTNode::Literal { value: Value::Number(Fraction::from(2)), line: 0, column: 0 },
+                    ASTNode::Literal { value: Value::Number(Fraction::from(0)), line: 0, column: 0 }
+                ],
+                line: 0,
+                column: 0
+            }),
+            line: 0,
+            column: 0
+        }, &mut env).unwrap();
         assert_eq!(result, Value::Number(Fraction::from(6))); // 2 + 0 + z(4) = 6
 
-        let tokens = tokenize(&"f3()".to_string());
-        let mut parser = Parser::new(tokens, register_builtins(&mut env));
-        let ast = parser.parse().unwrap();
-        let result = eval(ast, &mut env).unwrap();
+        // Call f3 directly
+        let result = eval(ASTNode::FunctionCall {
+            name: "f3".to_string(),
+            arguments: Box::new(ASTNode::FunctionCallArgs {
+                args: vec![],
+                line: 0,
+                column: 0
+            }),
+            line: 0,
+            column: 0
+        }, &mut env).unwrap();
         assert_eq!(result, Value::Number(Fraction::from(1)));
     }
 

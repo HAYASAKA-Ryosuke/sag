@@ -689,16 +689,15 @@ mod tests {
             y: number,
         }
         impl Point {
-          fun new(self, x: number, y: number): Point {
+          fun new(x: number, y: number): Point {
             return Point { x: x, y: y }
           }
           fun get_x(self): number {
             return self.x
           }
         }
-        val mut p = Point{x: 1, y: 2}
-        val mut p2 = p.new(3, 4)
-        p2.get_x()
+        val mut p = Point{x: 3, y: 2}
+        p.get_x()
         "#.to_string();
         let tokens = tokenize(&input);
         let mut parser = Parser::new(tokens, register_builtins(&mut env));
